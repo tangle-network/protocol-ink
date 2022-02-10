@@ -1,35 +1,35 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub mod zeroes;
-pub mod merkle_tree;
+mod linkable_tree;
 
 use ink_lang as ink;
 
 #[ink::contract]
-mod mixer {
+mod anchor {
     use super::*;
-    use crate::zeroes;
     use ink_storage::collections::HashMap;
     use poseidon::poseidon::{Poseidon, PoseidonRef};
-    use verifier::mixer_verifier::{MixerVerifier, MixerVerifierRef};
+    use verifier::anchor_verifier::{AnchorVerifier, AnchorVerifierRef};
     use wasm_utils::proof::truncate_and_pad;
+    use mixer::{merkle_tree::MerkleTree, zeroes::zeroes};
+    use linkable_tree::LinkableMerkleTree;
 
     pub const ROOT_HISTORY_SIZE: u32 = 100;
     pub const ERROR_MSG: &'static str = "requested transfer failed. this can be the case if the contract does not\
     have sufficient free funds or if the transfer would have brought the\
     contract's balance below minimum balance.";
 
-    /// Defines the storage of your contract.
-    /// Add new fields to the below struct in order
-    /// to add new static storage fields to your contract.
+    // TODO: Anchor should have an ERC20 attached 
     #[ink(storage)]
-    pub struct Mixer {
+    pub struct Anchor {
         initialized: bool,
+        chain_id: u64,
         deposit_size: Balance,
-        merkle_tree: merkle_tree::MerkleTree,
+        merkle_tree: MerkleTree,
+        linkable_tree: LinkableMerkleTree,
         used_nullifiers: HashMap<[u8; 32], bool>,
         poseidon: PoseidonRef,
-        verifier: MixerVerifierRef,
+        verifier: AnchorVerifierRef,
     }
 
     #[ink(event)]
@@ -45,7 +45,7 @@ mod mixer {
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum Error {
-        /// Returned if the mixer is not initialized
+        /// Returned if the Anchor is not initialized
         NotInitialized,
         /// Returned if the mixer is already initialized
         AlreadyInitialized,
@@ -64,7 +64,7 @@ mod mixer {
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub struct WithdrawParams {
         proof_bytes: Vec<u8>,
-        root: [u8; 32],
+        roots: Vec<[u8; 32]>,
         nullifier_hash: [u8; 32],
         recipient: AccountId,
         relayer: AccountId,
@@ -72,9 +72,11 @@ mod mixer {
         refund: Balance,
     }
 
-    impl Mixer {
+    impl Anchor {
         #[ink(constructor)]
         pub fn new(
+            max_edges: u32,
+            chain_id: u64,
             levels: u32,
             deposit_size: Balance,
             poseidon_contract_hash: Hash,
@@ -91,23 +93,30 @@ mod mixer {
                         error
                     )
                 });
-            let verifier = MixerVerifierRef::new()
+            let verifier = AnchorVerifierRef::new()
                 .endowment(0)
                 .code_hash(verifier_contract_hash)
                 .salt_bytes(b"verifier")
                 .instantiate()
                 .unwrap_or_else(|error| {
                     panic!(
-                        "failed at instantiating the MixerVerifier contract: {:?}",
+                        "failed at instantiating the AnchorVerifier contract: {:?}",
                         error
                     )
                 });
             Self {
+                chain_id,
                 deposit_size,
                 poseidon,
                 verifier,
                 initialized: false,
-                merkle_tree: merkle_tree::MerkleTree {
+                linkable_tree: LinkableMerkleTree {
+                    max_edges,
+                    edges: HashMap::new(),
+                    curr_neighbor_root_index: HashMap::new(),
+                    neighbor_roots: HashMap::new(),
+                },
+                merkle_tree: MerkleTree {
                     levels,
                     current_root_index: 0,
                     next_index: 1,
@@ -123,31 +132,35 @@ mod mixer {
             assert!(!self.initialized, "Mixer already initialized");
 
             for i in 0..self.merkle_tree.levels {
-                self.merkle_tree.filled_subtrees[&i] = zeroes::zeroes(i);
+                self.merkle_tree.filled_subtrees[&i] = zeroes(i);
             }
 
-            self.merkle_tree.roots[&0] = zeroes::zeroes(self.merkle_tree.levels);
+            self.merkle_tree.roots[&0] = zeroes(self.merkle_tree.levels);
             self.initialized = true;
             Ok(())
         }
 
         #[ink(message)]
         pub fn deposit(&mut self, commitment: [u8; 32]) -> Result<u32> {
-            assert!(self.initialized, "Mixer is not initialized");
+            assert!(self.initialized, "Anchor is not initialized");
 
             assert!(
                 self.env().transferred_value() == self.deposit_size,
                 "Deposit size is not correct"
             );
 
-            self.merkle_tree.insert(self.poseidon.clone(), commitment)
+            let res = self.merkle_tree
+                .insert(self.poseidon.clone(), commitment)
+                .map_err(|_| Error::MerkleTreeIsFull)?;
+            Ok(res)
         }
 
         #[ink(message)]
         pub fn withdraw(&mut self, withdraw_params: WithdrawParams) -> Result<()> {
-            assert!(self.initialized, "Mixer is not initialized");
-            assert!(self.merkle_tree.is_known_root(withdraw_params.root),"Root is not known");
-            assert!(!self.is_known_nullifier(withdraw_params.nullifier_hash),"Nullifier is known");
+            assert!(self.initialized, "Anchor is not initialized");
+            assert!(self.merkle_tree.is_known_root(withdraw_params.roots[0]), "Root is not known");
+            assert!(self.linkable_tree.is_valid_neighbor_roots(&withdraw_params.roots[1..]), "Neighbor roots are not valid");
+            assert!(!self.is_known_nullifier(withdraw_params.nullifier_hash), "Nullifier is known");
             let element_encoder = |v: &[u8]| {
                 let mut output = [0u8; 32];
                 output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
@@ -161,7 +174,8 @@ mod mixer {
             // Join the public input bytes
             let mut bytes = Vec::new();
             bytes.extend_from_slice(&withdraw_params.nullifier_hash);
-            bytes.extend_from_slice(&withdraw_params.root);
+            // TODO: Update with proper anchor public input encoding
+            bytes.extend_from_slice(&withdraw_params.roots[0]);
             bytes.extend_from_slice(&recipient_bytes);
             bytes.extend_from_slice(&relayer_bytes);
             bytes.extend_from_slice(&fee_bytes);

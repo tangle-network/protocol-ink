@@ -1,5 +1,5 @@
 [package]
-name = "mixer"
+name = "anchor"
 version = "0.1.0"
 authors = ["Drew Stone <drew@webb.tools>"]
 edition = "2021"
@@ -13,7 +13,8 @@ ink_storage = { version = "3.0.0-rc6", default-features = false }
 ink_lang = { version = "3.0.0-rc6", default-features = false }
 
 poseidon = { path = "../poseidon", default-features = false, features = ["ink-as-dependency"] }
-verifier = { package = "mixer_verifier", path = "mixer_verifier", default-features = false, features = ["ink-as-dependency"] }
+verifier = { package = "anchor_verifier", path = "anchor_verifier", default-features = false, features = ["ink-as-dependency"] }
+mixer = { path = "../mixer", default-features = false, features = ["ink-as-dependency"] }
 wasm-utils = { version = "0.1.1" }
 
 scale = { package = "parity-scale-codec", version = "2.1", default-features = false, features = ["derive"] }
@@ -36,12 +37,11 @@ arkworks-circuits = { version = "0.4.19", default-features = false }
 arkworks-utils    = { version = "0.4.19", features = ["default_poseidon", "default_mimc"], default-features = false }
 
 [lib]
-name = "mixer"
+name = "anchor"
 path = "lib.rs"
 crate-type = [
 	# Used for normal contract Wasm blobs.
 	"cdylib",
-    "rlib",
 ]
 
 [features]
@@ -56,5 +56,6 @@ std = [
 
     "poseidon/std",
     "verifier/std",
+    "mixer/std",
 ]
 ink-as-dependency = []
