@@ -6,11 +6,11 @@ edition = "2021"
 rust-version = "1.56.1"
 
 [dependencies]
-ink_primitives = { version = "3.0.0-rc6", default-features = false }
-ink_metadata = { version = "3.0.0-rc6", default-features = false, features = ["derive"], optional = true }
-ink_env = { version = "3.0.0-rc6", default-features = false }
-ink_storage = { version = "3.0.0-rc6", default-features = false }
-ink_lang = { version = "3.0.0-rc6", default-features = false }
+ink_primitives = { version = "3.0.0-rc8", default-features = false }
+ink_metadata = { version = "3.0.0-rc8", default-features = false, features = ["derive"], optional = true }
+ink_env = { version = "3.0.0-rc8", default-features = false }
+ink_storage = { version = "3.0.0-rc8", default-features = false }
+ink_lang = { version = "3.0.0-rc8", default-features = false }
 
 poseidon = { path = "../poseidon", default-features = false, features = ["ink-as-dependency"] }
 verifier = { package = "mixer_verifier", path = "mixer_verifier", default-features = false, features = ["ink-as-dependency"] }

@@ -172,7 +172,7 @@ mod mixer {
             // Set used nullifier to true after successfuly verification
             self.used_nullifiers[&withdraw_params.nullifier_hash] = true;
             // Send the funds
-            // TODO: Support ERC20 tokens
+            // TODO: Support "ERC20"-like tokens
             if self.env().transfer(withdraw_params.recipient,self.deposit_size - withdraw_params.fee).is_err() {
                 panic!("{}", ERROR_MSG);
             }
