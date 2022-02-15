@@ -6,7 +6,7 @@ pub mod merkle_tree;
 
 use ink_lang as ink;
 
-#[brush::contract]
+#[ink::contract]
 mod mixer {
     use super::*;
     use crate::zeroes;
