@@ -19,6 +19,8 @@ wasm-utils = { version = "0.1.1" }
 scale = { package = "parity-scale-codec", version = "2.1", default-features = false, features = ["derive"] }
 scale-info = { version = "1.0.0", default-features = false, features = ["derive"], optional = true }
 
+brush = { git = "https://github.com/Supercolony-net/openbrush-contracts", default-features = false, features = ["psp22"] }
+
 [dev-dependencies]
 rand = "0.8.4"
 hex = "0.4"
@@ -53,6 +55,7 @@ std = [
     "ink_primitives/std",
     "scale/std",
     "scale-info/std",
+    "brush/std",
 
     "poseidon/std",
     "verifier/std",
