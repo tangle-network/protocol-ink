@@ -1,6 +1,5 @@
 use super::*;
-use poseidon::PoseidonRef;
-use ink_lang as ink;
+use ink_prelude::vec::Vec;
 use ink_storage::collections::HashMap;
 use ink_storage::traits::{SpreadLayout, PackedLayout};
 #[cfg(feature = "std")]

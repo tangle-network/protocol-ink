@@ -8,9 +8,9 @@ use ink_lang as ink;
 mod anchor {
     use super::*;
     use ink_storage::collections::HashMap;
+    use ink_prelude::vec::Vec;
     use poseidon::poseidon::{Poseidon, PoseidonRef};
     use verifier::anchor_verifier::{AnchorVerifier, AnchorVerifierRef};
-    use wasm_utils::proof::truncate_and_pad;
     use mixer::{merkle_tree::MerkleTree, zeroes::zeroes};
     use linkable_tree::LinkableMerkleTree;
 
@@ -167,8 +167,8 @@ mod anchor {
                 output
             };
             // Format the public input bytes
-            let recipient_bytes = wasm_utils::proof::truncate_and_pad(withdraw_params.recipient.as_ref());
-            let relayer_bytes = wasm_utils::proof::truncate_and_pad(withdraw_params.relayer.as_ref());
+            let recipient_bytes = mixer::mixer::truncate_and_pad(withdraw_params.recipient.as_ref());
+            let relayer_bytes = mixer::mixer::truncate_and_pad(withdraw_params.relayer.as_ref());
             let fee_bytes = element_encoder(&withdraw_params.fee.to_be_bytes());
             let refund_bytes = element_encoder(&withdraw_params.refund.to_be_bytes());
             // Join the public input bytes

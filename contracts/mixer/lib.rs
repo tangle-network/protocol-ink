@@ -7,10 +7,11 @@ pub mod merkle_tree;
 use ink_lang as ink;
 
 #[ink::contract]
-mod mixer {
+pub mod mixer {
     use super::*;
     use crate::zeroes;
     use ink_storage::collections::HashMap;
+    use ink_prelude::vec::Vec;
     use poseidon::poseidon::{PoseidonRef};
     use verifier::mixer_verifier::{MixerVerifierRef};
 
@@ -154,8 +155,8 @@ mod mixer {
                 output
             };
             // Format the public input bytes
-            let recipient_bytes = wasm_utils::proof::truncate_and_pad(withdraw_params.recipient.as_ref());
-            let relayer_bytes = wasm_utils::proof::truncate_and_pad(withdraw_params.relayer.as_ref());
+            let recipient_bytes = truncate_and_pad(withdraw_params.recipient.as_ref());
+            let relayer_bytes = truncate_and_pad(withdraw_params.relayer.as_ref());
             let fee_bytes = element_encoder(&withdraw_params.fee.to_be_bytes());
             let refund_bytes = element_encoder(&withdraw_params.refund.to_be_bytes());
             // Join the public input bytes
@@ -199,5 +200,11 @@ mod mixer {
         fn is_known_nullifier(&self, nullifier: [u8; 32]) -> bool {
             self.used_nullifiers.contains_key(&nullifier)
         }
+    }
+
+    pub fn truncate_and_pad(t: &[u8]) -> Vec<u8> {
+        let mut truncated_bytes = t[..20].to_vec();
+        truncated_bytes.extend_from_slice(&[0u8; 12]);
+        truncated_bytes
     }
 }
