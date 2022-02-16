@@ -32,6 +32,7 @@ mod hasher {
 #[ink::contract]
 pub mod poseidon {
     use crate::hasher::{ArkworksPoseidonHasherBn254};
+    use ink_prelude::vec::Vec;
 
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order

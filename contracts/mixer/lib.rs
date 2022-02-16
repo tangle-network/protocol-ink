@@ -11,9 +11,8 @@ mod mixer {
     use super::*;
     use crate::zeroes;
     use ink_storage::collections::HashMap;
-    use poseidon::poseidon::{Poseidon, PoseidonRef};
-    use verifier::mixer_verifier::{MixerVerifier, MixerVerifierRef};
-    use wasm_utils::proof::truncate_and_pad;
+    use poseidon::poseidon::{PoseidonRef};
+    use verifier::mixer_verifier::{MixerVerifierRef};
 
     pub const ROOT_HISTORY_SIZE: u32 = 100;
     pub const ERROR_MSG: &'static str = "requested transfer failed. this can be the case if the contract does not\

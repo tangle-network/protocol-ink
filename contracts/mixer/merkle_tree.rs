@@ -1,7 +1,6 @@
 use super::*;
 use mixer::{Result, ROOT_HISTORY_SIZE};
 use poseidon::PoseidonRef;
-use ink_lang as ink;
 use ink_storage::collections::HashMap;
 use ink_storage::traits::SpreadLayout;
 #[cfg(feature = "std")]

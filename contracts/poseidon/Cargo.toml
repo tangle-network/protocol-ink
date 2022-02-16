@@ -6,6 +6,7 @@ edition = "2021"
 rust-version = "1.56.1"
 
 [dependencies]
+ink_prelude = { version = "3.0.0-rc6", default-features = false }
 ink_primitives = { version = "3.0.0-rc6", default-features = false }
 ink_metadata = { version = "3.0.0-rc6", default-features = false, features = ["derive"], optional = true }
 ink_env = { version = "3.0.0-rc6", default-features = false }
@@ -15,11 +16,8 @@ ink_lang = { version = "3.0.0-rc6", default-features = false }
 scale = { package = "parity-scale-codec", version = "2.1", default-features = false, features = ["derive"] }
 scale-info = { version = "1.0.0", default-features = false, features = ["derive"], optional = true }
 
-ark-ec = { version = "^0.3.0", default-features = false }
 ark-ff = { version = "^0.3.0", default-features = false }
-ark-groth16 = { version = "^0.3.0", default-features = false }
 ark-std = { version = "^0.3.0", default-features = false }
-ark-serialize = { version = "^0.3.0", default-features = false }
 ark-bn254 = { version = "^0.3.0", default-features = false, features = [ "curve" ] }
 ark-crypto-primitives = { version = "^0.3.0", features = ["r1cs"], default-features = false }
 
@@ -45,6 +43,8 @@ std = [
     "ink_env/std",
     "ink_storage/std",
     "ink_primitives/std",
+    "ink_prelude/std",
+
     "scale/std",
     "scale-info/std",
 

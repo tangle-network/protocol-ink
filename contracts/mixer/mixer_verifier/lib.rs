@@ -42,6 +42,7 @@ mod verifier {
 #[ink::contract]
 pub mod mixer_verifier {
     use crate::verifier::{ArkworksVerifierBn254};
+    use ink_prelude::vec::Vec;
 
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
