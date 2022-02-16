@@ -14,7 +14,7 @@ ink_lang = { version = "3.0.0-rc6", default-features = false }
 
 poseidon = { path = "../poseidon", default-features = false, features = ["ink-as-dependency"] }
 verifier = { package = "mixer_verifier", path = "mixer_verifier", default-features = false, features = ["ink-as-dependency"] }
-wasm-utils = { version = "0.1.1" }
+wasm-utils = { version = "0.1.2", default-features = false }
 
 scale = { package = "parity-scale-codec", version = "2.1", default-features = false, features = ["derive"] }
 scale-info = { version = "1.0.0", default-features = false, features = ["derive"], optional = true }
@@ -56,7 +56,6 @@ std = [
     "scale/std",
     "scale-info/std",
     "brush/std",
-
     "poseidon/std",
     "verifier/std",
 ]
