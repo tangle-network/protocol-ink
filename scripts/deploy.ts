@@ -1,7 +1,6 @@
 import { patract, network } from "redspot";
 import { flattenDiagnosticMessageText } from "typescript";
 import { Abi } from "@polkadot/api-contract"
-import fsExtra from 'fs-extra'
 
 const { getContractFactory } = patract;
 const { createSigner, keyring, api, getSigners } = network;
@@ -18,7 +17,6 @@ async function run() {
   // console.log('abis is', abi.info.contract.name)
   // console.log(api.registry.getChainProperties())
   const contractFactory = await getContractFactory("poseidon", signer.address);
-  console.log("contractFactory", contractFactory);
   // console.log("wasm code is", JSON.stringify(contractFactory.abi.json.V3, null, 2));
   // const inst = api.tx.contracts.instantiateWithCode("100000", "1000", contractFactory.wasm, "", "")
   // console.log("init thinggy", inst)
