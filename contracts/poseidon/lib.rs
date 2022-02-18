@@ -77,9 +77,9 @@ pub mod poseidon {
             }
 
             let hash_result = match num_inputs {
-                3 => ArkworksPoseidonHasherBn254::hash(&packed_inputs, &self.hasher_params_width_3_bytes),
-                4 => ArkworksPoseidonHasherBn254::hash(&packed_inputs, &self.hasher_params_width_4_bytes),
-                5 => ArkworksPoseidonHasherBn254::hash(&packed_inputs, &self.hasher_params_width_5_bytes),
+                2 => ArkworksPoseidonHasherBn254::hash(&packed_inputs, &self.hasher_params_width_3_bytes),
+                3 => ArkworksPoseidonHasherBn254::hash(&packed_inputs, &self.hasher_params_width_4_bytes),
+                4 => ArkworksPoseidonHasherBn254::hash(&packed_inputs, &self.hasher_params_width_5_bytes),
                 _ => return Err(Error::InvalidHashInputWidth),
             };
 
