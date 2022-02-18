@@ -19,7 +19,8 @@ export default {
   networks: {
     development: {
       endpoint: "ws://127.0.0.1:9944",
-      gasLimit: "400000000000",
+      gasLimit: "1000000",
+      accounts: ["//Alice"],
       types: {},
     },
     jupiter: {
