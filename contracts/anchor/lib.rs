@@ -7,19 +7,20 @@ use ink_lang as ink;
 #[ink::contract]
 mod anchor {
     use super::*;
-    use ink_storage::collections::HashMap;
     use ink_prelude::vec::Vec;
+    use ink_storage::collections::HashMap;
+    use linkable_tree::LinkableMerkleTree;
+    use mixer::{merkle_tree::MerkleTree, zeroes::zeroes};
     use poseidon::poseidon::{Poseidon, PoseidonRef};
     use verifier::anchor_verifier::{AnchorVerifier, AnchorVerifierRef};
-    use mixer::{merkle_tree::MerkleTree, zeroes::zeroes};
-    use linkable_tree::LinkableMerkleTree;
 
     pub const ROOT_HISTORY_SIZE: u32 = 100;
-    pub const ERROR_MSG: &'static str = "requested transfer failed. this can be the case if the contract does not\
+    pub const ERROR_MSG: &'static str =
+        "requested transfer failed. this can be the case if the contract does not\
     have sufficient free funds or if the transfer would have brought the\
     contract's balance below minimum balance.";
 
-    // TODO: Anchor should have an ERC20 attached 
+    // TODO: Anchor should have an ERC20 attached
     #[ink(storage)]
     pub struct Anchor {
         initialized: bool,
@@ -77,7 +78,7 @@ mod anchor {
         pub fn new(
             max_edges: u32,
             chain_id: u64,
-            levels: u32,
+            levels: u8,
             deposit_size: Balance,
             poseidon_contract_hash: Hash,
             verifier_contract_hash: Hash,
@@ -88,10 +89,7 @@ mod anchor {
                 .salt_bytes(b"poseidon")
                 .instantiate()
                 .unwrap_or_else(|error| {
-                    panic!(
-                        "failed at instantiating the Poseidon contract: {:?}",
-                        error
-                    )
+                    panic!("failed at instantiating the Poseidon contract: {:?}", error)
                 });
             let verifier = AnchorVerifierRef::new()
                 .endowment(0)
@@ -132,7 +130,7 @@ mod anchor {
             assert!(!self.initialized, "Mixer already initialized");
 
             for i in 0..self.merkle_tree.levels {
-                self.merkle_tree.filled_subtrees[&i] = zeroes(i);
+                self.merkle_tree.filled_subtrees[&(i as u32)] = zeroes(i);
             }
 
             self.merkle_tree.roots[&0] = zeroes(self.merkle_tree.levels);
@@ -149,7 +147,8 @@ mod anchor {
                 "Deposit size is not correct"
             );
 
-            let res = self.merkle_tree
+            let res = self
+                .merkle_tree
                 .insert(self.poseidon.clone(), commitment)
                 .map_err(|_| Error::MerkleTreeIsFull)?;
             Ok(res)
@@ -158,16 +157,27 @@ mod anchor {
         #[ink(message)]
         pub fn withdraw(&mut self, withdraw_params: WithdrawParams) -> Result<()> {
             assert!(self.initialized, "Anchor is not initialized");
-            assert!(self.merkle_tree.is_known_root(withdraw_params.roots[0]), "Root is not known");
-            assert!(self.linkable_tree.is_valid_neighbor_roots(&withdraw_params.roots[1..]), "Neighbor roots are not valid");
-            assert!(!self.is_known_nullifier(withdraw_params.nullifier_hash), "Nullifier is known");
+            assert!(
+                self.merkle_tree.is_known_root(withdraw_params.roots[0]),
+                "Root is not known"
+            );
+            assert!(
+                self.linkable_tree
+                    .is_valid_neighbor_roots(&withdraw_params.roots[1..]),
+                "Neighbor roots are not valid"
+            );
+            assert!(
+                !self.is_known_nullifier(withdraw_params.nullifier_hash),
+                "Nullifier is known"
+            );
             let element_encoder = |v: &[u8]| {
                 let mut output = [0u8; 32];
                 output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
                 output
             };
             // Format the public input bytes
-            let recipient_bytes = mixer::mixer::truncate_and_pad(withdraw_params.recipient.as_ref());
+            let recipient_bytes =
+                mixer::mixer::truncate_and_pad(withdraw_params.recipient.as_ref());
             let relayer_bytes = mixer::mixer::truncate_and_pad(withdraw_params.relayer.as_ref());
             let fee_bytes = element_encoder(&withdraw_params.fee.to_be_bytes());
             let refund_bytes = element_encoder(&withdraw_params.refund.to_be_bytes());
@@ -187,16 +197,31 @@ mod anchor {
             self.used_nullifiers[&withdraw_params.nullifier_hash] = true;
             // Send the funds
             // TODO: Support ERC20 tokens
-            if self.env().transfer(withdraw_params.recipient,self.deposit_size - withdraw_params.fee).is_err() {
+            if self
+                .env()
+                .transfer(
+                    withdraw_params.recipient,
+                    self.deposit_size - withdraw_params.fee,
+                )
+                .is_err()
+            {
                 panic!("{}", ERROR_MSG);
             }
 
-            if self.env().transfer(withdraw_params.relayer, withdraw_params.fee).is_err() {
+            if self
+                .env()
+                .transfer(withdraw_params.relayer, withdraw_params.fee)
+                .is_err()
+            {
                 panic!("{}", ERROR_MSG);
             }
 
             if withdraw_params.refund > 0 {
-                if self.env().transfer(withdraw_params.recipient, withdraw_params.refund).is_err() {
+                if self
+                    .env()
+                    .transfer(withdraw_params.recipient, withdraw_params.refund)
+                    .is_err()
+                {
                     panic!("{}", ERROR_MSG);
                 }
             }

@@ -16,8 +16,7 @@ async function run() {
   // const abi = new Abi(fsExtra.readJson('./artifacts/poseidon.json'), api.registry.getChainProperties())
   // console.log('abis is', abi.info.contract.name)
   // console.log(api.registry.getChainProperties())
-  const contractFactory = await getContractFactory("poseidon", signer.address);
-  // console.log("wasm code is", JSON.stringify(contractFactory.abi.json.V3, null, 2));
+  const contractFactory = await getContractFactory("poseidon", signer.address);  // console.log("wasm code is", JSON.stringify(contractFactory.abi.json.V3, null, 2));
   // const inst = api.tx.contracts.instantiateWithCode("100000", "1000", contractFactory.wasm, "", "")
   // console.log("init thinggy", inst)
   // console.log('existential deposit is', api.consts.balances.existentialDeposit.toString())
@@ -35,7 +34,7 @@ async function run() {
   // If the contract exists, it will be returned, otherwise a new contract will be created.
   // const mixerInput = {
   //   levels: 3,
-  //   deposite_size: 100,
+  //   deposit_size: 100,
   //   poseidon_contract_hash: '0x0000000000000000000000000000000000000000',
   //   verifier_contract_hash: '0x0000000000000000000000000000000000000000',
   // }

@@ -21,11 +21,6 @@ describe('mixer', () => {
     
         return { sender, Alice };
     }
-    
-
-    // i understand that here, i need to create a new mixer. then i can call other methods on it.
-    // but my question is: how do i generate these parameters? and what are they? what does levels mean,
-    // how further down the tree we wanna go?
 
     it('Creates a new instance of the mixer', async () => {
         const { sender } = await setup();
@@ -39,5 +34,17 @@ describe('mixer', () => {
         const mixerVerifierContractFactory = await getContractFactory('mixer_verifier', sender.address);
         const mixerVerifierContract = await mixerVerifierContractFactory.deploy('new');
         const mixerVerifierABI = artifacts.readArtifact('mixer_verifier');
+
+        // Mixer instantiation
+        const levels = 30;
+        const depositSize = 100;
+        const mixerContractFactory = await getContractFactory('mixer', sender.address);
+        const mixerContract = await mixerContractFactory.deploy('new',
+            levels,
+            depositSize,
+            poseidonContract.address,
+            mixerVerifierContract.address
+        );
+        const mixerABI = artifacts.readArtifact('mixer');
     });
 })

@@ -35,6 +35,7 @@
   "scripts": {
     "build": "yarn redspot compile",
     "test": "yarn redspot test --no-compile",
+    "test:compile": "yarn redspot test",
     "explorer": "yarn redspot explorer"
   }
 }

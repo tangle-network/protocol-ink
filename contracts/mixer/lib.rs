@@ -77,7 +77,7 @@ pub mod mixer {
     impl Mixer {
         #[ink(constructor)]
         pub fn new(
-            levels: u32,
+            levels: u8,
             deposit_size: Balance,
             poseidon_contract_hash: Hash,
             verifier_contract_hash: Hash,
@@ -126,7 +126,7 @@ pub mod mixer {
             assert!(!self.initialized, "Mixer already initialized");
 
             for i in 0..self.merkle_tree.levels {
-                self.merkle_tree.filled_subtrees[&i] = zeroes::zeroes(i);
+                self.merkle_tree.filled_subtrees[&(i as u32)] = zeroes::zeroes(i);
             }
 
             self.merkle_tree.roots[&0] = zeroes::zeroes(self.merkle_tree.levels);

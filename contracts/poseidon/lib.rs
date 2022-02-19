@@ -58,7 +58,6 @@ pub mod poseidon {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
         pub fn new() -> Self {
-            // ink_env::debug_println!("{}", &format!("Running poseidon constructor"));
             Self {
                 hasher_params_width_3_bytes:
                     arkworks_utils::utils::bn254_x5_3::get_poseidon_bn254_x5_3::<ark_bn254::Fr>()
@@ -81,15 +80,15 @@ pub mod poseidon {
             }
 
             let hash_result = match num_inputs {
-                3 => ArkworksPoseidonHasherBn254::hash(
+                2 => ArkworksPoseidonHasherBn254::hash(
                     &packed_inputs,
                     &self.hasher_params_width_3_bytes,
                 ),
-                4 => ArkworksPoseidonHasherBn254::hash(
+                3 => ArkworksPoseidonHasherBn254::hash(
                     &packed_inputs,
                     &self.hasher_params_width_4_bytes,
                 ),
-                5 => ArkworksPoseidonHasherBn254::hash(
+                4 => ArkworksPoseidonHasherBn254::hash(
                     &packed_inputs,
                     &self.hasher_params_width_5_bytes,
                 ),
