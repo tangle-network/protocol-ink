@@ -31,20 +31,20 @@ describe('mixer', () => {
         const poseidonABI = artifacts.readArtifact('poseidon');
 
         // Mixer verifier instantiation
-        const mixerVerifierContractFactory = await getContractFactory('mixer_verifier', sender.address);
-        const mixerVerifierContract = await mixerVerifierContractFactory.deploy('new');
-        const mixerVerifierABI = artifacts.readArtifact('mixer_verifier');
+        // const mixerVerifierContractFactory = await getContractFactory('mixer_verifier', sender.address);
+        // const mixerVerifierContract = await mixerVerifierContractFactory.deploy('new');
+        // const mixerVerifierABI = artifacts.readArtifact('mixer_verifier');
 
         // Mixer instantiation
-        const levels = 30;
-        const depositSize = 100;
-        const mixerContractFactory = await getContractFactory('mixer', sender.address);
-        const mixerContract = await mixerContractFactory.deploy('new',
-            levels,
-            depositSize,
-            poseidonContract.address,
-            mixerVerifierContract.address
-        );
-        const mixerABI = artifacts.readArtifact('mixer');
+        // const levels = 30;
+        // const depositSize = 100;
+        // const mixerContractFactory = await getContractFactory('mixer', sender.address);
+        // const mixerContract = await mixerContractFactory.deploy('new',
+        //     levels,
+        //     depositSize,
+        //     poseidonContract.address,
+        //     mixerVerifierContract.address
+        // );
+        // const mixerABI = artifacts.readArtifact('mixer');
     });
 })
