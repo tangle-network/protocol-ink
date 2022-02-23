@@ -88,10 +88,7 @@ pub mod mixer {
                 .salt_bytes(b"poseidon")
                 .instantiate()
                 .unwrap_or_else(|error| {
-                    // ink_env::debug_println!(
-                    //     "{}",
-                    //     &format!("contract error in poseidon init{:?}", error)
-                    // );
+                    ink_env::debug_print!("contract error in poseidon init {:?}", error);
                     panic!("failed at instantiating the Poseidon contract: {:?}", error)
                 });
             let verifier = MixerVerifierRef::new()
