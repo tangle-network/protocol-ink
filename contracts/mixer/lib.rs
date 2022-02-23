@@ -110,7 +110,7 @@ pub mod mixer {
                 merkle_tree: merkle_tree::MerkleTree {
                     levels,
                     current_root_index: 0,
-                    next_index: 1,
+                    next_index: 0,
                     filled_subtrees: HashMap::new(),
                     roots: HashMap::new(),
                 },
