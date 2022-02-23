@@ -67,26 +67,16 @@ impl MerkleTree {
         }
 
         let mut i = self.current_root_index;
-        if root == self.roots[&i] {
-            return true;
-        }
-
-        if i == 0 {
-            i = ROOT_HISTORY_SIZE;
-        }
-
-        i = i - 1;
-        while i != self.current_root_index {
-            if root == self.roots[&i] {
+        for _ in 0..ROOT_HISTORY_SIZE {
+            let r = self.roots[&i];
+            if r == root {
                 return true;
             }
 
             if i == 0 {
-                i = ROOT_HISTORY_SIZE;
-            }
-
-            if root == self.roots[&i] {
-                return true;
+                i = ROOT_HISTORY_SIZE - 1;
+            } else {
+                i -= 1;
             }
         }
 
