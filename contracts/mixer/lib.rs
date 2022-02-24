@@ -1,8 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(min_specialization)]
 
-pub mod zeroes;
 pub mod merkle_tree;
+pub mod zeroes;
 
 use ink_lang as ink;
 
@@ -10,13 +10,14 @@ use ink_lang as ink;
 pub mod mixer {
     use super::*;
     use crate::zeroes;
-    use ink_storage::collections::HashMap;
     use ink_prelude::vec::Vec;
-    use poseidon::poseidon::{PoseidonRef};
-    use verifier::mixer_verifier::{MixerVerifierRef};
+    use ink_storage::collections::HashMap;
+    use poseidon::poseidon::PoseidonRef;
+    use verifier::mixer_verifier::MixerVerifierRef;
 
     pub const ROOT_HISTORY_SIZE: u32 = 100;
-    pub const ERROR_MSG: &'static str = "requested transfer failed. this can be the case if the contract does not\
+    pub const ERROR_MSG: &'static str =
+        "requested transfer failed. this can be the case if the contract does not\
     have sufficient free funds or if the transfer would have brought the\
     contract's balance below minimum balance.";
 
@@ -76,7 +77,7 @@ pub mod mixer {
     impl Mixer {
         #[ink(constructor)]
         pub fn new(
-            levels: u32,
+            levels: u8,
             deposit_size: Balance,
             poseidon_contract_hash: Hash,
             verifier_contract_hash: Hash,
@@ -87,10 +88,8 @@ pub mod mixer {
                 .salt_bytes(b"poseidon")
                 .instantiate()
                 .unwrap_or_else(|error| {
-                    panic!(
-                        "failed at instantiating the Poseidon contract: {:?}",
-                        error
-                    )
+                    ink_env::debug_print!("contract error in poseidon init {:?}", error);
+                    panic!("failed at instantiating the Poseidon contract: {:?}", error)
                 });
             let verifier = MixerVerifierRef::new()
                 .endowment(0)
@@ -111,7 +110,7 @@ pub mod mixer {
                 merkle_tree: merkle_tree::MerkleTree {
                     levels,
                     current_root_index: 0,
-                    next_index: 1,
+                    next_index: 0,
                     filled_subtrees: HashMap::new(),
                     roots: HashMap::new(),
                 },
@@ -124,12 +123,18 @@ pub mod mixer {
             assert!(!self.initialized, "Mixer already initialized");
 
             for i in 0..self.merkle_tree.levels {
-                self.merkle_tree.filled_subtrees[&i] = zeroes::zeroes(i);
+                self.merkle_tree.filled_subtrees[&(i as u32)] = zeroes::zeroes(i);
             }
 
             self.merkle_tree.roots[&0] = zeroes::zeroes(self.merkle_tree.levels);
             self.initialized = true;
             Ok(())
+        }
+
+        #[ink(message)]
+        pub fn deposit_size(&self) -> Result<Balance> {
+            assert!(self.initialized, "Mixer not initialized");
+            Ok(self.deposit_size)
         }
 
         #[ink(message)]
@@ -147,8 +152,14 @@ pub mod mixer {
         #[ink(message)]
         pub fn withdraw(&mut self, withdraw_params: WithdrawParams) -> Result<()> {
             assert!(self.initialized, "Mixer is not initialized");
-            assert!(self.merkle_tree.is_known_root(withdraw_params.root),"Root is not known");
-            assert!(!self.is_known_nullifier(withdraw_params.nullifier_hash),"Nullifier is known");
+            assert!(
+                self.merkle_tree.is_known_root(withdraw_params.root),
+                "Root is not known"
+            );
+            assert!(
+                !self.is_known_nullifier(withdraw_params.nullifier_hash),
+                "Nullifier is known"
+            );
             let element_encoder = |v: &[u8]| {
                 let mut output = [0u8; 32];
                 output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
@@ -174,16 +185,31 @@ pub mod mixer {
             self.used_nullifiers[&withdraw_params.nullifier_hash] = true;
             // Send the funds
             // TODO: Support "ERC20"-like tokens
-            if self.env().transfer(withdraw_params.recipient,self.deposit_size - withdraw_params.fee).is_err() {
+            if self
+                .env()
+                .transfer(
+                    withdraw_params.recipient,
+                    self.deposit_size - withdraw_params.fee,
+                )
+                .is_err()
+            {
                 panic!("{}", ERROR_MSG);
             }
 
-            if self.env().transfer(withdraw_params.relayer, withdraw_params.fee).is_err() {
+            if self
+                .env()
+                .transfer(withdraw_params.relayer, withdraw_params.fee)
+                .is_err()
+            {
                 panic!("{}", ERROR_MSG);
             }
 
             if withdraw_params.refund > 0 {
-                if self.env().transfer(withdraw_params.recipient, withdraw_params.refund).is_err() {
+                if self
+                    .env()
+                    .transfer(withdraw_params.recipient, withdraw_params.refund)
+                    .is_err()
+                {
                     panic!("{}", ERROR_MSG);
                 }
             }
@@ -208,3 +234,5 @@ pub mod mixer {
         truncated_bytes
     }
 }
+//  -- > poseidon: 0xccef3ab7b72033ca14fa6d6ef82159b998656fba6cf6da0d06f865817b96a8ac
+// --> verifier: 0x9e4556c4661757959c7afdd546b81cf5546f841e9c104198f2b2f50cb1bf539f

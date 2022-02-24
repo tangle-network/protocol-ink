@@ -1,9 +1,9 @@
 use super::*;
 use ink_prelude::vec::Vec;
 use ink_storage::collections::HashMap;
-use ink_storage::traits::{SpreadLayout, PackedLayout};
 #[cfg(feature = "std")]
 use ink_storage::traits::StorageLayout;
+use ink_storage::traits::{PackedLayout, SpreadLayout};
 
 pub type ChainId = u64;
 
@@ -24,7 +24,6 @@ pub struct Edge {
     pub latest_leaf_index: u32,
 }
 
-
 const ROOT_HISTORY_SIZE: u32 = 100;
 
 impl LinkableMerkleTree {
@@ -32,19 +31,19 @@ impl LinkableMerkleTree {
         self.edges.contains_key(&chain_id)
     }
 
-    pub fn update_edge(
-        &mut self,
-        edge: Edge,
-    ) -> anchor::Result<()> {
+    pub fn update_edge(&mut self, edge: Edge) -> anchor::Result<()> {
         if self.has_edge(edge.chain_id) {
             assert!(
                 edge.latest_leaf_index < self.edges[&edge.chain_id].latest_leaf_index + 65_536,
                 "latest leaf index should be greater than the previous one"
             );
             self.edges.insert(edge.chain_id, edge.clone());
-            let neighbor_root_index = (self.curr_neighbor_root_index[&edge.chain_id]) + 1 % ROOT_HISTORY_SIZE;
-            self.curr_neighbor_root_index.insert(edge.chain_id, neighbor_root_index);
-            self.neighbor_roots.insert((edge.chain_id, neighbor_root_index), edge.root);
+            let neighbor_root_index =
+                (self.curr_neighbor_root_index[&edge.chain_id]) + 1 % ROOT_HISTORY_SIZE;
+            self.curr_neighbor_root_index
+                .insert(edge.chain_id, neighbor_root_index);
+            self.neighbor_roots
+                .insert((edge.chain_id, neighbor_root_index), edge.root);
         } else {
             let edge_count = self.edges.keys().len();
             assert!(self.max_edges >= edge_count as u32 + 1, "Edge list is full");
@@ -102,7 +101,10 @@ impl LinkableMerkleTree {
     }
 
     pub fn is_valid_neighbor_roots(&self, roots: &[[u8; 32]]) -> bool {
-        assert!(roots.len() == self.max_edges as usize, "Incorrect roots length");
+        assert!(
+            roots.len() == self.max_edges as usize,
+            "Incorrect roots length"
+        );
         for (i, edge) in self.edges.values().enumerate() {
             if !self.is_known_neighbor_root(edge.chain_id, roots[i]) {
                 return false;

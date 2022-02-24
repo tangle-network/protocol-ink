@@ -22,3 +22,5 @@ node_modules
 
 # Contract artifacts
 artifacts
+
+.log

@@ -1,16 +1,16 @@
 use super::*;
-use mixer::{Result, ROOT_HISTORY_SIZE};
-use poseidon::PoseidonRef;
 use ink_prelude::vec;
 use ink_storage::collections::HashMap;
 use ink_storage::traits::SpreadLayout;
 #[cfg(feature = "std")]
 use ink_storage::traits::StorageLayout;
+use mixer::{Result, ROOT_HISTORY_SIZE};
+use poseidon::PoseidonRef;
 
 #[derive(Default, Debug, SpreadLayout)]
 #[cfg_attr(feature = "std", derive(StorageLayout))]
 pub struct MerkleTree {
-    pub levels: u32,
+    pub levels: u8,
     pub current_root_index: u32,
     pub next_index: u32,
     pub filled_subtrees: HashMap<u32, [u8; 32]>,
@@ -18,14 +18,22 @@ pub struct MerkleTree {
 }
 
 impl MerkleTree {
-    fn hash_left_right(&self, hasher: PoseidonRef, left: [u8; 32], right: [u8; 32]) -> Result<[u8; 32]> {
+    fn hash_left_right(
+        &self,
+        hasher: PoseidonRef,
+        left: [u8; 32],
+        right: [u8; 32],
+    ) -> Result<[u8; 32]> {
         let inputs = vec![left, right];
         hasher.hash(inputs).map_err(|_| mixer::Error::HashError)
     }
 
     pub fn insert(&mut self, hasher: PoseidonRef, leaf: [u8; 32]) -> Result<u32> {
         let next_index = self.next_index;
-        assert!(!next_index == u32::from(2u32.pow(self.levels as u32)), "Merkle tree is full");
+        assert!(
+            !next_index == u32::from(2u32.pow(self.levels as u32)),
+            "Merkle tree is full"
+        );
 
         let mut current_index = next_index;
         let mut current_level_hash = leaf;
@@ -36,9 +44,9 @@ impl MerkleTree {
             if current_index % 2 == 0 {
                 left = current_level_hash;
                 right = zeroes::zeroes(i);
-                self.filled_subtrees[&i] = current_level_hash;
+                self.filled_subtrees[&(i as u32)] = current_level_hash;
             } else {
-                left = self.filled_subtrees[&i];
+                left = self.filled_subtrees[&(i as u32)];
                 right = current_level_hash;
             }
 
@@ -59,26 +67,16 @@ impl MerkleTree {
         }
 
         let mut i = self.current_root_index;
-        if root == self.roots[&i] {
-            return true;
-        }
-
-        if i == 0 {
-            i = ROOT_HISTORY_SIZE;
-        }
-
-        i = i - 1;
-        while i != self.current_root_index {
-            if root == self.roots[&i] {
+        for _ in 0..ROOT_HISTORY_SIZE {
+            let r = self.roots[&i];
+            if r == root {
                 return true;
             }
 
             if i == 0 {
-                i = ROOT_HISTORY_SIZE;
-            }
-
-            if root == self.roots[&i] {
-                return true;
+                i = ROOT_HISTORY_SIZE - 1;
+            } else {
+                i -= 1;
             }
         }
 

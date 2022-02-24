@@ -20,6 +20,7 @@ export default {
     development: {
       endpoint: "ws://127.0.0.1:9944",
       gasLimit: "400000000000",
+      accounts: ["//Alice"],
       types: {},
     },
     jupiter: {
