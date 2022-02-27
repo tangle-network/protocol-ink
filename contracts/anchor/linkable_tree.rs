@@ -4,6 +4,7 @@ use ink_prelude::vec::Vec;
 use ink_storage::traits::{SpreadLayout, PackedLayout};
 #[cfg(feature = "std")]
 use ink_storage::traits::StorageLayout;
+use ink_storage::traits::{PackedLayout, SpreadLayout};
 
 use ink_storage::traits::SpreadAllocate;
 
@@ -27,7 +28,6 @@ pub struct Edge {
     pub latest_leaf_index: u32,
 }
 
-
 const ROOT_HISTORY_SIZE: u32 = 100;
 
 impl LinkableMerkleTree {
@@ -35,10 +35,7 @@ impl LinkableMerkleTree {
         self.edges.get(&chain_id).is_some()
     }
 
-    pub fn update_edge(
-        &mut self,
-        edge: Edge,
-    ) -> anchor::Result<()> {
+    pub fn update_edge(&mut self, edge: Edge) -> anchor::Result<()> {
         if self.has_edge(edge.chain_id) {
             assert!(
                 edge.latest_leaf_index < self.edges.get(&edge.chain_id).unwrap_or_default().latest_leaf_index + 65_536,

@@ -5,13 +5,15 @@ use ink_storage::Mapping;
 use ink_storage::traits::{SpreadLayout, SpreadAllocate};
 #[cfg(feature = "std")]
 use ink_storage::traits::StorageLayout;
+use mixer::{Result, ROOT_HISTORY_SIZE};
+use poseidon::PoseidonRef;
 
 use ink_prelude::vec;
 
 #[derive(Default, Debug, SpreadLayout, SpreadAllocate)]
 #[cfg_attr(feature = "std", derive(StorageLayout))]
 pub struct MerkleTree {
-    pub levels: u32,
+    pub levels: u8,
     pub current_root_index: u32,
     pub next_index: u32,
     pub filled_subtrees: Mapping<u32, [u8; 32]>,
@@ -19,14 +21,22 @@ pub struct MerkleTree {
 }
 
 impl MerkleTree {
-    fn hash_left_right(&self, hasher: PoseidonRef, left: [u8; 32], right: [u8; 32]) -> Result<[u8; 32]> {
+    fn hash_left_right(
+        &self,
+        hasher: PoseidonRef,
+        left: [u8; 32],
+        right: [u8; 32],
+    ) -> Result<[u8; 32]> {
         let inputs = vec![left, right];
         hasher.hash(inputs).map_err(|_| mixer::Error::HashError)
     }
 
     pub fn insert(&mut self, hasher: PoseidonRef, leaf: [u8; 32]) -> Result<u32> {
         let next_index = self.next_index;
-        assert!(!next_index == u32::from(2u32.pow(self.levels as u32)), "Merkle tree is full");
+        assert!(
+            !next_index == u32::from(2u32.pow(self.levels as u32)),
+            "Merkle tree is full"
+        );
 
         let mut current_index = next_index;
         let mut current_level_hash = leaf;

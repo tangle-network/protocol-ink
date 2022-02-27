@@ -24,22 +24,6 @@ scale-info = { version = "2", default-features = false, features = [
     "derive",
 ], optional = true }
 
-[dev-dependencies]
-rand = "0.8.4"
-hex = "0.4"
-
-ark-crypto-primitives = { version = "^0.3.0", features = ["r1cs"], default-features = false }
-ark-ff = { version = "^0.3.0", default-features = false}
-ark-ec = { version = "^0.3.0", default-features = false }
-ark-relations = { version = "^0.3.0", default-features = false }
-ark-serialize = { version = "^0.3.0", default-features = false, features = [ "derive" ]}
-ark-std = { version = "^0.3.0", default-features = false }
-ark-bn254 = { version = "^0.3.0", default-features = false, features = [ "curve" ] }
-ark-bls12-381 = { version = "^0.3.0", default-features = false, features = [ "curve" ] }
-arkworks-gadgets  = { version = "0.4.19", default-features = false }
-arkworks-circuits = { version = "0.4.19", default-features = false }
-arkworks-utils    = { version = "0.4.19", features = ["default_poseidon", "default_mimc"], default-features = false }
-
 [lib]
 name = "anchor"
 path = "lib.rs"
@@ -58,7 +42,6 @@ std = [
     "ink_prelude/std",
     "scale/std",
     "scale-info/std",
-
     "poseidon/std",
     "verifier/std",
     "mixer/std",

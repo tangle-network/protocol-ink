@@ -1,4 +1,4 @@
-pub fn zeroes(index: u32) -> [u8; 32] {
+pub fn zeroes(index: u8) -> [u8; 32] {
     match index {
         0 => [
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
