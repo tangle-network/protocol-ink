@@ -9,25 +9,23 @@ use ink_lang as ink;
 mod mixer {
     use super::*;
     use crate::zeroes;
-    use ink_storage::collections::HashMap;
-    use poseidon::poseidon::{Poseidon, PoseidonRef};
-    use verifier::mixer_verifier::{MixerVerifier, MixerVerifierRef};
-    use wasm_utils::proof::truncate_and_pad;
+    use ink_storage::{Mapping, traits::SpreadAllocate};
+    use poseidon::poseidon::{PoseidonRef};
+    use verifier::MixerVerifierRef;
+    use ink_prelude::vec::Vec;
 
     pub const ROOT_HISTORY_SIZE: u32 = 100;
     pub const ERROR_MSG: &'static str = "requested transfer failed. this can be the case if the contract does not\
     have sufficient free funds or if the transfer would have brought the\
     contract's balance below minimum balance.";
 
-    /// Defines the storage of your contract.
-    /// Add new fields to the below struct in order
-    /// to add new static storage fields to your contract.
     #[ink(storage)]
+    #[derive(SpreadAllocate)]
     pub struct Mixer {
         initialized: bool,
         deposit_size: Balance,
         merkle_tree: merkle_tree::MerkleTree,
-        used_nullifiers: HashMap<[u8; 32], bool>,
+        used_nullifiers: Mapping<[u8; 32], bool>,
         poseidon: PoseidonRef,
         verifier: MixerVerifierRef,
     }
@@ -102,33 +100,19 @@ mod mixer {
                         error
                     )
                 });
-            Self {
-                deposit_size,
-                poseidon,
-                verifier,
-                initialized: false,
-                merkle_tree: merkle_tree::MerkleTree {
-                    levels,
-                    current_root_index: 0,
-                    next_index: 1,
-                    filled_subtrees: HashMap::new(),
-                    roots: HashMap::new(),
-                },
-                used_nullifiers: HashMap::new(),
-            }
-        }
 
-        #[ink(message)]
-        pub fn initialize(&mut self) -> Result<()> {
-            assert!(!self.initialized, "Mixer already initialized");
+            ink_lang::utils::initialize_contract(|contract: &mut Mixer| {
+                contract.deposit_size = deposit_size;
+                contract.poseidon = poseidon;
+                contract.verifier = verifier;
 
-            for i in 0..self.merkle_tree.levels {
-                self.merkle_tree.filled_subtrees[&i] = zeroes::zeroes(i);
-            }
-
-            self.merkle_tree.roots[&0] = zeroes::zeroes(self.merkle_tree.levels);
-            self.initialized = true;
-            Ok(())
+                for i in 0..levels {
+                    contract.merkle_tree.filled_subtrees.insert(i, &zeroes::zeroes(i));
+                }
+    
+                contract.merkle_tree.roots.insert(0, &zeroes::zeroes(levels));
+                contract.initialized = true;
+            })
         }
 
         #[ink(message)]
@@ -154,8 +138,8 @@ mod mixer {
                 output
             };
             // Format the public input bytes
-            let recipient_bytes = wasm_utils::proof::truncate_and_pad(withdraw_params.recipient.as_ref());
-            let relayer_bytes = wasm_utils::proof::truncate_and_pad(withdraw_params.relayer.as_ref());
+            let recipient_bytes = truncate_and_pad(withdraw_params.recipient.as_ref());
+            let relayer_bytes = truncate_and_pad(withdraw_params.relayer.as_ref());
             let fee_bytes = element_encoder(&withdraw_params.fee.to_be_bytes());
             let refund_bytes = element_encoder(&withdraw_params.refund.to_be_bytes());
             // Join the public input bytes
@@ -170,7 +154,7 @@ mod mixer {
             let result = self.verify(bytes, withdraw_params.proof_bytes)?;
             assert!(result, "Invalid withdraw proof");
             // Set used nullifier to true after successfuly verification
-            self.used_nullifiers[&withdraw_params.nullifier_hash] = true;
+            self.used_nullifiers.insert(withdraw_params.nullifier_hash, &true);
             // Send the funds
             // TODO: Support ERC20 tokens
             if self.env().transfer(withdraw_params.recipient,self.deposit_size - withdraw_params.fee).is_err() {
@@ -197,7 +181,13 @@ mod mixer {
         }
 
         fn is_known_nullifier(&self, nullifier: [u8; 32]) -> bool {
-            self.used_nullifiers.contains_key(&nullifier)
+            self.used_nullifiers.get(&nullifier).is_some()
         }
+    }
+
+    pub fn truncate_and_pad(t: &[u8]) -> Vec<u8> {
+        let mut truncated_bytes = t[..20].to_vec();
+        truncated_bytes.extend_from_slice(&[0u8; 12]);
+        truncated_bytes
     }
 }
