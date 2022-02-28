@@ -5,15 +5,13 @@ use ink_storage::Mapping;
 use ink_storage::traits::{SpreadLayout, SpreadAllocate};
 #[cfg(feature = "std")]
 use ink_storage::traits::StorageLayout;
-use mixer::{Result, ROOT_HISTORY_SIZE};
-use poseidon::PoseidonRef;
 
 use ink_prelude::vec;
 
 #[derive(Default, Debug, SpreadLayout, SpreadAllocate)]
 #[cfg_attr(feature = "std", derive(StorageLayout))]
 pub struct MerkleTree {
-    pub levels: u8,
+    pub levels: u32,
     pub current_root_index: u32,
     pub next_index: u32,
     pub filled_subtrees: Mapping<u32, [u8; 32]>,

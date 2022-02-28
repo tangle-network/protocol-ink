@@ -80,7 +80,7 @@ mod anchor {
         pub fn new(
             max_edges: u32,
             chain_id: u64,
-            levels: u8,
+            levels: u32,
             deposit_size: Balance,
             poseidon_contract_hash: Hash,
             verifier_contract_hash: Hash,

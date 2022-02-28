@@ -47,8 +47,6 @@ pub mod poseidon {
     #[derive(SpreadAllocate)]
     pub struct Poseidon {
         hasher_params_width_3_bytes: Vec<u8>,
-        hasher_params_width_4_bytes: Vec<u8>,
-        hasher_params_width_5_bytes: Vec<u8>,
     }
 
     /// The hash error types.
@@ -72,12 +70,6 @@ pub mod poseidon {
                 hasher_params_width_3_bytes:
                     arkworks_utils::utils::bn254_x5_3::get_poseidon_bn254_x5_3::<ark_bn254::Fr>()
                         .to_bytes(),
-                hasher_params_width_4_bytes:
-                    arkworks_utils::utils::bn254_x5_4::get_poseidon_bn254_x5_4::<ark_bn254::Fr>()
-                        .to_bytes(),
-                hasher_params_width_5_bytes:
-                    arkworks_utils::utils::bn254_x5_5::get_poseidon_bn254_x5_5::<ark_bn254::Fr>()
-                        .to_bytes(),
             }
         }
 
@@ -93,14 +85,6 @@ pub mod poseidon {
                 2 => ArkworksPoseidonHasherBn254::hash(
                     &packed_inputs,
                     &self.hasher_params_width_3_bytes,
-                ),
-                3 => ArkworksPoseidonHasherBn254::hash(
-                    &packed_inputs,
-                    &self.hasher_params_width_4_bytes,
-                ),
-                4 => ArkworksPoseidonHasherBn254::hash(
-                    &packed_inputs,
-                    &self.hasher_params_width_5_bytes,
                 ),
                 _ => return Err(Error::InvalidHashInputWidth),
             };

@@ -75,7 +75,7 @@ pub mod mixer {
     impl Mixer {
         #[ink(constructor)]
         pub fn new(
-            levels: u8,
+            levels: u32,
             deposit_size: Balance,
             poseidon_contract_hash: Hash,
             verifier_contract_hash: Hash,
@@ -113,12 +113,6 @@ pub mod mixer {
                 contract.merkle_tree.roots.insert(0, &zeroes::zeroes(levels));
                 contract.initialized = true;
             })
-        }
-
-        #[ink(message)]
-        pub fn deposit_size(&self) -> Result<Balance> {
-            assert!(self.initialized, "Mixer not initialized");
-            Ok(self.deposit_size)
         }
 
         #[ink(message)]
@@ -218,5 +212,3 @@ pub mod mixer {
         truncated_bytes
     }
 }
-//  -- > poseidon: 0xccef3ab7b72033ca14fa6d6ef82159b998656fba6cf6da0d06f865817b96a8ac
-// --> verifier: 0x9e4556c4661757959c7afdd546b81cf5546f841e9c104198f2b2f50cb1bf539f

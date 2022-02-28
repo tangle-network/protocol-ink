@@ -4,8 +4,6 @@ use ink_prelude::vec::Vec;
 use ink_storage::traits::{SpreadLayout, PackedLayout};
 #[cfg(feature = "std")]
 use ink_storage::traits::StorageLayout;
-use ink_storage::traits::{PackedLayout, SpreadLayout};
-
 use ink_storage::traits::SpreadAllocate;
 
 pub type ChainId = u64;
