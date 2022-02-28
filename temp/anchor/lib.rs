@@ -108,6 +108,11 @@ mod anchor {
                 contract.poseidon = poseidon;
                 contract.verifier = verifier;
                 contract.linkable_tree.max_edges = max_edges;
+                contract.linkable_tree.chain_id_list = Vec::new();
+                contract.merkle_tree.levels = levels;
+                contract.merkle_tree.current_root_index = 0;
+                contract.merkle_tree.next_index = 0;
+
                 for i in 0..levels {
                     contract.merkle_tree.filled_subtrees.insert(i, &zeroes::zeroes(i));
                 }
