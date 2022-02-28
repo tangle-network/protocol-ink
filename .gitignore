@@ -12,6 +12,7 @@ Cargo.lock
 
 # Dependency directory
 node_modules
+artifacts
 
 # macOS
 .DS_Store
@@ -19,8 +20,3 @@ node_modules
 # cache
 .cache
 .ink
-
-# Contract artifacts
-artifacts
-
-.log

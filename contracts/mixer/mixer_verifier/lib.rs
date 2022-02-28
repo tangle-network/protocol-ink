@@ -1,8 +1,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use ink_env::call::FromAccountId;
 use ink_lang as ink;
+use ink_storage::traits::SpreadAllocate;
 
 pub use self::mixer_verifier::{MixerVerifier, MixerVerifierRef};
+
+impl SpreadAllocate for MixerVerifierRef {
+    fn allocate_spread(_ptr: &mut ink_primitives::KeyPtr) -> Self {
+        FromAccountId::from_account_id([0; 32].into())
+    }
+}
 
 mod verifier {
     use ark_crypto_primitives::{Error, SNARK};
@@ -42,13 +50,12 @@ mod verifier {
 
 #[ink::contract]
 pub mod mixer_verifier {
-    use crate::verifier::ArkworksVerifierBn254;
+    use crate::verifier::{ArkworksVerifierBn254};
+    use ink_storage::traits::SpreadAllocate;
     use ink_prelude::vec::Vec;
-
-    /// Defines the storage of your contract.
-    /// Add new fields to the below struct in order
-    /// to add new static storage fields to your contract.
+    
     #[ink(storage)]
+    #[derive(SpreadAllocate)]
     pub struct MixerVerifier {
         vk_bytes: Vec<u8>,
     }

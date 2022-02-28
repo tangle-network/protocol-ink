@@ -7,12 +7,13 @@ use ink_lang as ink;
 #[ink::contract]
 mod anchor {
     use super::*;
-    use ink_prelude::vec::Vec;
-    use ink_storage::collections::HashMap;
+    use ink_storage::Mapping;
+    use poseidon::poseidon::{PoseidonRef};
+    use verifier::anchor_verifier::{AnchorVerifierRef};
+    use mixer::{merkle_tree::MerkleTree, zeroes};
     use linkable_tree::LinkableMerkleTree;
-    use mixer::{merkle_tree::MerkleTree, zeroes::zeroes};
-    use poseidon::poseidon::{Poseidon, PoseidonRef};
-    use verifier::anchor_verifier::{AnchorVerifier, AnchorVerifierRef};
+    use ink_storage::traits::SpreadAllocate;
+    use ink_prelude::vec::Vec;
 
     pub const ROOT_HISTORY_SIZE: u32 = 100;
     pub const ERROR_MSG: &'static str =
@@ -22,13 +23,14 @@ mod anchor {
 
     // TODO: Anchor should have an ERC20 attached
     #[ink(storage)]
+    #[derive(SpreadAllocate)]
     pub struct Anchor {
         initialized: bool,
         chain_id: u64,
         deposit_size: Balance,
         merkle_tree: MerkleTree,
         linkable_tree: LinkableMerkleTree,
-        used_nullifiers: HashMap<[u8; 32], bool>,
+        used_nullifiers: Mapping<[u8; 32], bool>,
         poseidon: PoseidonRef,
         verifier: AnchorVerifierRef,
     }
@@ -78,7 +80,7 @@ mod anchor {
         pub fn new(
             max_edges: u32,
             chain_id: u64,
-            levels: u8,
+            levels: u32,
             deposit_size: Balance,
             poseidon_contract_hash: Hash,
             verifier_contract_hash: Hash,
@@ -102,40 +104,20 @@ mod anchor {
                         error
                     )
                 });
-            Self {
-                chain_id,
-                deposit_size,
-                poseidon,
-                verifier,
-                initialized: false,
-                linkable_tree: LinkableMerkleTree {
-                    max_edges,
-                    edges: HashMap::new(),
-                    curr_neighbor_root_index: HashMap::new(),
-                    neighbor_roots: HashMap::new(),
-                },
-                merkle_tree: MerkleTree {
-                    levels,
-                    current_root_index: 0,
-                    next_index: 1,
-                    filled_subtrees: HashMap::new(),
-                    roots: HashMap::new(),
-                },
-                used_nullifiers: HashMap::new(),
-            }
-        }
 
-        #[ink(message)]
-        pub fn initialize(&mut self) -> Result<()> {
-            assert!(!self.initialized, "Mixer already initialized");
-
-            for i in 0..self.merkle_tree.levels {
-                self.merkle_tree.filled_subtrees[&(i as u32)] = zeroes(i);
-            }
-
-            self.merkle_tree.roots[&0] = zeroes(self.merkle_tree.levels);
-            self.initialized = true;
-            Ok(())
+            ink_lang::utils::initialize_contract(|contract: &mut Anchor| {
+                contract.chain_id = chain_id;
+                contract.deposit_size = deposit_size;
+                contract.poseidon = poseidon;
+                contract.verifier = verifier;
+                contract.linkable_tree.max_edges = max_edges;
+                for i in 0..levels {
+                    contract.merkle_tree.filled_subtrees.insert(i, &zeroes::zeroes(i));
+                }
+    
+                contract.merkle_tree.roots.insert(0, &zeroes::zeroes(levels));
+                contract.initialized = true;
+            })
         }
 
         #[ink(message)]
@@ -176,9 +158,8 @@ mod anchor {
                 output
             };
             // Format the public input bytes
-            let recipient_bytes =
-                mixer::mixer::truncate_and_pad(withdraw_params.recipient.as_ref());
-            let relayer_bytes = mixer::mixer::truncate_and_pad(withdraw_params.relayer.as_ref());
+            let recipient_bytes = truncate_and_pad(withdraw_params.recipient.as_ref());
+            let relayer_bytes = truncate_and_pad(withdraw_params.relayer.as_ref());
             let fee_bytes = element_encoder(&withdraw_params.fee.to_be_bytes());
             let refund_bytes = element_encoder(&withdraw_params.refund.to_be_bytes());
             // Join the public input bytes
@@ -194,7 +175,7 @@ mod anchor {
             let result = self.verify(bytes, withdraw_params.proof_bytes)?;
             assert!(result, "Invalid withdraw proof");
             // Set used nullifier to true after successfuly verification
-            self.used_nullifiers[&withdraw_params.nullifier_hash] = true;
+            self.used_nullifiers.insert(withdraw_params.nullifier_hash, &true);
             // Send the funds
             // TODO: Support ERC20 tokens
             if self
@@ -236,7 +217,13 @@ mod anchor {
         }
 
         fn is_known_nullifier(&self, nullifier: [u8; 32]) -> bool {
-            self.used_nullifiers.contains_key(&nullifier)
+            self.used_nullifiers.get(&nullifier).is_some()
         }
+    }
+
+    pub fn truncate_and_pad(t: &[u8]) -> Vec<u8> {
+        let mut truncated_bytes = t[..20].to_vec();
+        truncated_bytes.extend_from_slice(&[0u8; 12]);
+        truncated_bytes
     }
 }

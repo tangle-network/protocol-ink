@@ -1,9 +1,17 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(min_specialization)]
 
+use ink_env::call::FromAccountId;
 use ink_lang as ink;
+use ink_storage::traits::SpreadAllocate;
 
 pub use self::poseidon::{Poseidon, PoseidonRef};
+
+impl SpreadAllocate for PoseidonRef {
+    fn allocate_spread(_ptr: &mut ink_primitives::KeyPtr) -> Self {
+        FromAccountId::from_account_id([0; 32].into())
+    }
+}
 
 mod hasher {
     use ark_crypto_primitives::{Error, CRH as CRHTrait};
@@ -28,17 +36,17 @@ mod hasher {
 
 #[ink::contract]
 pub mod poseidon {
-    use crate::hasher::ArkworksPoseidonHasherBn254;
+    use ink_storage::traits::SpreadAllocate;
+    use crate::hasher::{ArkworksPoseidonHasherBn254};
     use ink_prelude::vec::Vec;
 
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
     #[ink(storage)]
+    #[derive(SpreadAllocate)]
     pub struct Poseidon {
         hasher_params_width_3_bytes: Vec<u8>,
-        hasher_params_width_4_bytes: Vec<u8>,
-        hasher_params_width_5_bytes: Vec<u8>,
     }
 
     /// The hash error types.
@@ -62,12 +70,6 @@ pub mod poseidon {
                 hasher_params_width_3_bytes:
                     arkworks_utils::utils::bn254_x5_3::get_poseidon_bn254_x5_3::<ark_bn254::Fr>()
                         .to_bytes(),
-                hasher_params_width_4_bytes:
-                    arkworks_utils::utils::bn254_x5_4::get_poseidon_bn254_x5_4::<ark_bn254::Fr>()
-                        .to_bytes(),
-                hasher_params_width_5_bytes:
-                    arkworks_utils::utils::bn254_x5_5::get_poseidon_bn254_x5_5::<ark_bn254::Fr>()
-                        .to_bytes(),
             }
         }
 
@@ -83,14 +85,6 @@ pub mod poseidon {
                 2 => ArkworksPoseidonHasherBn254::hash(
                     &packed_inputs,
                     &self.hasher_params_width_3_bytes,
-                ),
-                3 => ArkworksPoseidonHasherBn254::hash(
-                    &packed_inputs,
-                    &self.hasher_params_width_4_bytes,
-                ),
-                4 => ArkworksPoseidonHasherBn254::hash(
-                    &packed_inputs,
-                    &self.hasher_params_width_5_bytes,
                 ),
                 _ => return Err(Error::InvalidHashInputWidth),
             };

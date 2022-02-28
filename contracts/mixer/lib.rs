@@ -10,10 +10,10 @@ use ink_lang as ink;
 pub mod mixer {
     use super::*;
     use crate::zeroes;
+    use ink_storage::{Mapping, traits::SpreadAllocate};
+    use poseidon::poseidon::{PoseidonRef};
+    use verifier::MixerVerifierRef;
     use ink_prelude::vec::Vec;
-    use ink_storage::collections::HashMap;
-    use poseidon::poseidon::PoseidonRef;
-    use verifier::mixer_verifier::MixerVerifierRef;
 
     pub const ROOT_HISTORY_SIZE: u32 = 100;
     pub const ERROR_MSG: &'static str =
@@ -21,15 +21,13 @@ pub mod mixer {
     have sufficient free funds or if the transfer would have brought the\
     contract's balance below minimum balance.";
 
-    /// Defines the storage of your contract.
-    /// Add new fields to the below struct in order
-    /// to add new static storage fields to your contract.
     #[ink(storage)]
+    #[derive(SpreadAllocate)]
     pub struct Mixer {
         initialized: bool,
         deposit_size: Balance,
         merkle_tree: merkle_tree::MerkleTree,
-        used_nullifiers: HashMap<[u8; 32], bool>,
+        used_nullifiers: Mapping<[u8; 32], bool>,
         poseidon: PoseidonRef,
         verifier: MixerVerifierRef,
     }
@@ -77,7 +75,7 @@ pub mod mixer {
     impl Mixer {
         #[ink(constructor)]
         pub fn new(
-            levels: u8,
+            levels: u32,
             deposit_size: Balance,
             poseidon_contract_hash: Hash,
             verifier_contract_hash: Hash,
@@ -102,39 +100,19 @@ pub mod mixer {
                         error
                     )
                 });
-            Self {
-                deposit_size,
-                poseidon,
-                verifier,
-                initialized: false,
-                merkle_tree: merkle_tree::MerkleTree {
-                    levels,
-                    current_root_index: 0,
-                    next_index: 0,
-                    filled_subtrees: HashMap::new(),
-                    roots: HashMap::new(),
-                },
-                used_nullifiers: HashMap::new(),
-            }
-        }
 
-        #[ink(message)]
-        pub fn initialize(&mut self) -> Result<()> {
-            assert!(!self.initialized, "Mixer already initialized");
+            ink_lang::utils::initialize_contract(|contract: &mut Mixer| {
+                contract.deposit_size = deposit_size;
+                contract.poseidon = poseidon;
+                contract.verifier = verifier;
 
-            for i in 0..self.merkle_tree.levels {
-                self.merkle_tree.filled_subtrees[&(i as u32)] = zeroes::zeroes(i);
-            }
-
-            self.merkle_tree.roots[&0] = zeroes::zeroes(self.merkle_tree.levels);
-            self.initialized = true;
-            Ok(())
-        }
-
-        #[ink(message)]
-        pub fn deposit_size(&self) -> Result<Balance> {
-            assert!(self.initialized, "Mixer not initialized");
-            Ok(self.deposit_size)
+                for i in 0..levels {
+                    contract.merkle_tree.filled_subtrees.insert(i, &zeroes::zeroes(i));
+                }
+    
+                contract.merkle_tree.roots.insert(0, &zeroes::zeroes(levels));
+                contract.initialized = true;
+            })
         }
 
         #[ink(message)]
@@ -182,7 +160,7 @@ pub mod mixer {
             let result = self.verify(bytes, withdraw_params.proof_bytes)?;
             assert!(result, "Invalid withdraw proof");
             // Set used nullifier to true after successfuly verification
-            self.used_nullifiers[&withdraw_params.nullifier_hash] = true;
+            self.used_nullifiers.insert(withdraw_params.nullifier_hash, &true);
             // Send the funds
             // TODO: Support "ERC20"-like tokens
             if self
@@ -224,7 +202,7 @@ pub mod mixer {
         }
 
         fn is_known_nullifier(&self, nullifier: [u8; 32]) -> bool {
-            self.used_nullifiers.contains_key(&nullifier)
+            self.used_nullifiers.get(&nullifier).is_some()
         }
     }
 
@@ -234,5 +212,3 @@ pub mod mixer {
         truncated_bytes
     }
 }
-//  -- > poseidon: 0xccef3ab7b72033ca14fa6d6ef82159b998656fba6cf6da0d06f865817b96a8ac
-// --> verifier: 0x9e4556c4661757959c7afdd546b81cf5546f841e9c104198f2b2f50cb1bf539f

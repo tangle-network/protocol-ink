@@ -1,20 +1,21 @@
 use super::*;
-use ink_prelude::vec;
-use ink_storage::collections::HashMap;
-use ink_storage::traits::SpreadLayout;
-#[cfg(feature = "std")]
-use ink_storage::traits::StorageLayout;
 use mixer::{Result, ROOT_HISTORY_SIZE};
 use poseidon::PoseidonRef;
+use ink_storage::Mapping;
+use ink_storage::traits::{SpreadLayout, SpreadAllocate};
+#[cfg(feature = "std")]
+use ink_storage::traits::StorageLayout;
 
-#[derive(Default, Debug, SpreadLayout)]
+use ink_prelude::vec;
+
+#[derive(Default, Debug, SpreadLayout, SpreadAllocate)]
 #[cfg_attr(feature = "std", derive(StorageLayout))]
 pub struct MerkleTree {
-    pub levels: u8,
+    pub levels: u32,
     pub current_root_index: u32,
     pub next_index: u32,
-    pub filled_subtrees: HashMap<u32, [u8; 32]>,
-    pub roots: HashMap<u32, [u8; 32]>,
+    pub filled_subtrees: Mapping<u32, [u8; 32]>,
+    pub roots: Mapping<u32, [u8; 32]>,
 }
 
 impl MerkleTree {
@@ -44,9 +45,9 @@ impl MerkleTree {
             if current_index % 2 == 0 {
                 left = current_level_hash;
                 right = zeroes::zeroes(i);
-                self.filled_subtrees[&(i as u32)] = current_level_hash;
+                self.filled_subtrees.insert(i, &current_level_hash);
             } else {
-                left = self.filled_subtrees[&(i as u32)];
+                left = self.filled_subtrees.get(&i).unwrap_or_default();
                 right = current_level_hash;
             }
 
@@ -56,7 +57,7 @@ impl MerkleTree {
 
         let new_root_index = (self.current_root_index + 1) % ROOT_HISTORY_SIZE;
         self.current_root_index = new_root_index;
-        self.roots[&new_root_index] = current_level_hash;
+        self.roots.insert(new_root_index, &current_level_hash);
         self.next_index = next_index + 1;
         Ok(next_index)
     }
@@ -68,15 +69,16 @@ impl MerkleTree {
 
         let mut i = self.current_root_index;
         for _ in 0..ROOT_HISTORY_SIZE {
-            let r = self.roots[&i];
-            if r == root {
-                return true;
-            }
-
-            if i == 0 {
-                i = ROOT_HISTORY_SIZE - 1;
-            } else {
-                i -= 1;
+            if let Some(r) = self.roots.get(&i) {
+                if r == root {
+                    return true;
+                }
+    
+                if i == 0 {
+                    i = ROOT_HISTORY_SIZE - 1;
+                } else {
+                    i -= 1;
+                }
             }
         }
 
