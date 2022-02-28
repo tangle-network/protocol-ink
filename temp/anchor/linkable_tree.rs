@@ -57,8 +57,8 @@ impl LinkableMerkleTree {
     }
 
     pub fn get_latest_neighbor_root(&self, chain_id: ChainId) -> anchor::Result<[u8; 32]> {
-        let neighbor_root_index = self.curr_neighbor_root_index.get(&chain_id).ok_or(anchor::Error::NotInitialized)?;
-        let latest_neighbor_root = self.neighbor_roots.get(&(chain_id, neighbor_root_index)).ok_or(anchor::Error::NotInitialized)?;
+        let neighbor_root_index = self.curr_neighbor_root_index.get(&chain_id).ok_or(anchor::Error::ItemNotFound)?;
+        let latest_neighbor_root = self.neighbor_roots.get(&(chain_id, neighbor_root_index)).ok_or(anchor::Error::ItemNotFound)?;
         Ok(latest_neighbor_root)
     }
 

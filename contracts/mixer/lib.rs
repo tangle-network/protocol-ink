@@ -24,7 +24,6 @@ pub mod mixer {
     #[ink(storage)]
     #[derive(SpreadAllocate)]
     pub struct Mixer {
-        initialized: bool,
         deposit_size: Balance,
         merkle_tree: merkle_tree::MerkleTree,
         used_nullifiers: Mapping<[u8; 32], bool>,
@@ -45,10 +44,8 @@ pub mod mixer {
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum Error {
-        /// Returned if the mixer is not initialized
-        NotInitialized,
-        /// Returned if the mixer is already initialized
-        AlreadyInitialized,
+        /// Returned if a mapping item is not found
+        ItemNotFound,
         /// Returned if the merkle tree is full.
         MerkleTreeIsFull,
         /// Hash error
@@ -77,13 +74,15 @@ pub mod mixer {
         pub fn new(
             levels: u32,
             deposit_size: Balance,
+            version: u32,
             poseidon_contract_hash: Hash,
             verifier_contract_hash: Hash,
         ) -> Self {
+            let salt = version.to_le_bytes();
             let poseidon = PoseidonRef::new()
                 .endowment(0)
                 .code_hash(poseidon_contract_hash)
-                .salt_bytes(b"poseidon")
+                .salt_bytes(salt)
                 .instantiate()
                 .unwrap_or_else(|error| {
                     ink_env::debug_print!("contract error in poseidon init {:?}", error);
@@ -92,7 +91,7 @@ pub mod mixer {
             let verifier = MixerVerifierRef::new()
                 .endowment(0)
                 .code_hash(verifier_contract_hash)
-                .salt_bytes(b"verifier")
+                .salt_bytes(salt)
                 .instantiate()
                 .unwrap_or_else(|error| {
                     panic!(
@@ -111,14 +110,23 @@ pub mod mixer {
                 }
     
                 contract.merkle_tree.roots.insert(0, &zeroes::zeroes(levels));
-                contract.initialized = true;
             })
+        }
+
+        /// Returns the `levels` value.
+        #[ink(message)]
+        pub fn levels(&self) -> u32 {
+            self.merkle_tree.levels
+        }
+
+        /// Returns the `deposit_size` value.
+        #[ink(message)]
+        pub fn deposit_size(&self) -> Balance {
+            self.deposit_size
         }
 
         #[ink(message)]
         pub fn deposit(&mut self, commitment: [u8; 32]) -> Result<u32> {
-            assert!(self.initialized, "Mixer is not initialized");
-
             assert!(
                 self.env().transferred_value() == self.deposit_size,
                 "Deposit size is not correct"
@@ -129,7 +137,6 @@ pub mod mixer {
 
         #[ink(message)]
         pub fn withdraw(&mut self, withdraw_params: WithdrawParams) -> Result<()> {
-            assert!(self.initialized, "Mixer is not initialized");
             assert!(
                 self.merkle_tree.is_known_root(withdraw_params.root),
                 "Root is not known"

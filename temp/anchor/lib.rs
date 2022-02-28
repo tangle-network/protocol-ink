@@ -25,7 +25,6 @@ mod anchor {
     #[ink(storage)]
     #[derive(SpreadAllocate)]
     pub struct Anchor {
-        initialized: bool,
         chain_id: u64,
         deposit_size: Balance,
         merkle_tree: MerkleTree,
@@ -48,10 +47,8 @@ mod anchor {
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum Error {
-        /// Returned if the Anchor is not initialized
-        NotInitialized,
-        /// Returned if the mixer is already initialized
-        AlreadyInitialized,
+        /// Returned if a mapping item is not found
+        ItemNotFound,
         /// Returned if the merkle tree is full.
         MerkleTreeIsFull,
         /// Hash error
@@ -116,14 +113,11 @@ mod anchor {
                 }
     
                 contract.merkle_tree.roots.insert(0, &zeroes::zeroes(levels));
-                contract.initialized = true;
             })
         }
 
         #[ink(message)]
         pub fn deposit(&mut self, commitment: [u8; 32]) -> Result<u32> {
-            assert!(self.initialized, "Anchor is not initialized");
-
             assert!(
                 self.env().transferred_value() == self.deposit_size,
                 "Deposit size is not correct"
@@ -138,7 +132,6 @@ mod anchor {
 
         #[ink(message)]
         pub fn withdraw(&mut self, withdraw_params: WithdrawParams) -> Result<()> {
-            assert!(self.initialized, "Anchor is not initialized");
             assert!(
                 self.merkle_tree.is_known_root(withdraw_params.roots[0]),
                 "Root is not known"
