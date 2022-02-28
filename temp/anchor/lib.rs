@@ -121,7 +121,7 @@ mod anchor {
             })
         }
 
-        #[ink(message)]
+        #[ink(message, payable)]
         pub fn deposit(&mut self, commitment: [u8; 32]) -> Result<u32> {
             assert!(
                 self.env().transferred_value() == self.deposit_size,

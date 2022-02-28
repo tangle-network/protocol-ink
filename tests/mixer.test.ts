@@ -11,7 +11,7 @@ import {
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
 
-export function generateDeposit() {
+export function generateDeposit(amount: number) {
   let noteBuilder = new JsNoteBuilder();
   noteBuilder.prefix('webb.mixer');
   noteBuilder.version('v1');
@@ -20,7 +20,7 @@ export function generateDeposit() {
   noteBuilder.targetChainId('1');
 
   noteBuilder.tokenSymbol('WEBB');
-  noteBuilder.amount('1');
+  noteBuilder.amount(`${amount}`);
   noteBuilder.denomination('18');
 
   noteBuilder.backend('Arkworks');
@@ -75,8 +75,8 @@ describe('mixer', () => {
     console.log(await mixerContract.query.depositSize());
 
     // Mixer deposit
-    let note = generateDeposit();
+    let note = generateDeposit(depositSize);
     let commitment = note.getLeafCommitment();
-    await mixerContract.tx.deposit(commitment);
+    await mixerContract.tx.deposit(commitment, { value: depositSize });
   });
 })
