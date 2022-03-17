@@ -23,7 +23,7 @@ Use the `--force` to ensure you are updated to the most recent `cargo-contract` 
 
 ## Compiling
 
-- `npx redpost compile`
+- `npx redspot compile`
 
 Or optionally for each contract:
 
