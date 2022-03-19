@@ -1,5 +1,5 @@
 use super::*;
-use mixer::{Result, ROOT_HISTORY_SIZE};
+use super::mixer::{Result, ROOT_HISTORY_SIZE};
 use poseidon::PoseidonRef;
 use ink_storage::Mapping;
 use ink_storage::traits::{SpreadLayout, SpreadAllocate};

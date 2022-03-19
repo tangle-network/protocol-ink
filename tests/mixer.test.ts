@@ -26,7 +26,7 @@ export function generateDeposit(amount: number) {
   noteBuilder.backend('Arkworks');
   noteBuilder.hashFunction('Poseidon');
   noteBuilder.curve('Bn254');
-  noteBuilder.width('5');
+  noteBuilder.width('3');
   noteBuilder.exponentiation('5');
   const note = noteBuilder.build();
   
