@@ -15,6 +15,7 @@ scale = { package = "parity-scale-codec", version = "3", default-features = fals
 scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
 
 verifier = { package = "vanchor_verifier", path = "vanchor_verifier", default-features = false, features = ["ink-as-dependency"] }
+poseidon = { path = "../poseidon", default-features = false, features = ["ink-as-dependency"] }
 
 [lib]
 name = "vanchor"
