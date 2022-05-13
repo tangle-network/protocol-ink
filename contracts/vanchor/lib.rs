@@ -22,6 +22,7 @@ mod vanchor {
         pub chain_id: u64,
         /// ERC20 token address
         pub creator: AccountId,
+        /// The merkle tree
         pub merkle_tree: MerkleTree,
         /// The linkable merkle tree
         pub linkable_tree: LinkableMerkleTree,
