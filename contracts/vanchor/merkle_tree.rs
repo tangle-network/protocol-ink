@@ -1,15 +1,18 @@
+use super::*;
 use ink_storage::Mapping;
 use ink_storage::traits::{SpreadLayout, SpreadAllocate};
 #[cfg(feature = "std")]
 use ink_storage::traits::StorageLayout;
+use poseidon::PoseidonRef;
 
 use ink_prelude::vec;
+use scale::{Decode, Encode, Error, Input};
 use crate::vanchor;
 
 pub const ROOT_HISTORY_SIZE: u32 = 100;
 
-#[derive(Default, Debug, SpreadLayout, SpreadAllocate)]
-#[cfg_attr(feature = "std", derive(StorageLayout))]
+#[derive(Default, Debug,  SpreadLayout, SpreadAllocate)]
+#[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
 pub struct MerkleTree {
     pub levels: u32,
     pub current_root_index: u32,
@@ -18,18 +21,36 @@ pub struct MerkleTree {
     pub roots: Mapping<u32, [u8; 32]>,
 }
 
+impl Encode for MerkleTree {
+
+}
+
+impl Decode for MerkleTree {
+    fn decode<I: Input>(input: &mut I) -> Result<Self, Error> {
+        todo!()
+    }
+
+    fn skip<I: Input>(input: &mut I) -> Result<(), Error> {
+        todo!()
+    }
+
+    fn encoded_fixed_size() -> Option<usize> {
+        todo!()
+    }
+}
+
 impl MerkleTree {
     fn hash_left_right(
         &self,
         hasher: PoseidonRef,
         left: [u8; 32],
         right: [u8; 32],
-    ) -> Result<[u8; 32]> {
+    ) -> vanchor::Result<[u8; 32]> {
         let inputs = vec![left, right];
         hasher.hash(inputs).map_err(|_| vanchor::Error::HashError)
     }
 
-    pub fn insert(&mut self, hasher: PoseidonRef, leaf: [u8; 32]) -> Result<u32> {
+    pub fn insert(&mut self, hasher: PoseidonRef, leaf: [u8; 32]) -> vanchor::Result<u32> {
         let next_index = self.next_index;
         assert!(
             !next_index == u32::from(2u32.pow(self.levels as u32)),

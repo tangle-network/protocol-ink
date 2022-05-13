@@ -1,10 +1,10 @@
-use super::*;
 use ink_storage::Mapping;
-use ink_prelude::vec::Vec;
 use ink_storage::traits::{SpreadLayout, PackedLayout};
 #[cfg(feature = "std")]
 use ink_storage::traits::StorageLayout;
 use ink_storage::traits::SpreadAllocate;
+use scale::{Decode, Encode, Error, Input};
+use crate::vanchor;
 
 
 pub type ChainId = u64;
@@ -27,22 +27,39 @@ pub struct Edge {
 }
 
 #[derive(Default, Debug, SpreadLayout, SpreadAllocate)]
-#[cfg_attr(feature = "std", derive(StorageLayout))]
+#[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
 pub struct LinkableMerkleTree {
     /// max edges
     pub max_edges: u32,
-    /// the list of chains
-    pub chain_id_list: Vec<ChainId>,
-    /// edges
-    pub edges: Mapping<ChainId, Edge>,
-    /// the current neighbor root index
+    // /// the list of chains
+    //pub chain_id_list: ink_prelude::vec::Vec<ChainId>,
+    // /// edges
+    //pub edges: Mapping<ChainId, Edge>,
+    // /// the current neighbor root index
     pub curr_neighbor_root_index: Mapping<ChainId, u32>,
-    /// the neighbor rooots
-    pub neighbor_roots: Mapping<(ChainId, u32), [u8; 32]>,
+    // /// the neighbor rooots
+    //pub neighbor_roots: Mapping<(ChainId, u32), [u8; 32]>,
 }
 
+impl Encode for LinkableMerkleTree {
+
+}
+
+impl Decode for LinkableMerkleTree {
+    fn decode<I: Input>(input: &mut I) -> Result<Self, Error> {
+        todo!()
+    }
+
+    fn skip<I: Input>(input: &mut I) -> Result<(), Error> {
+        todo!()
+    }
+
+    fn encoded_fixed_size() -> Option<usize> {
+        todo!()
+    }
+}
 impl LinkableMerkleTree {
-    fn has_edge(&self, chain_id: ChainId) -> bool {
+    /*fn has_edge(&self, chain_id: ChainId) -> bool {
         self.edges.get(&chain_id).is_some()
     }
 
@@ -70,8 +87,8 @@ impl LinkableMerkleTree {
     }
 
     pub fn get_latest_neighbor_root(&self, chain_id: ChainId) -> vanchor::Result<[u8; 32]> {
-        let neighbor_root_index = self.curr_neighbor_root_index.get(&chain_id).ok_or(anchor::Error::ItemNotFound)?;
-        let latest_neighbor_root = self.neighbor_roots.get(&(chain_id, neighbor_root_index)).ok_or(anchor::Error::ItemNotFound)?;
+        let neighbor_root_index = self.curr_neighbor_root_index.get(&chain_id).ok_or(vanchor::Error::ItemNotFound)?;
+        let latest_neighbor_root = self.neighbor_roots.get(&(chain_id, neighbor_root_index)).ok_or(vanchor::Error::ItemNotFound)?;
         Ok(latest_neighbor_root)
     }
 
@@ -114,5 +131,5 @@ impl LinkableMerkleTree {
             }
         }
         return true;
-    }
+    }*/
 }
