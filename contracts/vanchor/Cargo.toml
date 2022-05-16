@@ -36,5 +36,8 @@ std = [
     "ink_primitives/std",
     "scale/std",
     "scale-info/std",
+
+    "poseidon/std",
+    "verifier/std"
 ]
 ink-as-dependency = []

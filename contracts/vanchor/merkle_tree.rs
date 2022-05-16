@@ -1,17 +1,17 @@
 use super::*;
-use ink_storage::Mapping;
-use ink_storage::traits::{SpreadLayout, SpreadAllocate};
 #[cfg(feature = "std")]
 use ink_storage::traits::StorageLayout;
+use ink_storage::traits::{SpreadAllocate, SpreadLayout};
+use ink_storage::Mapping;
 use poseidon::PoseidonRef;
 
+use crate::vanchor;
 use ink_prelude::vec;
 use scale::{Decode, Encode, Error, Input};
-use crate::vanchor;
 
 pub const ROOT_HISTORY_SIZE: u32 = 100;
 
-#[derive(Default, Debug,  SpreadLayout, SpreadAllocate)]
+#[derive(Default, Debug, SpreadLayout, SpreadAllocate)]
 #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
 pub struct MerkleTree {
     pub levels: u32,
@@ -21,9 +21,7 @@ pub struct MerkleTree {
     pub roots: Mapping<u32, [u8; 32]>,
 }
 
-impl Encode for MerkleTree {
-
-}
+impl Encode for MerkleTree {}
 
 impl Decode for MerkleTree {
     fn decode<I: Input>(input: &mut I) -> Result<Self, Error> {
@@ -106,4 +104,3 @@ impl MerkleTree {
         false
     }
 }
-

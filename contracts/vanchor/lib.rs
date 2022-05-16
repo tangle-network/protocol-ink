@@ -1,22 +1,32 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-//mod merkle_tree;
 mod linkable_merkle_tree;
-pub mod zeroes;
 mod merkle_tree;
+pub mod zeroes;
 
 use ink_lang as ink;
 
+const NUM_INS_2: u32 = 2;
+const NUM_OUTS_2: u32 = 2;
+const NUM_INS_16: u32 = 16;
+const NUM_OUTS_16: u32 = 2;
+
 #[ink::contract]
 mod vanchor {
+    use poseidon::Poseidon;
     use crate::linkable_merkle_tree::LinkableMerkleTree;
     use crate::merkle_tree::MerkleTree;
+    use verifier::vanchor_verifier::VAnchorVerifier;
+    use crate::{NUM_INS_16, NUM_INS_2, NUM_OUTS_16, NUM_OUTS_2, zeroes};
+    use ink_storage::traits::SpreadAllocate;
+    use ink_prelude::vec::Vec;
+
 
     /// The vanchor result type.
     pub type Result<T> = core::result::Result<T, Error>;
 
-
     #[ink(storage)]
+    #[derive(SpreadAllocate)]
     pub struct VAnchor {
         /// chain id
         pub chain_id: u64,
@@ -36,6 +46,10 @@ mod vanchor {
         pub max_ext_amt: u128,
         /// maximum fee
         pub max_fee: u128,
+
+        pub poseidon: Poseidon,
+        pub verifier_2_2: VAnchorVerifier,
+        pub verifier_16_2: VAnchorVerifier
     }
 
     /// The vanchor error types.
@@ -57,17 +71,53 @@ mod vanchor {
     }
 
     impl VAnchor {
-        /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
-        pub fn new(chain_id: u64, creator: AccountId, merkle_tree: MerkleTree,  linkable_tree: LinkableMerkleTree, tokenwrapper_addr: AccountId,
-                   max_deposit_amt: u128, min_withdraw_amt: u128, max_ext_amt: u128, max_fee: u128) -> Self {
-            Self { chain_id, creator,  merkle_tree, linkable_tree, tokenwrapper_addr, max_deposit_amt, min_withdraw_amt, max_ext_amt, max_fee}
+        pub fn new(
+            max_edges: u32,
+            chain_id: u64,
+            levels: u32,
+            max_deposit_amt: u128,
+            min_withdraw_amt: u128,
+            max_ext_amt: u128,
+            max_fee: u128,
+            tokenwrapper_addr: AccountId,
+            poseidon_contract_hash: Hash,
+            verifier_contract_hash: Hash,
+        ) -> Self {
+            let poseidon = Poseidon::new();
+
+            let verifier_2_2 = VAnchorVerifier::new(max_edges,NUM_INS_2, NUM_OUTS_2);
+            let verifier_16_2 = VAnchorVerifier::new(max_edges,NUM_INS_16, NUM_OUTS_16);
+
+            ink_lang::utils::initialize_contract(|contract: &mut VAnchor| {
+                contract.chain_id = chain_id;
+                contract.creator = Self::env().caller();
+                contract.max_ext_amt = max_ext_amt;
+                contract.min_withdraw_amt = min_withdraw_amt;
+                contract.max_deposit_amt = max_deposit_amt;
+                contract.max_fee = max_fee;
+                contract.tokenwrapper_addr = tokenwrapper_addr;
+
+                contract.linkable_tree.max_edges = max_edges;
+                contract.linkable_tree.chain_id_list = Vec::new();
+
+                contract.merkle_tree.levels = levels;
+                contract.merkle_tree.current_root_index = 0;
+                contract.merkle_tree.next_index = 0;
+
+                contract.poseidon = poseidon;
+                contract.verifier_2_2 = verifier_2_2;
+                contract.verifier_16_2 = verifier_16_2;
+
+                for i in 0..levels {
+                    contract.merkle_tree.filled_subtrees.insert(i, &zeroes::zeroes(i));
+                }
+
+                contract.merkle_tree.roots.insert(0, &zeroes::zeroes(levels));
+            })
         }
 
         #[ink(message)]
-        pub fn do_nothing_yet(&self)  {
-        }
-
+        pub fn do_nothing_yet(&self) {}
     }
-
 }

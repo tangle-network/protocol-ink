@@ -116,7 +116,7 @@ mod anchor {
                 for i in 0..levels {
                     contract.merkle_tree.filled_subtrees.insert(i, &zeroes::zeroes(i));
                 }
-    
+
                 contract.merkle_tree.roots.insert(0, &zeroes::zeroes(levels));
             })
         }

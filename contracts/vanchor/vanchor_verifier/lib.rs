@@ -40,7 +40,7 @@ mod verifier {
 }
 
 #[ink::contract]
-mod vanchor_verifier {
+pub mod vanchor_verifier {
     use ink_storage::traits::SpreadAllocate;
     use ink_prelude::vec::Vec;
     use crate::verifier::ArkworksVerifierBn254;
