@@ -13,7 +13,7 @@ pub type LatestLeafIndex = u32;
 
 pub const ROOT_HISTORY_SIZE: u32 = 100;
 
-#[derive(Default, Debug, Clone, SpreadLayout, PackedLayout)]
+#[derive(Default, Debug,  scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
 #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
 pub struct Edge {
     /// chain id
@@ -26,36 +26,18 @@ pub struct Edge {
     pub target: Element,
 }
 
-impl Encode for Edge {}
-
-impl EncodeLike for Edge {}
-
-impl Decode for Edge {
-    fn decode<I: Input>(input: &mut I) -> Result<Self, Error> {
-        todo!()
-    }
-
-    fn skip<I: Input>(input: &mut I) -> Result<(), Error> {
-        todo!()
-    }
-
-    fn encoded_fixed_size() -> Option<usize> {
-        todo!()
-    }
-}
-
 #[derive(Default, Debug, SpreadLayout, SpreadAllocate)]
 #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
 pub struct LinkableMerkleTree {
     /// max edges
     pub max_edges: u32,
-    // /// the list of chains
+    /// the list of chains
     pub chain_id_list: ink_prelude::vec::Vec<ChainId>,
-    // /// edges
+    /// edges
     pub edges: Mapping<ChainId, Edge>,
-    // /// the current neighbor root index
+    /// the current neighbor root index
     pub curr_neighbor_root_index: Mapping<ChainId, u32>,
-    // /// the neighbor rooots
+    /// the neighbor rooots
     pub neighbor_roots: Mapping<(ChainId, u32), [u8; 32]>,
 }
 

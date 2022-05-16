@@ -6,18 +6,13 @@ pub mod zeroes;
 
 use ink_lang as ink;
 
-const NUM_INS_2: u32 = 2;
-const NUM_OUTS_2: u32 = 2;
-const NUM_INS_16: u32 = 16;
-const NUM_OUTS_16: u32 = 2;
-
 #[ink::contract]
 mod vanchor {
     use poseidon::Poseidon;
     use crate::linkable_merkle_tree::LinkableMerkleTree;
     use crate::merkle_tree::MerkleTree;
     use verifier::vanchor_verifier::VAnchorVerifier;
-    use crate::{NUM_INS_16, NUM_INS_2, NUM_OUTS_16, NUM_OUTS_2, zeroes};
+    use crate::zeroes;
     use ink_storage::traits::SpreadAllocate;
     use ink_prelude::vec::Vec;
 
@@ -86,8 +81,8 @@ mod vanchor {
         ) -> Self {
             let poseidon = Poseidon::new();
 
-            let verifier_2_2 = VAnchorVerifier::new(max_edges,NUM_INS_2, NUM_OUTS_2);
-            let verifier_16_2 = VAnchorVerifier::new(max_edges,NUM_INS_16, NUM_OUTS_16);
+            let verifier_2_2 = VAnchorVerifier::new(max_edges,2, 2);
+            let verifier_16_2 = VAnchorVerifier::new(max_edges,16, 16);
 
             ink_lang::utils::initialize_contract(|contract: &mut VAnchor| {
                 contract.chain_id = chain_id;
