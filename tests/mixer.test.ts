@@ -2,35 +2,34 @@ import { assert, expect } from "chai";
 import { artifacts, network, patract } from "redspot";
 
 import {
-  generate_proof_js,
-  JsNote,
-  JsNoteBuilder,
-  ProofInputBuilder,
-  } from '@webb-tools/wasm-utils/njs';
+  Note,
+  NoteGenInput,
+  ProvingManagerSetupInput,
+  ProvingManagerWrapper,
+} from '@webb-tools/sdk-core';
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
 
-export function generateDeposit(amount: number) {
-  let noteBuilder = new JsNoteBuilder();
-  noteBuilder.prefix('webb.mixer');
-  noteBuilder.version('v1');
-
-  noteBuilder.sourceChainId('1');
-  noteBuilder.targetChainId('1');
-
-  noteBuilder.tokenSymbol('WEBB');
-  noteBuilder.amount(`${amount}`);
-  noteBuilder.denomination('18');
-
-  noteBuilder.backend('Arkworks');
-  noteBuilder.hashFunction('Poseidon');
-  noteBuilder.curve('Bn254');
-  noteBuilder.width('3');
-  noteBuilder.exponentiation('5');
-  const note = noteBuilder.build();
-  
-  return note;
+async function generateDeposit(amount: number): Promise<Note> {
+  const noteInput: NoteGenInput = {
+    protocol: 'mixer',
+    version: 'v2',
+    sourceChain: '5',
+    targetChain: '5',
+    sourceIdentifyingData: '3',
+    targetIdentifyingData: '3',
+    tokenSymbol: 'WEBB',
+    amount: '1',
+    denomination: '18',
+    backend: 'Arkworks',
+    hashFunction: 'Poseidon',
+    curve: 'Bn254',
+    width: '3',
+    exponentiation: '5',
+  };
+  const note = await Note.generateNote(noteInput);
+  return note
 }
 
 // to call a "method", you use contract.tx.methodName(args). to get a value, you use contract.query.methodName(args).
@@ -75,8 +74,8 @@ describe('mixer', () => {
     console.log(await mixerContract.query.depositSize());
 
     // Mixer deposit
-    let note = generateDeposit(depositSize);
-    let commitment = note.getLeafCommitment();
+    let note = await generateDeposit(depositSize);
+    let commitment = note.getLeaf()
     await mixerContract.tx.deposit(commitment, { value: depositSize });
   });
 })
