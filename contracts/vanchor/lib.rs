@@ -9,7 +9,7 @@ use ink_lang as ink;
 #[ink::contract]
 mod vanchor {
     use poseidon::Poseidon;
-    use crate::linkable_merkle_tree::LinkableMerkleTree;
+    use crate::linkable_merkle_tree::{Edge, LinkableMerkleTree};
     use crate::merkle_tree::MerkleTree;
     use verifier::vanchor_verifier::VAnchorVerifier;
     use crate::zeroes;
@@ -113,6 +113,27 @@ mod vanchor {
         }
 
         #[ink(message)]
-        pub fn do_nothing_yet(&self) {}
+        pub fn update_vanchor_config(&mut self, max_ext_amt: u128, max_fee: u128,) {
+            assert!(
+                self.creator ==  Self::env().caller(),
+                "Root is not known"
+            );
+
+            self.max_ext_amt = max_ext_amt;
+            self.max_fee = max_fee;
+        }
+
+        #[ink(message)]
+        pub fn update_edge(&mut self, src_chain_id: u64, root: [u8; 32],
+                           latest_leaf_index: u32, target: [u8; 32]) {
+            let edge = Edge {
+                chain_id: src_chain_id,
+                root,
+                latest_leaf_index,
+                target
+            };
+
+            self.linkable_tree.update_edge(edge);
+        }
     }
 }
