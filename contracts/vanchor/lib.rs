@@ -135,5 +135,9 @@ mod vanchor {
 
             self.linkable_tree.update_edge(edge);
         }
+
+        fn validate_proof(&mut self) {
+
+        }
     }
 }
