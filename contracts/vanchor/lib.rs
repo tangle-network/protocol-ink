@@ -3,6 +3,8 @@
 mod linkable_merkle_tree;
 mod merkle_tree;
 pub mod zeroes;
+mod keccak;
+mod field_ops;
 
 use ink_lang as ink;
 
@@ -13,12 +15,19 @@ mod vanchor {
     use crate::merkle_tree::MerkleTree;
     use verifier::vanchor_verifier::VAnchorVerifier;
     use crate::zeroes;
-    use ink_storage::traits::SpreadAllocate;
     use ink_prelude::vec::Vec;
+    use ink_storage::{Mapping, traits::SpreadAllocate};
+    use crate::keccak::Keccak256;
+    use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
+    use crate::field_ops::{ArkworksIntoFieldBn254, IntoPrimeField};
+    use ink_prelude::string::String;
+
 
 
     /// The vanchor result type.
     pub type Result<T> = core::result::Result<T, Error>;
+    pub const INK_CHAIN_TYPE: [u8; 2] = [4, 0];
+
 
     #[ink(storage)]
     #[derive(SpreadAllocate)]
@@ -42,9 +51,34 @@ mod vanchor {
         /// maximum fee
         pub max_fee: u128,
 
+        /// used nullifiers
+        pub used_nullifiers: Mapping<[u8; 32], bool>,
+
         pub poseidon: Poseidon,
         pub verifier_2_2: VAnchorVerifier,
         pub verifier_16_2: VAnchorVerifier
+    }
+
+    #[derive(Default, Debug,  scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
+    #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
+    pub struct ExtData {
+        pub recipient: String,
+        pub relayer: String,
+        pub ext_amount: String, // Still `String` since represents `i128` value
+        pub fee: u128,
+        pub encrypted_output1: [u8; 32],
+        pub encrypted_output2: [u8; 32],
+    }
+
+    #[derive(Default, Debug,  scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
+    #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
+    pub struct ProofData {
+        pub proof: Vec<u8>,
+        pub public_amount: [u8; 32],
+        pub roots: Vec<[u8; 32]>,
+        pub input_nullifiers: Vec<[u8; 32]>,
+        pub output_commitments: Vec<[u8; 32]>,
+        pub ext_data_hash: [u8; 32],
     }
 
     /// The vanchor error types.
@@ -63,6 +97,26 @@ mod vanchor {
         EdgeAlreadyExists,
         ///  Too many edges
         TooManyEdges,
+        /// Unmatched edges
+        UnmatchedEdges,
+        /// Unknown root
+        UnknownRoot,
+        /// InvalidMerkleRoot
+        InvalidMerkleRoots,
+        /// Already revealed nullifier
+        AlreadyRevealedNullfier,
+        /// Invalid externalities data
+        InvalidExtData,
+        /// Invalid fee amount
+        InvalidFeeAmount,
+        /// Invalid ext amount
+        InvalidExtAmount,
+        /// Invalid public amount
+        InvalidPublicAmount,
+        /// Invalid transaction proof
+        InvalidTxProof,
+
+
     }
 
     impl VAnchor {
@@ -136,8 +190,135 @@ mod vanchor {
             self.linkable_tree.update_edge(edge);
         }
 
-        fn validate_proof(&mut self) {
+        fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData)-> Result<()>{
+            let ext_data_fee: u128 = ext_data.fee;
+            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
 
+            // Validation 1. Double check the number of roots.
+            if self.linkable_tree.max_edges != proof_data.roots.len() as u32 {
+                return Err(Error::UnmatchedEdges)
+            }
+
+            if !self
+                .merkle_tree
+                .is_known_root(proof_data.roots[0])
+            {
+                return Err(Error::UnknownRoot)
+            }
+
+            if !self.linkable_tree.is_valid_neighbor_roots(&proof_data.roots[1..]) {
+                return Err(Error::InvalidMerkleRoots);
+            }
+
+
+            for nullifier in &proof_data.input_nullifiers {
+                if self.is_known_nullifier(*nullifier) {
+                    return Err(Error::AlreadyRevealedNullfier);
+                }
+            }
+
+            let element_encoder = |v: &[u8]| {
+                let mut output = [0u8; 32];
+                output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
+                output
+            };
+
+
+            // Compute hash of abi encoded ext_data, reduced into field from config
+            // Ensure that the passed external data hash matches the computed one
+            let mut ext_data_args = Vec::new();
+            let recipient_bytes = element_encoder(ext_data.recipient.as_bytes());
+            let relayer_bytes = element_encoder(ext_data.relayer.as_bytes());
+            let fee_bytes = element_encoder(&ext_data_fee.to_le_bytes());
+            let ext_amt_bytes = element_encoder(&ext_amt.to_le_bytes());
+            ext_data_args.extend_from_slice(&recipient_bytes);
+            ext_data_args.extend_from_slice(&relayer_bytes);
+            ext_data_args.extend_from_slice(&ext_amt_bytes);
+            ext_data_args.extend_from_slice(&fee_bytes);
+            ext_data_args.extend_from_slice(&ext_data.encrypted_output1);
+            ext_data_args.extend_from_slice(&ext_data.encrypted_output2);
+
+            let computed_ext_data_hash =
+                Keccak256::hash(&ext_data_args).map_err(|_| Error::HashError)?;
+            if computed_ext_data_hash != proof_data.ext_data_hash {
+                return Err(Error::InvalidExtData);
+            }
+
+            let abs_ext_amt = ext_amt.unsigned_abs();
+            // Making sure that public amount and fee are correct
+            if ext_data_fee > self.max_fee {
+                return Err(Error::InvalidFeeAmount);
+            }
+
+            if abs_ext_amt > self.max_ext_amt {
+                return Err(Error::InvalidExtAmount);
+            }
+
+            // Public amounnt can also be negative, in which
+            // case it would wrap around the field, so we should check if FIELD_SIZE -
+            // public_amount == proof_data.public_amount, in case of a negative ext_amount
+            let calc_public_amt = ext_amt - ext_data_fee as i128;
+            let calc_public_amt_bytes =
+                element_encoder(&ArkworksIntoFieldBn254::into_field(calc_public_amt));
+            if calc_public_amt_bytes != proof_data.public_amount {
+                return Err(Error::InvalidPublicAmount);
+            }
+
+            // Construct public inputs
+            let chain_id_type_bytes =
+                element_encoder(&self.compute_chain_id_type(self.chain_id, &INK_CHAIN_TYPE).to_le_bytes());
+
+            let mut bytes = Vec::new();
+            bytes.extend_from_slice(&proof_data.public_amount);
+            bytes.extend_from_slice(&proof_data.ext_data_hash);
+            for null in &proof_data.input_nullifiers {
+                bytes.extend_from_slice(null);
+            }
+            for comm in &proof_data.output_commitments {
+                bytes.extend_from_slice(comm);
+            }
+            bytes.extend_from_slice(&element_encoder(&chain_id_type_bytes));
+            for root in &proof_data.roots {
+                bytes.extend_from_slice(root);
+            }
+
+            let result = match (
+                proof_data.input_nullifiers.len(),
+                proof_data.output_commitments.len(),
+            ) {
+                (2, 2) => self.verifier_2_2.verify(bytes, proof_data.proof),
+                (16, 2) => self.verifier_16_2.verify( bytes, proof_data.proof),
+                _ => Ok(false),
+            };
+
+            if !result.unwrap() {
+                return Err(Error::InvalidTxProof);
+            }
+
+            // Set used nullifiers to true
+            for nullifier in &proof_data.input_nullifiers {
+                self.used_nullifiers.insert(nullifier, &true);
+            }
+
+            Ok(())
+        }
+
+        fn is_known_nullifier(&self, nullifier: [u8; 32]) -> bool {
+            self.used_nullifiers.get(&nullifier).is_some()
+        }
+
+        // Computes the combination bytes of "chain_type" and "chain_id".
+        // Combination rule: 8 bytes array(00 * 2 bytes + [chain_type] 2 bytes + [chain_id] 4 bytes)
+        // Example:
+        //  chain_type - 0x0401, chain_id - 0x00000001 (big endian)
+        //  Result - [00, 00, 04, 01, 00, 00, 00, 01]
+        fn compute_chain_id_type(&self, chain_id: u64, chain_type: &[u8]) -> u64 {
+            let chain_id_value: u32 = chain_id.try_into().unwrap_or_default();
+            let mut buf = [0u8; 8];
+            #[allow(clippy::needless_borrow)]
+                buf[2..4].copy_from_slice(&chain_type);
+            buf[4..8].copy_from_slice(&chain_id_value.to_le_bytes());
+            u64::from_be_bytes(buf)
         }
     }
 }
