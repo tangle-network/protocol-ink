@@ -10,7 +10,7 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod vanchor {
-    use poseidon::Poseidon;
+    use poseidon::poseidon::{PoseidonRef};
     use crate::linkable_merkle_tree::{Edge, LinkableMerkleTree};
     use crate::merkle_tree::MerkleTree;
     use verifier::vanchor_verifier::VAnchorVerifier;
@@ -22,11 +22,13 @@ mod vanchor {
     use crate::field_ops::{ArkworksIntoFieldBn254, IntoPrimeField};
     use ink_prelude::string::String;
 
-
-
     /// The vanchor result type.
     pub type Result<T> = core::result::Result<T, Error>;
     pub const INK_CHAIN_TYPE: [u8; 2] = [4, 0];
+    pub const ERROR_MSG: &'static str =
+        "requested transfer failed. this can be the case if the contract does not\
+    have sufficient free funds or if the transfer would have brought the\
+    contract's balance below minimum balance.";
 
 
     #[ink(storage)]
@@ -54,7 +56,7 @@ mod vanchor {
         /// used nullifiers
         pub used_nullifiers: Mapping<[u8; 32], bool>,
 
-        pub poseidon: Poseidon,
+        pub poseidon: PoseidonRef,
         pub verifier_2_2: VAnchorVerifier,
         pub verifier_16_2: VAnchorVerifier
     }
@@ -62,8 +64,8 @@ mod vanchor {
     #[derive(Default, Debug,  scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
     #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub struct ExtData {
-        pub recipient: String,
-        pub relayer: String,
+        pub recipient: AccountId,
+        pub relayer: AccountId,
         pub ext_amount: String, // Still `String` since represents `i128` value
         pub fee: u128,
         pub encrypted_output1: [u8; 32],
@@ -115,6 +117,14 @@ mod vanchor {
         InvalidPublicAmount,
         /// Invalid transaction proof
         InvalidTxProof,
+        /// Unauthorized
+        Unauthorized,
+        /// Invalid execution entry,
+        InvalidExecutionEntry,
+        /// Invalid deposit amount
+        InvalidDepositAmount,
+        /// Insufficient funds
+        InsufficientFunds,
 
 
     }
@@ -130,10 +140,20 @@ mod vanchor {
             max_ext_amt: u128,
             max_fee: u128,
             tokenwrapper_addr: AccountId,
+            version: u32,
             poseidon_contract_hash: Hash,
             verifier_contract_hash: Hash,
         ) -> Self {
-            let poseidon = Poseidon::new();
+            let salt = version.to_le_bytes();
+            let poseidon = PoseidonRef::new()
+                .endowment(0)
+                .code_hash(poseidon_contract_hash)
+                .salt_bytes(salt)
+                .instantiate()
+                .unwrap_or_else(|error| {
+                    ink_env::debug_print!("contract error in poseidon init {:?}", error);
+                    panic!("failed at instantiating the Poseidon contract: {:?}", error)
+                });
 
             let verifier_2_2 = VAnchorVerifier::new(max_edges,2, 2);
             let verifier_16_2 = VAnchorVerifier::new(max_edges,16, 16);
@@ -167,19 +187,21 @@ mod vanchor {
         }
 
         #[ink(message)]
-        pub fn update_vanchor_config(&mut self, max_ext_amt: u128, max_fee: u128,) {
-            assert!(
-                self.creator ==  Self::env().caller(),
-                "Root is not known"
-            );
+        pub fn update_vanchor_config(&mut self, max_ext_amt: u128, max_fee: u128,) -> Result<()> {
+            if self.creator !=  Self::env().caller() {
+                return Err(Error::UnknownRoot);
+            }
+
 
             self.max_ext_amt = max_ext_amt;
             self.max_fee = max_fee;
+
+            Ok(())
         }
 
         #[ink(message)]
         pub fn update_edge(&mut self, src_chain_id: u64, root: [u8; 32],
-                           latest_leaf_index: u32, target: [u8; 32]) {
+                           latest_leaf_index: u32, target: [u8; 32]) -> Result<()> {
             let edge = Edge {
                 chain_id: src_chain_id,
                 root,
@@ -188,9 +210,55 @@ mod vanchor {
             };
 
             self.linkable_tree.update_edge(edge);
+
+            Ok(())
         }
 
-        fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData)-> Result<()>{
+        #[ink(message)]
+        pub fn transact_deposit(&mut self, proof_data: ProofData, ext_data: ExtData,
+                                recv_token_addr: AccountId, recv_token_amt: u128) -> Result<()> {
+            if self.tokenwrapper_addr != recv_token_addr {
+                return Err(Error::Unauthorized);
+            }
+
+            self.validate_proof(proof_data.clone(), ext_data.clone());
+
+
+            let ext_data_fee: u128 = ext_data.fee.clone();
+            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let abs_ext_amt = ext_amt.unsigned_abs();
+
+            let is_withdraw = ext_amt.is_negative();
+
+            if is_withdraw {
+                return Err(Error::InvalidExecutionEntry);
+            } else {
+                if abs_ext_amt > self.max_deposit_amt {
+                    return Err(Error::InvalidDepositAmount);
+                };
+                if abs_ext_amt != recv_token_amt {
+                    return Err(Error::InsufficientFunds);
+                };
+            }
+
+            let fee_exists = ext_data_fee != 0;
+
+            if fee_exists {
+                if self
+                    .env()
+                    .transfer(ext_data.relayer.clone(), ext_data_fee)
+                    .is_err()
+                {
+                    panic!("{}", ERROR_MSG);
+                }
+            }
+
+            self.execute_insertions(proof_data.clone());
+
+            Ok(())
+        }
+
+        fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result<()> {
             let ext_data_fee: u128 = ext_data.fee;
             let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
 
@@ -227,8 +295,8 @@ mod vanchor {
             // Compute hash of abi encoded ext_data, reduced into field from config
             // Ensure that the passed external data hash matches the computed one
             let mut ext_data_args = Vec::new();
-            let recipient_bytes = element_encoder(ext_data.recipient.as_bytes());
-            let relayer_bytes = element_encoder(ext_data.relayer.as_bytes());
+            let recipient_bytes = element_encoder(ext_data.recipient.as_ref());
+            let relayer_bytes = element_encoder(ext_data.relayer.as_ref());
             let fee_bytes = element_encoder(&ext_data_fee.to_le_bytes());
             let ext_amt_bytes = element_encoder(&ext_amt.to_le_bytes());
             ext_data_args.extend_from_slice(&recipient_bytes);
@@ -303,6 +371,16 @@ mod vanchor {
             Ok(())
         }
 
+        fn execute_insertions(&mut self, proof_data: ProofData) -> Result<()> {
+
+            for comm in &proof_data.output_commitments {
+                self.merkle_tree.insert(self.poseidon.clone(), *comm);
+            }
+
+            Ok(())
+
+        }
+
         fn is_known_nullifier(&self, nullifier: [u8; 32]) -> bool {
             self.used_nullifiers.get(&nullifier).is_some()
         }
@@ -315,8 +393,7 @@ mod vanchor {
         fn compute_chain_id_type(&self, chain_id: u64, chain_type: &[u8]) -> u64 {
             let chain_id_value: u32 = chain_id.try_into().unwrap_or_default();
             let mut buf = [0u8; 8];
-            #[allow(clippy::needless_borrow)]
-                buf[2..4].copy_from_slice(&chain_type);
+            buf[2..4].copy_from_slice(&chain_type);
             buf[4..8].copy_from_slice(&chain_id_value.to_le_bytes());
             u64::from_be_bytes(buf)
         }
