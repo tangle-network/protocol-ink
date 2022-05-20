@@ -13,7 +13,7 @@ pub type LatestLeafIndex = u32;
 
 pub const ROOT_HISTORY_SIZE: u32 = 100;
 
-#[derive(Default, Debug, Clone, SpreadLayout, PackedLayout)]
+#[derive(Default, Encode, Decode, Debug, Clone, SpreadLayout, PackedLayout)]
 #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
 pub struct Edge {
     /// chain id
@@ -26,7 +26,7 @@ pub struct Edge {
     pub target: Element,
 }
 
-#[derive(Default, Debug, scale::Encode, scale::Decode, SpreadLayout, SpreadAllocate)]
+#[derive(Default, Debug, SpreadLayout, SpreadAllocate)]
 #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
 pub struct LinkableMerkleTree {
     /// max edges
