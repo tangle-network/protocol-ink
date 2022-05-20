@@ -34,7 +34,7 @@ scale-info = { version = "2", default-features = false, features = [
 name = "mixer_verifier"
 path = "lib.rs"
 crate-type = [
-	"cdylib",
+    "cdylib",
     "rlib",
 ]
 

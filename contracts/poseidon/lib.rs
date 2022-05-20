@@ -14,10 +14,10 @@ impl SpreadAllocate for PoseidonRef {
 }
 
 mod hasher {
-    use ark_crypto_primitives::{Error};
+    use ark_crypto_primitives::Error;
     use ark_ff::{BigInteger, PrimeField};
     use ark_std::{marker::PhantomData, vec::Vec};
-    use arkworks_native_gadgets::poseidon::{Poseidon, PoseidonParameters, FieldHasher};
+    use arkworks_native_gadgets::poseidon::{FieldHasher, Poseidon, PoseidonParameters};
     use arkworks_native_gadgets::to_field_elements;
     pub struct ArkworksPoseidonHasher<F: PrimeField>(PhantomData<F>);
 
@@ -38,12 +38,12 @@ mod hasher {
 
 #[ink::contract]
 pub mod poseidon {
+    use crate::hasher::ArkworksPoseidonHasherBn254;
+    use ark_bn254::Fr as Bn254Fr;
     use arkworks_setups::common::setup_params;
     use arkworks_setups::Curve;
-    use ink_storage::traits::SpreadAllocate;
-    use crate::hasher::{ArkworksPoseidonHasherBn254};
     use ink_prelude::vec::Vec;
-    use ark_bn254::Fr as Bn254Fr;
+    use ink_storage::traits::SpreadAllocate;
 
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
@@ -72,7 +72,7 @@ pub mod poseidon {
         #[ink(constructor)]
         pub fn new() -> Self {
             Self {
-                hasher_params_width_3_bytes: setup_params::<Bn254Fr>(Curve::Bn254, 5, 3).to_bytes()
+                hasher_params_width_3_bytes: setup_params::<Bn254Fr>(Curve::Bn254, 5, 3).to_bytes(),
             }
         }
 
