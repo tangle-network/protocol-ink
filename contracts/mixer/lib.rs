@@ -10,10 +10,10 @@ use ink_lang as ink;
 pub mod mixer {
     use super::*;
     use crate::zeroes;
-    use ink_storage::{Mapping, traits::SpreadAllocate};
-    use poseidon::poseidon::{PoseidonRef};
-    use verifier::MixerVerifierRef;
     use ink_prelude::vec::Vec;
+    use ink_storage::{traits::SpreadAllocate, Mapping};
+    use poseidon::poseidon::PoseidonRef;
+    use verifier::MixerVerifierRef;
 
     pub const ROOT_HISTORY_SIZE: u32 = 100;
     pub const ERROR_MSG: &'static str =
@@ -109,10 +109,16 @@ pub mod mixer {
                 contract.merkle_tree.next_index = 0;
 
                 for i in 0..levels {
-                    contract.merkle_tree.filled_subtrees.insert(i, &zeroes::zeroes(i));
+                    contract
+                        .merkle_tree
+                        .filled_subtrees
+                        .insert(i, &zeroes::zeroes(i));
                 }
-    
-                contract.merkle_tree.roots.insert(0, &zeroes::zeroes(levels));
+
+                contract
+                    .merkle_tree
+                    .roots
+                    .insert(0, &zeroes::zeroes(levels));
             })
         }
 
@@ -170,7 +176,8 @@ pub mod mixer {
             let result = self.verify(bytes, withdraw_params.proof_bytes)?;
             assert!(result, "Invalid withdraw proof");
             // Set used nullifier to true after successfuly verification
-            self.used_nullifiers.insert(withdraw_params.nullifier_hash, &true);
+            self.used_nullifiers
+                .insert(withdraw_params.nullifier_hash, &true);
             // Send the funds
             // TODO: Support "ERC20"-like tokens
             if self
