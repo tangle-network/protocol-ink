@@ -123,6 +123,8 @@ mod vanchor {
         InvalidExecutionEntry,
         /// Invalid deposit amount
         InvalidDepositAmount,
+        /// Invalid deposit amount
+        InvalidWithdrawAmount,
         /// Insufficient funds
         InsufficientFunds,
 
@@ -256,6 +258,23 @@ mod vanchor {
             self.execute_insertions(proof_data.clone());
 
             Ok(())
+        }
+
+        #[ink(message)]
+        fn transact_withdraw(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result<()> {
+            self.validate_proof(proof_data.clone(), ext_data.clone());
+
+            let ext_data_fee: u128 = ext_data.fee.clone();
+            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let abs_ext_amt = ext_amt.unsigned_abs();
+
+            if ext_amt.is_positive() {
+                return Err(Error::InvalidExecutionEntry);
+            } else {
+                if abs_ext_amt < self.min_withdraw_amt {
+                    return Err(Error::InvalidWithdrawAmount);
+                };
+            }
         }
 
         fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result<()> {
