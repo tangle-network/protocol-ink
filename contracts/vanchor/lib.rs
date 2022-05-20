@@ -58,7 +58,7 @@ mod vanchor {
         HashError,
         /// Verify error
         VerifyError,
-        /// Edege already exists
+        /// Edge already exists
         EdgeAlreadyExists,
         ///  Too many edges
         TooManyEdges,
