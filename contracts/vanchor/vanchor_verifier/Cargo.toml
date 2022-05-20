@@ -30,7 +30,6 @@ arkworks-native-gadgets = { version = "1.0.0", default-features = false }
 name = "vanchor_verifier"
 path = "lib.rs"
 crate-type = [
-    # Used for normal contract Wasm blobs.
 	"cdylib",
     "rlib",
 ]

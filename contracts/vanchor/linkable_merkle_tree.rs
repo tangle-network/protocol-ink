@@ -13,7 +13,7 @@ pub type LatestLeafIndex = u32;
 
 pub const ROOT_HISTORY_SIZE: u32 = 100;
 
-#[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
+#[derive(Default, Debug, Clone, SpreadLayout, PackedLayout)]
 #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
 pub struct Edge {
     /// chain id
