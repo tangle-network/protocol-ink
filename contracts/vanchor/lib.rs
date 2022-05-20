@@ -8,14 +8,13 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod vanchor {
-    use poseidon::Poseidon;
     use crate::linkable_merkle_tree::LinkableMerkleTree;
     use crate::merkle_tree::MerkleTree;
-    use verifier::vanchor_verifier::VAnchorVerifier;
     use crate::zeroes;
-    use ink_storage::traits::SpreadAllocate;
     use ink_prelude::vec::Vec;
-
+    use ink_storage::traits::SpreadAllocate;
+    use poseidon::Poseidon;
+    use verifier::vanchor_verifier::VAnchorVerifier;
 
     /// The vanchor result type.
     pub type Result<T> = core::result::Result<T, Error>;
@@ -44,7 +43,7 @@ mod vanchor {
 
         pub poseidon: Poseidon,
         pub verifier_2_2: VAnchorVerifier,
-        pub verifier_16_2: VAnchorVerifier
+        pub verifier_16_2: VAnchorVerifier,
     }
 
     /// The vanchor error types.
@@ -81,8 +80,8 @@ mod vanchor {
         ) -> Self {
             let poseidon = Poseidon::new();
 
-            let verifier_2_2 = VAnchorVerifier::new(max_edges,2, 2);
-            let verifier_16_2 = VAnchorVerifier::new(max_edges,16, 16);
+            let verifier_2_2 = VAnchorVerifier::new(max_edges, 2, 2);
+            let verifier_16_2 = VAnchorVerifier::new(max_edges, 16, 16);
 
             ink_lang::utils::initialize_contract(|contract: &mut VAnchor| {
                 contract.chain_id = chain_id;
@@ -105,10 +104,16 @@ mod vanchor {
                 contract.verifier_16_2 = verifier_16_2;
 
                 for i in 0..levels {
-                    contract.merkle_tree.filled_subtrees.insert(i, &zeroes::zeroes(i));
+                    contract
+                        .merkle_tree
+                        .filled_subtrees
+                        .insert(i, &zeroes::zeroes(i));
                 }
 
-                contract.merkle_tree.roots.insert(0, &zeroes::zeroes(levels));
+                contract
+                    .merkle_tree
+                    .roots
+                    .insert(0, &zeroes::zeroes(levels));
             })
         }
 

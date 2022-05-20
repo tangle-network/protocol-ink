@@ -13,7 +13,7 @@ pub type LatestLeafIndex = u32;
 
 pub const ROOT_HISTORY_SIZE: u32 = 100;
 
-#[derive(Default, Debug,  scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
+#[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
 #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
 pub struct Edge {
     /// chain id
@@ -26,7 +26,7 @@ pub struct Edge {
     pub target: Element,
 }
 
-#[derive(Default, Debug, SpreadLayout, SpreadAllocate)]
+#[derive(Default, Debug, scale::Encode, scale::Decode, SpreadLayout, SpreadAllocate)]
 #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
 pub struct LinkableMerkleTree {
     /// max edges
@@ -41,23 +41,6 @@ pub struct LinkableMerkleTree {
     pub neighbor_roots: Mapping<(ChainId, u32), [u8; 32]>,
 }
 
-impl Encode for LinkableMerkleTree {}
-
-impl EncodeLike for LinkableMerkleTree {}
-
-impl Decode for LinkableMerkleTree {
-    fn decode<I: Input>(input: &mut I) -> Result<Self, Error> {
-        todo!()
-    }
-
-    fn skip<I: Input>(input: &mut I) -> Result<(), Error> {
-        todo!()
-    }
-
-    fn encoded_fixed_size() -> Option<usize> {
-        todo!()
-    }
-}
 impl LinkableMerkleTree {
     fn has_edge(&self, chain_id: ChainId) -> bool {
         self.edges.get(&chain_id).is_some()
