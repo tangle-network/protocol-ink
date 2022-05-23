@@ -2,7 +2,6 @@ use ark_bn254::Fr as Bn254;
 use ark_ff::{BigInteger, PrimeField};
 use ark_std::{marker::PhantomData, vec::Vec};
 
-
 pub trait IntoPrimeField<T> {
     fn into_field(value: T) -> Vec<u8>;
 }

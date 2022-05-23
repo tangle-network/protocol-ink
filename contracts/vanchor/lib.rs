@@ -1,26 +1,26 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+mod field_ops;
+mod keccak;
 mod linkable_merkle_tree;
 mod merkle_tree;
 pub mod zeroes;
-mod keccak;
-mod field_ops;
 
 use ink_lang as ink;
 
 #[ink::contract]
 mod vanchor {
-    use poseidon::poseidon::{PoseidonRef};
+    use crate::field_ops::{ArkworksIntoFieldBn254, IntoPrimeField};
+    use crate::keccak::Keccak256;
     use crate::linkable_merkle_tree::{Edge, LinkableMerkleTree};
     use crate::merkle_tree::MerkleTree;
-    use verifier::vanchor_verifier::VAnchorVerifier;
     use crate::zeroes;
-    use ink_prelude::vec::Vec;
-    use ink_storage::{Mapping, traits::SpreadAllocate};
-    use crate::keccak::Keccak256;
-    use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
-    use crate::field_ops::{ArkworksIntoFieldBn254, IntoPrimeField};
     use ink_prelude::string::String;
+    use ink_prelude::vec::Vec;
+    use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
+    use ink_storage::{traits::SpreadAllocate, Mapping};
+    use poseidon::poseidon::PoseidonRef;
+    use verifier::vanchor_verifier::VAnchorVerifier;
 
     /// The vanchor result type.
     pub type Result<T> = core::result::Result<T, Error>;
@@ -29,7 +29,6 @@ mod vanchor {
         "requested transfer failed. this can be the case if the contract does not\
     have sufficient free funds or if the transfer would have brought the\
     contract's balance below minimum balance.";
-
 
     #[ink(storage)]
     #[derive(SpreadAllocate)]
@@ -58,10 +57,10 @@ mod vanchor {
 
         pub poseidon: PoseidonRef,
         pub verifier_2_2: VAnchorVerifier,
-        pub verifier_16_2: VAnchorVerifier
+        pub verifier_16_2: VAnchorVerifier,
     }
 
-    #[derive(Default, Debug,  scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
+    #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
     #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub struct ExtData {
         pub recipient: AccountId,
@@ -72,7 +71,7 @@ mod vanchor {
         pub encrypted_output2: [u8; 32],
     }
 
-    #[derive(Default, Debug,  scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
+    #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
     #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub struct ProofData {
         pub proof: Vec<u8>,
@@ -127,8 +126,6 @@ mod vanchor {
         InvalidWithdrawAmount,
         /// Insufficient funds
         InsufficientFunds,
-
-
     }
 
     impl VAnchor {
@@ -157,8 +154,8 @@ mod vanchor {
                     panic!("failed at instantiating the Poseidon contract: {:?}", error)
                 });
 
-            let verifier_2_2 = VAnchorVerifier::new(max_edges,2, 2);
-            let verifier_16_2 = VAnchorVerifier::new(max_edges,16, 16);
+            let verifier_2_2 = VAnchorVerifier::new(max_edges, 2, 2);
+            let verifier_16_2 = VAnchorVerifier::new(max_edges, 16, 16);
 
             ink_lang::utils::initialize_contract(|contract: &mut VAnchor| {
                 contract.chain_id = chain_id;
@@ -181,19 +178,24 @@ mod vanchor {
                 contract.verifier_16_2 = verifier_16_2;
 
                 for i in 0..levels {
-                    contract.merkle_tree.filled_subtrees.insert(i, &zeroes::zeroes(i));
+                    contract
+                        .merkle_tree
+                        .filled_subtrees
+                        .insert(i, &zeroes::zeroes(i));
                 }
 
-                contract.merkle_tree.roots.insert(0, &zeroes::zeroes(levels));
+                contract
+                    .merkle_tree
+                    .roots
+                    .insert(0, &zeroes::zeroes(levels));
             })
         }
 
         #[ink(message)]
-        pub fn update_vanchor_config(&mut self, max_ext_amt: u128, max_fee: u128,) -> Result<()> {
-            if self.creator !=  Self::env().caller() {
+        pub fn update_vanchor_config(&mut self, max_ext_amt: u128, max_fee: u128) -> Result<()> {
+            if self.creator != Self::env().caller() {
                 return Err(Error::UnknownRoot);
             }
-
 
             self.max_ext_amt = max_ext_amt;
             self.max_fee = max_fee;
@@ -202,13 +204,18 @@ mod vanchor {
         }
 
         #[ink(message)]
-        pub fn update_edge(&mut self, src_chain_id: u64, root: [u8; 32],
-                           latest_leaf_index: u32, target: [u8; 32]) -> Result<()> {
+        pub fn update_edge(
+            &mut self,
+            src_chain_id: u64,
+            root: [u8; 32],
+            latest_leaf_index: u32,
+            target: [u8; 32],
+        ) -> Result<()> {
             let edge = Edge {
                 chain_id: src_chain_id,
                 root,
                 latest_leaf_index,
-                target
+                target,
             };
 
             self.linkable_tree.update_edge(edge);
@@ -217,14 +224,18 @@ mod vanchor {
         }
 
         #[ink(message)]
-        pub fn transact_deposit(&mut self, proof_data: ProofData, ext_data: ExtData,
-                                recv_token_addr: AccountId, recv_token_amt: u128) -> Result<()> {
+        pub fn transact_deposit(
+            &mut self,
+            proof_data: ProofData,
+            ext_data: ExtData,
+            recv_token_addr: AccountId,
+            recv_token_amt: u128,
+        ) -> Result<()> {
             if self.tokenwrapper_addr != recv_token_addr {
                 return Err(Error::Unauthorized);
             }
 
             self.validate_proof(proof_data.clone(), ext_data.clone());
-
 
             let ext_data_fee: u128 = ext_data.fee.clone();
             let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
@@ -261,7 +272,11 @@ mod vanchor {
         }
 
         #[ink(message)]
-        pub fn transact_withdraw(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result<()> {
+        pub fn transact_withdraw(
+            &mut self,
+            proof_data: ProofData,
+            ext_data: ExtData,
+        ) -> Result<()> {
             self.validate_proof(proof_data.clone(), ext_data.clone());
 
             let ext_data_fee: u128 = ext_data.fee.clone();
@@ -299,20 +314,19 @@ mod vanchor {
 
             // Validation 1. Double check the number of roots.
             if self.linkable_tree.max_edges != proof_data.roots.len() as u32 {
-                return Err(Error::UnmatchedEdges)
+                return Err(Error::UnmatchedEdges);
+            }
+
+            if !self.merkle_tree.is_known_root(proof_data.roots[0]) {
+                return Err(Error::UnknownRoot);
             }
 
             if !self
-                .merkle_tree
-                .is_known_root(proof_data.roots[0])
+                .linkable_tree
+                .is_valid_neighbor_roots(&proof_data.roots[1..])
             {
-                return Err(Error::UnknownRoot)
-            }
-
-            if !self.linkable_tree.is_valid_neighbor_roots(&proof_data.roots[1..]) {
                 return Err(Error::InvalidMerkleRoots);
             }
-
 
             for nullifier in &proof_data.input_nullifiers {
                 if self.is_known_nullifier(*nullifier) {
@@ -325,7 +339,6 @@ mod vanchor {
                 output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
                 output
             };
-
 
             // Compute hash of abi encoded ext_data, reduced into field from config
             // Ensure that the passed external data hash matches the computed one
@@ -368,8 +381,11 @@ mod vanchor {
             }
 
             // Construct public inputs
-            let chain_id_type_bytes =
-                element_encoder(&self.compute_chain_id_type(self.chain_id, &INK_CHAIN_TYPE).to_le_bytes());
+            let chain_id_type_bytes = element_encoder(
+                &self
+                    .compute_chain_id_type(self.chain_id, &INK_CHAIN_TYPE)
+                    .to_le_bytes(),
+            );
 
             let mut bytes = Vec::new();
             bytes.extend_from_slice(&proof_data.public_amount);
@@ -390,7 +406,7 @@ mod vanchor {
                 proof_data.output_commitments.len(),
             ) {
                 (2, 2) => self.verifier_2_2.verify(bytes, proof_data.proof),
-                (16, 2) => self.verifier_16_2.verify( bytes, proof_data.proof),
+                (16, 2) => self.verifier_16_2.verify(bytes, proof_data.proof),
                 _ => Ok(false),
             };
 
@@ -407,13 +423,11 @@ mod vanchor {
         }
 
         fn execute_insertions(&mut self, proof_data: ProofData) -> Result<()> {
-
             for comm in &proof_data.output_commitments {
                 self.merkle_tree.insert(self.poseidon.clone(), *comm);
             }
 
             Ok(())
-
         }
 
         fn is_known_nullifier(&self, nullifier: [u8; 32]) -> bool {
