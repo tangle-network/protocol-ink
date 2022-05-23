@@ -261,7 +261,7 @@ mod vanchor {
         }
 
         #[ink(message)]
-        fn transact_withdraw(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result<()> {
+        pub fn transact_withdraw(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result<()> {
             self.validate_proof(proof_data.clone(), ext_data.clone());
 
             let ext_data_fee: u128 = ext_data.fee.clone();
@@ -274,7 +274,23 @@ mod vanchor {
                 if abs_ext_amt < self.min_withdraw_amt {
                     return Err(Error::InvalidWithdrawAmount);
                 };
+
+                // TODO: execute token wrapper unwrap function
             }
+
+            let fee_exists = ext_data_fee != 0;
+
+            if fee_exists {
+                if self
+                    .env()
+                    .transfer(ext_data.relayer.clone(), ext_data_fee)
+                    .is_err()
+                {
+                    panic!("{}", ERROR_MSG);
+                }
+            }
+
+            Ok(())
         }
 
         fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result<()> {
