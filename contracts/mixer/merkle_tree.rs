@@ -1,10 +1,10 @@
-use super::*;
 use super::mixer::{Result, ROOT_HISTORY_SIZE};
-use poseidon::PoseidonRef;
-use ink_storage::Mapping;
-use ink_storage::traits::{SpreadLayout, SpreadAllocate};
+use super::*;
 #[cfg(feature = "std")]
 use ink_storage::traits::StorageLayout;
+use ink_storage::traits::{SpreadAllocate, SpreadLayout};
+use ink_storage::Mapping;
+use poseidon::PoseidonRef;
 
 use ink_prelude::vec;
 
@@ -73,7 +73,7 @@ impl MerkleTree {
                 if r == root {
                     return true;
                 }
-    
+
                 if i == 0 {
                     i = ROOT_HISTORY_SIZE - 1;
                 } else {

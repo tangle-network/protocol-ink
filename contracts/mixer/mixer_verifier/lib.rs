@@ -50,10 +50,10 @@ mod verifier {
 
 #[ink::contract]
 pub mod mixer_verifier {
-    use crate::verifier::{ArkworksVerifierBn254};
-    use ink_storage::traits::SpreadAllocate;
+    use crate::verifier::ArkworksVerifierBn254;
     use ink_prelude::vec::Vec;
-    
+    use ink_storage::traits::SpreadAllocate;
+
     #[ink(storage)]
     #[derive(SpreadAllocate)]
     pub struct MixerVerifier {
