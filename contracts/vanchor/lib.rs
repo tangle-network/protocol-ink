@@ -20,7 +20,7 @@ mod vanchor {
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use poseidon::poseidon::PoseidonRef;
-    use verifier::vanchor_verifier::VAnchorVerifier;
+    use verifier::vanchor_verifier::VAnchorVerifierRef;
 
     /// The vanchor result type.
     pub type Result<T> = core::result::Result<T, Error>;
@@ -56,8 +56,8 @@ mod vanchor {
         pub used_nullifiers: Mapping<[u8; 32], bool>,
 
         pub poseidon: PoseidonRef,
-        pub verifier_2_2: VAnchorVerifier,
-        pub verifier_16_2: VAnchorVerifier,
+        pub verifier_2_2: VAnchorVerifierRef,
+        pub verifier_16_2: VAnchorVerifierRef,
     }
 
     #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
@@ -154,8 +154,28 @@ mod vanchor {
                     panic!("failed at instantiating the Poseidon contract: {:?}", error)
                 });
 
-            let verifier_2_2 = VAnchorVerifier::new(max_edges, 2, 2);
-            let verifier_16_2 = VAnchorVerifier::new(max_edges, 16, 16);
+            let verifier_2_2 = VAnchorVerifierRef::new(max_edges, 2, 2)
+                .endowment(0)
+                .code_hash(verifier_contract_hash)
+                .salt_bytes(salt)
+                .instantiate()
+                .unwrap_or_else(|error| {
+                    panic!(
+                        "failed at instantiating the VAnchorVerifier contract: {:?}",
+                        error
+                    )
+                });
+            let verifier_16_2 = VAnchorVerifierRef::new(max_edges, 16, 16)
+                .endowment(0)
+                .code_hash(verifier_contract_hash)
+                .salt_bytes(salt)
+                .instantiate()
+                .unwrap_or_else(|error| {
+                    panic!(
+                        "failed at instantiating the VAnchorVerifier contract: {:?}",
+                        error
+                    )
+                });
 
             ink_lang::utils::initialize_contract(|contract: &mut VAnchor| {
                 contract.chain_id = chain_id;
