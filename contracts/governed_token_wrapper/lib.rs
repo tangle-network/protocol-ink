@@ -104,6 +104,7 @@ mod governed_token_wrapper {
                 instance.metadata.name = name;
                 instance.metadata.symbol = symbol;
                 instance.metadata.decimals = decimal;
+
                 // Governance config
                 instance.governor = governor;
                 instance.fee_recipient = fee_recipient;
