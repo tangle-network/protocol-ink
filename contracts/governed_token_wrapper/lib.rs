@@ -199,7 +199,7 @@ mod governed_token_wrapper {
                 }
             } else {
                 // transfer PSP22 liquidity from the token wrapper to the sender
-                self.transfer(self.env().caller(), amount,Vec::<u8>::new());
+                self.transfer(self.env().caller(), amount, Vec::<u8>::new());
             }
         }
 
