@@ -36,7 +36,6 @@ mod governed_token_wrapper {
 
         // /// Governance - related params
         governor: AccountId,
-        native_token_denom: String,
         fee_recipient: AccountId,
         fee_percentage: Balance,
         is_native_allowed: bool,
@@ -107,13 +106,8 @@ mod governed_token_wrapper {
                 instance.metadata.name = name;
                 instance.metadata.symbol = symbol;
                 instance.metadata.decimals = decimal;
-                instance
-                    ._mint(instance.env().caller(), total_supply)
-                    .expect("Should mint total_supply");
-
                 // Governance config
                 instance.governor = governor;
-                instance.native_token_denom = native_token_denom;
                 instance.fee_recipient = fee_recipient;
                 instance.fee_percentage = fee_percentage;
                 instance.is_native_allowed = is_native_allowed;
