@@ -3,19 +3,18 @@
 
 use ink_lang as ink;
 
-
 #[brush::contract]
 mod governed_token_wrapper {
     use brush::contracts::psp22::extensions::metadata::*;
     use brush::contracts::psp22::extensions::mintable::*;
     use brush::contracts::psp22::extensions::wrapper::*;
-    use brush::contracts::traits::psp22::PSP22;
     use brush::contracts::psp22::*;
+    use brush::contracts::traits::psp22::PSP22;
     use brush::test_utils::*;
     use ink_prelude::string::String;
+    use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
-    use ink_prelude::vec::Vec;
 
     /// The vanchor result type.
     pub type Result<T> = core::result::Result<T, Error>;
@@ -50,7 +49,6 @@ mod governed_token_wrapper {
         historically_valid: Mapping<AccountId, bool>,
     }
 
-
     impl PSP22 for GovernedTokenWrapper {}
 
     impl PSP22Metadata for GovernedTokenWrapper {}
@@ -72,14 +70,25 @@ mod governed_token_wrapper {
         /// Invalid token address
         InvalidTokenAddress,
         /// Invalid token amount
-        InvalidTokenAmount
+        InvalidTokenAmount,
     }
 
     impl GovernedTokenWrapper {
         #[ink(constructor)]
-        pub fn new(total_supply: Balance, name: Option<String>, symbol: Option<String>, decimal: u8,
-        governor: AccountId, native_token_denom: String, fee_recipient: AccountId, fee_percentage: Balance,
-        is_native_allowed: bool, wrapping_limit: u128, proposal_nonce: u64, token_address: AccountId) -> Self {
+        pub fn new(
+            total_supply: Balance,
+            name: Option<String>,
+            symbol: Option<String>,
+            decimal: u8,
+            governor: AccountId,
+            native_token_denom: String,
+            fee_recipient: AccountId,
+            fee_percentage: Balance,
+            is_native_allowed: bool,
+            wrapping_limit: u128,
+            proposal_nonce: u64,
+            token_address: AccountId,
+        ) -> Self {
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
                 // for wrapping
                 instance._init(token_address);
@@ -92,7 +101,7 @@ mod governed_token_wrapper {
                     .expect("Should mint total_supply");
 
                 // Governance config
-                instance.governor  = governor;
+                instance.governor = governor;
                 instance.native_token_denom = native_token_denom;
                 instance.fee_recipient = fee_recipient;
                 instance.fee_percentage = fee_percentage;
@@ -102,11 +111,17 @@ mod governed_token_wrapper {
             })
         }
 
-
+        /// Used to wrap tokens on behalf of a sender.
+        ///
+        /// token_address is the address of PSP22 to transfer to, if token_address is None,
+        /// then it's a Native token address
+        ///
+        /// amount is the amount of token to transfer
         #[ink(message, payable)]
         pub fn wrap(&mut self, token_address: Option<AccountId>, amount: Balance) {
             self.is_valid_wrapping(token_address, amount);
 
+            // determine amount to use
             let amount_to_use = if token_address.is_none() {
                 self.env().transferred_value()
             } else {
@@ -130,57 +145,75 @@ mod governed_token_wrapper {
                     panic!("{}", ERROR_MSG);
                 }
             } else {
-
                 // psp22 transfer of  liquidity to token wrapper contract
-                self.transfer_from(self.env().caller(), self.env().account_id(),  leftover, Vec::<u8>::new()).is_ok();
+                self.transfer_from(
+                    self.env().caller(),
+                    self.env().account_id(),
+                    leftover,
+                    Vec::<u8>::new(),
+                )
+                .is_ok();
 
                 // psp22 transfer to fee recipient
-                self.transfer_from(self.env().caller(), self.fee_recipient,  cost_to_wrap, Vec::<u8>::new()).is_ok();
+                self.transfer_from(
+                    self.env().caller(),
+                    self.fee_recipient,
+                    cost_to_wrap,
+                    Vec::<u8>::new(),
+                )
+                .is_ok();
 
                 // mint the wrapped token for the sender
                 self.mint(self.env().caller(), leftover);
             }
         }
 
-        fn is_valid_wrapping(&mut self, token_address: Option<AccountId>,
-                             amount: Balance) -> Result<()> {
-
+        /// Checks to determine if it's safe to wrap
+        fn is_valid_wrapping(
+            &mut self,
+            token_address: Option<AccountId>,
+            amount: Balance,
+        ) -> Result<()> {
             if token_address.is_none() {
                 if amount == 0 {
-                    return Err(Error::InvalidAmountForNativeWrapping)
+                    return Err(Error::InvalidAmountForNativeWrapping);
                 }
 
                 if !self.is_native_allowed {
-                    return Err(Error::NativeWrappingNotAllowed)
+                    return Err(Error::NativeWrappingNotAllowed);
                 }
-
             } else {
-                if  self.env().transferred_value() == 0 {
-                    return Err(Error::InvalidValueSentForWrapping)
+                if self.env().transferred_value() == 0 {
+                    return Err(Error::InvalidValueSentForWrapping);
                 }
 
                 if !self.is_valid_address(token_address.unwrap()) {
-                    return Err(Error::InvalidTokenAddress)
+                    return Err(Error::InvalidTokenAddress);
                 }
             }
 
             if !self.is_valid_amount(amount) {
-                return Err(Error::InvalidTokenAmount)
+                return Err(Error::InvalidTokenAmount);
             }
 
             Ok(())
         }
 
+        /// Determines if token address is a valid one
         fn is_valid_address(&mut self, token_address: AccountId) -> bool {
             self.valid.get(token_address).is_some()
         }
 
+        /// Determines if amount is valid for wrapping
         fn is_valid_amount(&mut self, amount: Balance) -> bool {
             amount.saturating_add(self.psp22.supply) <= self.wrapping_limit
         }
 
+        /// Calculates the fee to be sent to fee recipient
         fn get_fee_from_amount(&mut self, amount_to_wrap: Balance) -> Balance {
-            amount_to_wrap.saturating_mul(self.fee_percentage).saturating_div(100)
+            amount_to_wrap
+                .saturating_mul(self.fee_percentage)
+                .saturating_div(100)
         }
     }
 }
