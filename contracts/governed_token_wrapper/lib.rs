@@ -5,6 +5,7 @@ use ink_lang as ink;
 
 #[brush::contract]
 mod governed_token_wrapper {
+    use brush::contracts::psp22::extensions::burnable::*;
     use brush::contracts::psp22::extensions::metadata::*;
     use brush::contracts::psp22::extensions::mintable::*;
     use brush::contracts::psp22::extensions::wrapper::*;
@@ -57,6 +58,8 @@ mod governed_token_wrapper {
 
     impl PSP22Wrapper for GovernedTokenWrapper {}
 
+    impl PSP22Burnable for GovernedTokenWrapper {}
+
     /// The token wrapper error types.
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -71,6 +74,14 @@ mod governed_token_wrapper {
         InvalidTokenAddress,
         /// Invalid token amount
         InvalidTokenAmount,
+        /// Insufficient native balance
+        InsufficientNativeBalance,
+        /// Native unwrapping is not allowed for this token wrapper
+        NativeUnwrappingNotAllowed,
+        /// Insufficient PSP22 balance
+        InsufficientPSP22Balance,
+        /// Invalid historical token address
+        InvalidHistoricalTokenAddress,
     }
 
     impl GovernedTokenWrapper {
@@ -168,6 +179,30 @@ mod governed_token_wrapper {
             }
         }
 
+        /// Used to unwrap/burn the wrapper token on behalf of a sender.
+        ///
+        /// token_address is the address of PSP22 to transfer to, if token_address is None,
+        /// then it's a Native token address
+        ///
+        /// amount is the amount of token to transfer
+        #[ink(message, payable)]
+        pub fn unwrap(&mut self, token_address: Option<AccountId>, amount: Balance) {
+            self.is_valid_unwrapping(token_address, amount);
+
+            // burn wrapped token from sender
+            self.burn(self.env().caller(), amount);
+
+            if token_address.is_none() {
+                // transfer native liquidity from the token wrapper to the sender
+                if self.env().transfer(self.env().caller(), amount).is_err() {
+                    panic!("{}", ERROR_MSG);
+                }
+            } else {
+                // transfer PSP22 liquidity from the token wrapper to the sender
+                self.transfer(self.env().caller(), amount,Vec::<u8>::new());
+            }
+        }
+
         /// Checks to determine if it's safe to wrap
         fn is_valid_wrapping(
             &mut self,
@@ -199,9 +234,36 @@ mod governed_token_wrapper {
             Ok(())
         }
 
+        fn is_valid_unwrapping(
+            &mut self,
+            token_address: Option<AccountId>,
+            amount: Balance,
+        ) -> Result<()> {
+            if token_address.is_none() {
+                if amount >= self.env().balance() {
+                    return Err(Error::InsufficientNativeBalance);
+                }
+
+                if !self.is_native_allowed {
+                    return Err(Error::NativeUnwrappingNotAllowed);
+                }
+            } else {
+                if amount >= self.balance_of(self.env().account_id()) {
+                    return Err(Error::InsufficientPSP22Balance);
+                }
+            }
+
+            Ok(())
+        }
+
         /// Determines if token address is a valid one
         fn is_valid_address(&mut self, token_address: AccountId) -> bool {
             self.valid.get(token_address).is_some()
+        }
+
+        /// Determines if token address is historically valid
+        fn is_address_historically_valid(&mut self, token_address: AccountId) -> bool {
+            self.historically_valid.get(token_address).is_some()
         }
 
         /// Determines if amount is valid for wrapping
