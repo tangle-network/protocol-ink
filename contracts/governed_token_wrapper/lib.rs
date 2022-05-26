@@ -86,12 +86,10 @@ mod governed_token_wrapper {
     impl GovernedTokenWrapper {
         #[ink(constructor)]
         pub fn new(
-            total_supply: Balance,
             name: Option<String>,
             symbol: Option<String>,
             decimal: u8,
             governor: AccountId,
-            native_token_denom: String,
             fee_recipient: AccountId,
             fee_percentage: Balance,
             is_native_allowed: bool,
