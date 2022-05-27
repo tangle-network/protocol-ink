@@ -134,7 +134,7 @@ mod governed_token_wrapper {
 
             let cost_to_wrap = self.get_fee_from_amount(amount_to_use);
 
-            let leftover = amount_to_use.saturating_mul(cost_to_wrap);
+            let leftover = amount_to_use.saturating_sub(cost_to_wrap);
 
             if token_address.is_none() {
                 // mint the native value sent to the contract
