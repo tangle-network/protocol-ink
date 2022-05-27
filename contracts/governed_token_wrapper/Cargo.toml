@@ -1,7 +1,7 @@
 [package]
 name = "governed_token_wrapper"
 version = "1.6.1"
-authors = ["Supercolony <m.konstantinovna@supercolony.net>"]
+authors = ["Damilare Akinlose <dharjeezy@gmail.com>"]
 edition = "2021"
 
 [dependencies]
