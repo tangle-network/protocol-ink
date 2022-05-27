@@ -71,8 +71,8 @@ mod governed_token_wrapper {
         InvalidValueSentForWrapping,
         /// Invalid token address
         InvalidTokenAddress,
-        /// Valid token address
-        ValidTokenAddress,
+        /// Token Address already exists
+        TokenAddressAlreadyExists,
         /// Invalid token amount
         InvalidTokenAmount,
         /// Insufficient native balance
@@ -300,7 +300,7 @@ mod governed_token_wrapper {
 
             // check if token address already exists
             if self.is_valid_address(token_address) {
-                return Err(Error::ValidTokenAddress);
+                return Err(Error::TokenAddressAlreadyExists);
             }
 
             if self.proposal_nonce > nonce {
