@@ -136,40 +136,13 @@ mod governed_token_wrapper {
 
             let leftover = amount_to_use.saturating_sub(cost_to_wrap);
 
-            if token_address.is_none() {
-                // mint the native value sent to the contract
-                self.mint(self.env().caller(), leftover);
-
-                // transfer costToWrap to the feeRecipient
-                if self
-                    .env()
-                    .transfer(self.fee_recipient, cost_to_wrap)
-                    .is_err()
-                {
-                    panic!("{}", ERROR_MSG);
-                }
-            } else {
-                // psp22 transfer of  liquidity to token wrapper contract
-                self.transfer_from(
-                    self.env().caller(),
-                    self.env().account_id(),
-                    leftover,
-                    Vec::<u8>::new(),
-                )
-                .is_ok();
-
-                // psp22 transfer to fee recipient
-                self.transfer_from(
-                    self.env().caller(),
-                    self.fee_recipient,
-                    cost_to_wrap,
-                    Vec::<u8>::new(),
-                )
-                .is_ok();
-
-                // mint the wrapped token for the sender
-                self.mint(self.env().caller(), leftover);
-            }
+            self.do_wrap(
+                token_address.clone(),
+                self.env().caller(),
+                self.env().caller(),
+                cost_to_wrap,
+                leftover,
+            );
         }
 
         /// Used to unwrap/burn the wrapper token on behalf of a sender.
@@ -182,17 +155,185 @@ mod governed_token_wrapper {
         pub fn unwrap(&mut self, token_address: Option<AccountId>, amount: Balance) {
             self.is_valid_unwrapping(token_address, amount);
 
+            self.do_unwrap(
+                token_address.clone(),
+                self.env().caller(),
+                self.env().caller(),
+                amount,
+            );
+        }
+
+        /// Used to unwrap/burn the wrapper token on behalf of a sender.
+        ///
+        /// token_address is the address of PSP22 to unwrap into,
+        ///
+        /// amount is the amount of tokens to burn
+        ///
+        /// recipient is the address to transfer to
+        #[ink(message, payable)]
+        pub fn unwrapAndSendTo(
+            &mut self,
+            token_address: Option<AccountId>,
+            amount: Balance,
+            recipient: AccountId,
+        ) {
+            self.is_valid_unwrapping(token_address, amount);
+
+            self.do_unwrap(
+                token_address.clone(),
+                recipient,
+                self.env().caller(),
+                amount,
+            );
+        }
+
+        /// Used to wrap tokens on behalf of a sender
+        ///
+        /// token_address is the address of PSP22 to unwrap into,
+        ///
+        /// amount is the amount of tokens to transfer
+        ///
+        /// sender is the Address of sender where assets are sent from.
+        #[ink(message, payable)]
+        pub fn wrap_for(
+            &mut self,
+            token_address: Option<AccountId>,
+            sender: AccountId,
+            amount: Balance,
+        ) {
+            self.is_valid_wrapping(token_address, amount);
+
+            // determine amount to use
+            let amount_to_use = if token_address.is_none() {
+                self.env().transferred_value()
+            } else {
+                amount
+            };
+
+            let cost_to_wrap = self.get_fee_from_amount(amount_to_use);
+
+            let leftover = amount_to_use.saturating_sub(cost_to_wrap);
+
+            self.do_wrap(
+                token_address.clone(),
+                sender,
+                sender,
+                cost_to_wrap,
+                leftover,
+            );
+        }
+        /// Used to wrap tokens on behalf of a sender and mint to a potentially different address
+        ///
+        /// token_address is the address of PSP22 to unwrap into,
+        ///
+        /// sender is Address of sender where assets are sent from.
+        ///
+        /// amount is the amount of tokens to transfer
+        ///
+        /// Recipient is the recipient of the wrapped tokens.
+        #[ink(message, payable)]
+        pub fn wrap_for_and_send_to(
+            &mut self,
+            token_address: Option<AccountId>,
+            sender: AccountId,
+            amount: Balance,
+            recipient: AccountId,
+        ) {
+            self.is_valid_wrapping(token_address, amount);
+
+            // determine amount to use
+            let amount_to_use = if token_address.is_none() {
+                self.env().transferred_value()
+            } else {
+                amount
+            };
+
+            let cost_to_wrap = self.get_fee_from_amount(amount_to_use);
+
+            let leftover = amount_to_use.saturating_sub(cost_to_wrap);
+
+            self.do_wrap(
+                token_address.clone(),
+                sender,
+                self.fee_recipient,
+                cost_to_wrap,
+                leftover,
+            );
+        }
+
+        /// Used to unwrap/burn the wrapper token on behalf of a sender.
+        ///
+        /// token_address is the address of PSP22 to transfer to, if token_address is None,
+        /// then it's a Native token address
+        ///
+        /// amount is the amount of token to transfer
+        ///
+        /// sender is the Address of sender where liquidity is send to.
+        #[ink(message, payable)]
+        pub fn unwrap_for(
+            &mut self,
+            token_address: Option<AccountId>,
+            amount: Balance,
+            sender: AccountId,
+        ) {
+            self.is_valid_unwrapping(token_address, amount);
+            self.do_unwrap(token_address.clone(), sender, sender, amount);
+        }
+
+        /// Handles unwrapping by transferring token to the sender and burning for the burn_for address
+        fn do_unwrap(
+            &mut self,
+            token_address: Option<AccountId>,
+            sender: AccountId,
+            burn_for: AccountId,
+            amount: Balance,
+        ) {
             // burn wrapped token from sender
-            self.burn(self.env().caller(), amount);
+            self.burn(burn_for, amount);
 
             if token_address.is_none() {
                 // transfer native liquidity from the token wrapper to the sender
-                if self.env().transfer(self.env().caller(), amount).is_err() {
+                if self.env().transfer(sender, amount).is_err() {
                     panic!("{}", ERROR_MSG);
                 }
             } else {
                 // transfer PSP22 liquidity from the token wrapper to the sender
-                self.transfer(self.env().caller(), amount, Vec::<u8>::new());
+                self.transfer(sender, amount, Vec::<u8>::new()).is_ok();
+            }
+        }
+
+        /// Handles wrapping by transferring token to the sender and minting for the mint_for address
+        fn do_wrap(
+            &mut self,
+            token_address: Option<AccountId>,
+            sender: AccountId,
+            mint_for: AccountId,
+            cost_to_wrap: Balance,
+            leftover: Balance,
+        ) {
+            if token_address.is_none() {
+                // mint the native value sent to the contract
+                self.mint(mint_for, leftover);
+
+                // transfer costToWrap to the feeRecipient
+                if self
+                    .env()
+                    .transfer(self.fee_recipient, cost_to_wrap)
+                    .is_err()
+                {
+                    panic!("{}", ERROR_MSG);
+                }
+            } else {
+                // psp22 transfer of liquidity to token wrapper contract
+                self.transfer_from(sender, self.env().account_id(), leftover, Vec::<u8>::new())
+                    .is_ok();
+
+                // psp22 transfer to fee recipient
+                self.transfer_from(sender, self.fee_recipient, cost_to_wrap, Vec::<u8>::new())
+                    .is_ok();
+
+                // mint the wrapped token for the sender
+                self.mint(mint_for, leftover);
             }
         }
 
