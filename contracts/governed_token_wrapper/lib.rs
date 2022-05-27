@@ -326,6 +326,7 @@ mod governed_token_wrapper {
         /// tokenAddress:  The address of the token to be added
         ///
         /// nonce: The nonce tracking updates to this contract
+        #[ink(message)]
         pub fn remove_token_address(&mut self, token_address: AccountId, nonce: u64) -> Result<()> {
             self.is_governor(self.env().caller());
 
@@ -348,6 +349,41 @@ mod governed_token_wrapper {
             self.proposal_nonce = nonce;
             Ok(())
         }
+
+        /// Updates contract configs
+        #[ink(message)]
+        pub fn update_config(
+            &mut self,
+            governor: Option<AccountId>,
+            is_native_allowed: Option<bool>,
+            wrapping_limit: Option<u128>,
+            fee_percentage: Option<Balance>,
+            fee_recipient: Option<AccountId>,
+        ) {
+            // only contract governor can execute this function
+            self.is_governor(self.env().caller());
+
+            if governor.is_some() {
+                self.governor = governor.unwrap();
+            }
+
+            if is_native_allowed.is_some() {
+                self.is_native_allowed = is_native_allowed.unwrap();
+            }
+
+            if wrapping_limit.is_some() {
+                self.wrapping_limit = wrapping_limit.unwrap_or(self.wrapping_limit);
+            }
+
+            if fee_percentage.is_some() {
+                self.fee_percentage = fee_percentage.unwrap();
+            }
+
+            if fee_recipient.is_some() {
+                self.fee_recipient = fee_recipient.unwrap();
+            }
+        }
+
         /// Handles unwrapping by transferring token to the sender and burning for the burn_for address
         fn do_unwrap(
             &mut self,
