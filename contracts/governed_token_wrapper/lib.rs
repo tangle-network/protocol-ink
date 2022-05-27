@@ -71,6 +71,8 @@ mod governed_token_wrapper {
         InvalidValueSentForWrapping,
         /// Invalid token address
         InvalidTokenAddress,
+        /// Invalid token address
+        ValidTokenAddress,
         /// Invalid token amount
         InvalidTokenAmount,
         /// Insufficient native balance
@@ -81,6 +83,12 @@ mod governed_token_wrapper {
         InsufficientPSP22Balance,
         /// Invalid historical token address
         InvalidHistoricalTokenAddress,
+        /// Unauthorized
+        Unauthorize,
+        /// Invalid Nonce
+        InvalidNonce,
+        /// Nonce must increment by 1
+        NonceMustIncrementByOne,
     }
 
     impl GovernedTokenWrapper {
@@ -171,7 +179,7 @@ mod governed_token_wrapper {
         ///
         /// recipient is the address to transfer to
         #[ink(message, payable)]
-        pub fn unwrapAndSendTo(
+        pub fn unwrap_and_send_to(
             &mut self,
             token_address: Option<AccountId>,
             amount: Balance,
@@ -255,7 +263,7 @@ mod governed_token_wrapper {
             self.do_wrap(
                 token_address.clone(),
                 sender,
-                self.fee_recipient,
+                recipient,
                 cost_to_wrap,
                 leftover,
             );
@@ -280,6 +288,66 @@ mod governed_token_wrapper {
             self.do_unwrap(token_address.clone(), sender, sender, amount);
         }
 
+        ///  Adds a token at `_tokenAddress` to the GovernedTokenWrapper's wrapping list
+        ///
+        /// tokenAddress:  The address of the token to be added
+        ///
+        /// nonce: The nonce tracking updates to this contract
+        #[ink(message)]
+        pub fn add_token_address(&mut self, token_address: AccountId, nonce: u64) -> Result<()> {
+            // only contract governor can execute this function
+            self.is_governor(self.env().caller());
+
+            // check if token address already exists
+            if self.is_valid_address(token_address) {
+                return Err(Error::ValidTokenAddress);
+            }
+
+            if self.proposal_nonce > nonce {
+                return Err(Error::InvalidNonce);
+            }
+
+            if nonce != self.proposal_nonce + 1 {
+                return Err(Error::NonceMustIncrementByOne);
+            }
+
+            self.valid.insert(token_address, &true);
+            self.historically_valid.insert(token_address, &true);
+            self.tokens.insert(token_address, &true);
+            self.historical_tokens.insert(token_address, &true);
+
+            self.proposal_nonce = nonce;
+
+            Ok(())
+        }
+
+        ///  Removes a token at `_tokenAddress` from the GovernedTokenWrapper's wrapping list
+        ///
+        /// tokenAddress:  The address of the token to be added
+        ///
+        /// nonce: The nonce tracking updates to this contract
+        pub fn remove_token_address(&mut self, token_address: AccountId, nonce: u64) -> Result<()> {
+            self.is_governor(self.env().caller());
+
+            // check if token address already exists
+            if !self.is_valid_address(token_address) {
+                return Err(Error::InvalidTokenAddress);
+            }
+
+            if self.proposal_nonce > nonce {
+                return Err(Error::InvalidNonce);
+            }
+
+            if nonce != self.proposal_nonce + 1 {
+                return Err(Error::NonceMustIncrementByOne);
+            }
+
+            self.valid.insert(token_address, &false);
+            self.tokens.insert(token_address, &false);
+
+            self.proposal_nonce = nonce;
+            Ok(())
+        }
         /// Handles unwrapping by transferring token to the sender and burning for the burn_for address
         fn do_unwrap(
             &mut self,
@@ -414,6 +482,14 @@ mod governed_token_wrapper {
             amount_to_wrap
                 .saturating_mul(self.fee_percentage)
                 .saturating_div(100)
+        }
+
+        fn is_governor(&mut self, address: AccountId) -> Result<()> {
+            if self.governor != address {
+                return Err(Error::Unauthorize);
+            }
+
+            Ok(())
         }
     }
 }
