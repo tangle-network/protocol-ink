@@ -203,7 +203,7 @@ mod governed_token_wrapper {
             amount: Balance,
         ) -> Result<()> {
             if token_address.is_none() {
-                if amount == 0 {
+                if amount != 0 {
                     return Err(Error::InvalidAmountForNativeWrapping);
                 }
 
@@ -211,7 +211,7 @@ mod governed_token_wrapper {
                     return Err(Error::NativeWrappingNotAllowed);
                 }
             } else {
-                if self.env().transferred_value() == 0 {
+                if self.env().transferred_value() != 0 {
                     return Err(Error::InvalidValueSentForWrapping);
                 }
 
@@ -243,6 +243,10 @@ mod governed_token_wrapper {
             } else {
                 if amount >= self.balance_of(self.env().account_id()) {
                     return Err(Error::InsufficientPSP22Balance);
+                }
+
+                if !self.is_address_historically_valid(token_address.unwrap()) {
+                    return Err(Error::InvalidHistoricalTokenAddress);
                 }
             }
 
