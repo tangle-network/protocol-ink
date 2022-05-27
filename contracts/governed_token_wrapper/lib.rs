@@ -71,7 +71,7 @@ mod governed_token_wrapper {
         InvalidValueSentForWrapping,
         /// Invalid token address
         InvalidTokenAddress,
-        /// Invalid token address
+        /// Valid token address
         ValidTokenAddress,
         /// Invalid token amount
         InvalidTokenAmount,
