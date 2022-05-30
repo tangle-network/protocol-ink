@@ -527,5 +527,16 @@ mod governed_token_wrapper {
 
             Ok(())
         }
+
+        /// Returns the `governor` value.
+        #[ink(message)]
+        pub fn governor(&self) -> AccountId {
+            self.governor
+        }
+
+        #[ink(message)]
+        pub fn name(&self) -> Option<String> {
+            self.metadata.name.clone()
+        }
     }
 }
