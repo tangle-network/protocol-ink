@@ -27,13 +27,13 @@ describe('token-wrapper', () => {
         return { sender, Alice };
     }
 
-    it('Token wrapper test', async () => {
+    it('Test wrap functionality', async () => {
         const { sender } = await setup();
 
-        // Poseidon instantiation
+        // token wrapper instantiation
         const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
         const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-        'Some(Webb)', 'Some(Webb)', 4, sender.address, sender.address, 10, true, 10, 101, sender.address);
+        'Webb', 'Webb', 4, sender.address, sender.address, 10, true, 10, 101, sender.address);
 
         console.log(`token wrapper contract initialized ${tokenWrapperContract}`);
 
@@ -42,6 +42,21 @@ describe('token-wrapper', () => {
 
         console.log(governor);
         console.log(name);
+
+        // wrap
+        const wrapResponse = await tokenWrapperContract.tx.wrap(sender.address, 1000, { value: 10 });
+        console.log(wrapResponse);
+    });
+
+    it('Test unwrap functionality', async () => {
+        const { sender } = await setup();
+
+        // token wrapper instantiation
+        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
+        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
+            'Webb', 'Webb', 4, sender.address, sender.address, 10, true, 10, 101, sender.address);
+
+        console.log(`token wrapper contract initialized ${tokenWrapperContract}`);
 
         const wrapResponse = await tokenWrapperContract.tx.wrap(sender.address, 1000, { value: 10 });
         console.log(wrapResponse);
