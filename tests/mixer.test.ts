@@ -2,34 +2,37 @@ import { assert, expect } from "chai";
 import { artifacts, network, patract } from "redspot";
 
 import {
-  Note,
-  NoteGenInput,
-  ProvingManagerSetupInput,
-  ProvingManagerWrapper,
-} from '@webb-tools/sdk-core';
+  generate_proof_js,
+  JsNote,
+  JsNoteBuilder,
+  ProofInputBuilder,
+} from '@webb-tools/wasm-utils/njs';
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
 
-async function generateDeposit(amount: number): Promise<Note> {
-  const noteInput: NoteGenInput = {
-    protocol: 'mixer',
-    version: 'v2',
-    sourceChain: '5',
-    targetChain: '5',
-    sourceIdentifyingData: '3',
-    targetIdentifyingData: '3',
-    tokenSymbol: 'WEBB',
-    amount: '1',
-    denomination: '18',
-    backend: 'Arkworks',
-    hashFunction: 'Poseidon',
-    curve: 'Bn254',
-    width: '3',
-    exponentiation: '5',
-  };
-  const note = await Note.generateNote(noteInput);
-  return note
+export function generateDeposit(amount: number) {
+  let noteBuilder = new JsNoteBuilder();
+  noteBuilder.protocol('mixer');
+  noteBuilder.version('v2');
+
+  noteBuilder.sourceChainId('1');
+  noteBuilder.targetChainId('1');
+
+  noteBuilder.tokenSymbol('WEBB');
+  noteBuilder.amount('1');
+  noteBuilder.sourceIdentifyingData('3');
+  noteBuilder.targetIdentifyingData('3');
+  noteBuilder.denomination('18');
+
+  noteBuilder.backend('Arkworks');
+  noteBuilder.hashFunction('Poseidon');
+  noteBuilder.curve('Bn254');
+  noteBuilder.width('3');
+  noteBuilder.exponentiation('5');
+  const note = noteBuilder.build();
+
+  return note;
 }
 
 // to call a "method", you use contract.tx.methodName(args). to get a value, you use contract.query.methodName(args).
@@ -57,7 +60,9 @@ describe('mixer', () => {
     // Mixer verifier instantiation
     const mixerVerifierContractFactory = await getContractFactory('mixer_verifier', sender.address);
     const mixerVerifierContract = await mixerVerifierContractFactory.deploy('new');
-
+    console.log(poseidonContract.abi.info.source.wasmHash);
+    console.log(mixerVerifierContract.abi.info.source.wasmHash);
+    
     // Mixer instantiation
     const randomVersion = Math.floor(Math.random() * 10000);
     const levels = 30;
@@ -70,12 +75,14 @@ describe('mixer', () => {
       poseidonContract.abi.info.source.wasmHash,
       mixerVerifierContract.abi.info.source.wasmHash,
     );
-    console.log(await mixerContract.query.levels());
-    console.log(await mixerContract.query.depositSize());
-
+    await mixerContract.query.levels();
+    await mixerContract.query.depositSize();
+    
     // Mixer deposit
-    let note = await generateDeposit(depositSize);
-    let commitment = note.getLeaf()
-    await mixerContract.tx.deposit(commitment, { value: depositSize });
+    let note = generateDeposit(depositSize);
+    let commitment = note.getLeafCommitment();
+
+    const resp = await mixerContract.tx.deposit(commitment, { value: depositSize });
+    console.log(resp);
   });
 })
