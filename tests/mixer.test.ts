@@ -6,23 +6,21 @@ import {
   JsNote,
   JsNoteBuilder,
   ProofInputBuilder,
-} from '@webb-tools/wasm-utils/njs';
+  } from '@webb-tools/wasm-utils/njs';
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
 
 export function generateDeposit(amount: number) {
   let noteBuilder = new JsNoteBuilder();
-  noteBuilder.protocol('mixer');
-  noteBuilder.version('v2');
+  noteBuilder.prefix('webb.mixer');
+  noteBuilder.version('v1');
 
   noteBuilder.sourceChainId('1');
   noteBuilder.targetChainId('1');
 
   noteBuilder.tokenSymbol('WEBB');
-  noteBuilder.amount('1');
-  noteBuilder.sourceIdentifyingData('3');
-  noteBuilder.targetIdentifyingData('3');
+  noteBuilder.amount(`${amount}`);
   noteBuilder.denomination('18');
 
   noteBuilder.backend('Arkworks');
@@ -46,7 +44,7 @@ describe('mixer', () => {
     const signerAddresses = await getAddresses();
     const Alice = signerAddresses[0];
     const sender = await getRandomSigner(Alice, '20000 UNIT');
-  
+
     return { sender, Alice };
   }
 
@@ -60,9 +58,7 @@ describe('mixer', () => {
     // Mixer verifier instantiation
     const mixerVerifierContractFactory = await getContractFactory('mixer_verifier', sender.address);
     const mixerVerifierContract = await mixerVerifierContractFactory.deploy('new');
-    console.log(poseidonContract.abi.info.source.wasmHash);
-    console.log(mixerVerifierContract.abi.info.source.wasmHash);
-    
+
     // Mixer instantiation
     const randomVersion = Math.floor(Math.random() * 10000);
     const levels = 30;
@@ -75,14 +71,12 @@ describe('mixer', () => {
       poseidonContract.abi.info.source.wasmHash,
       mixerVerifierContract.abi.info.source.wasmHash,
     );
-    await mixerContract.query.levels();
-    await mixerContract.query.depositSize();
-    
+    console.log(await mixerContract.query.levels());
+    console.log(await mixerContract.query.depositSize());
+
     // Mixer deposit
     let note = generateDeposit(depositSize);
     let commitment = note.getLeafCommitment();
-
-    const resp = await mixerContract.tx.deposit(commitment, { value: depositSize });
-    console.log(resp);
+    await mixerContract.tx.deposit(commitment, { value: depositSize });
   });
 })

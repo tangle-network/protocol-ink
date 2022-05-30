@@ -15,7 +15,6 @@ ink_lang = { version = "3.0.0-rc9", default-features = false }
 
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
-    "full",
 ] }
 scale-info = { version = "2", default-features = false, features = [
     "derive",
