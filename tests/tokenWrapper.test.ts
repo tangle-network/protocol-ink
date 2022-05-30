@@ -40,7 +40,6 @@ describe('token-wrapper', () => {
         let governor = await tokenWrapperContract.query.governor();
         let name = await tokenWrapperContract.query.name();
 
-
         console.log(governor);
         console.log(name);
 
@@ -49,7 +48,5 @@ describe('token-wrapper', () => {
 
         const unwrapResponse = await tokenWrapperContract.tx.unwrap(sender.address, 1000, { value: 10 });
         console.log(unwrapResponse);
-
-
     });
 })
