@@ -89,6 +89,17 @@ mod governed_token_wrapper {
         InvalidNonce,
         /// Nonce must increment by 1
         NonceMustIncrementByOne,
+        /// TransferError
+        TransferError
+    }
+
+    #[ink(event)]
+    pub struct Wrap {
+        #[ink(topic)]
+        sender: Option<AccountId>,
+        #[ink(topic)]
+        mint_for: Option<AccountId>,
+        amount: Balance,
     }
 
     impl GovernedTokenWrapper {
@@ -104,7 +115,11 @@ mod governed_token_wrapper {
             wrapping_limit: u128,
             proposal_nonce: u64,
             token_address: AccountId,
+            total_supply: Balance,
+            governor_balance: Balance
         ) -> Self {
+            ink_env::debug_println!("created new instance of token wrapper at {}", Self::env().block_number());
+
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
                 // for wrapping
                 instance._init(token_address);
@@ -112,6 +127,9 @@ mod governed_token_wrapper {
                 instance.metadata.name = name;
                 instance.metadata.symbol = symbol;
                 instance.metadata.decimals = decimal;
+
+                instance.psp22.supply = total_supply;
+                instance.psp22.balances.insert(&governor, &governor_balance);
 
                 // Governance config
                 instance.governor = governor;
@@ -130,7 +148,9 @@ mod governed_token_wrapper {
         ///
         /// amount is the amount of token to transfer
         #[ink(message, payable)]
-        pub fn wrap(&mut self, token_address: Option<AccountId>, amount: Balance) {
+        pub fn wrap(&mut self, token_address: Option<AccountId>, amount: Balance) -> Result<()> {
+            ink_env::debug_println!("inside wrap");
+
             self.is_valid_wrapping(token_address, amount);
 
             // determine amount to use
@@ -140,9 +160,17 @@ mod governed_token_wrapper {
                 amount
             };
 
-            let cost_to_wrap = self.get_fee_from_amount(amount_to_use);
+            //let cost_to_wrap = self.get_fee_from_amount(amount_to_use);
+            let cost_to_wrap = 10;
 
-            let leftover = amount_to_use.saturating_sub(cost_to_wrap);
+            let message = ink_prelude::format!("cost_to_wrap is {:?}", cost_to_wrap);
+            ink_env::debug_println!("{}", &message);
+
+            //let leftover = amount_to_use.saturating_sub(cost_to_wrap);
+            let leftover = 4;
+
+            let message = ink_prelude::format!("leftover is {:?}", leftover);
+            ink_env::debug_println!("{}", &message);
 
             self.do_wrap(
                 token_address.clone(),
@@ -151,6 +179,8 @@ mod governed_token_wrapper {
                 cost_to_wrap,
                 leftover,
             );
+
+            Ok(())
         }
 
         /// Used to unwrap/burn the wrapper token on behalf of a sender.
@@ -229,6 +259,12 @@ mod governed_token_wrapper {
                 cost_to_wrap,
                 leftover,
             );
+
+            self.env().emit_event(Wrap {
+                sender: Some(sender),
+                mint_for: Some(sender),
+                amount,
+            });
         }
         /// Used to wrap tokens on behalf of a sender and mint to a potentially different address
         ///
@@ -295,19 +331,31 @@ mod governed_token_wrapper {
         /// nonce: The nonce tracking updates to this contract
         #[ink(message)]
         pub fn add_token_address(&mut self, token_address: AccountId, nonce: u64) -> Result<()> {
+            ink_env::debug_println!("inside add token address");
+
+            let message = ink_prelude::format!("caller is {:?}", self.env().caller());
+            ink_env::debug_println!("{}", &message);
+
+            let message = ink_prelude::format!("governor is {:?}", self.governor);
+            ink_env::debug_println!("{}", &message);
+
             // only contract governor can execute this function
             self.is_governor(self.env().caller());
 
+
             // check if token address already exists
             if self.is_valid_address(token_address) {
+                ink_env::debug_println!("token address already exists");
                 return Err(Error::TokenAddressAlreadyExists);
             }
 
             if self.proposal_nonce > nonce {
+                ink_env::debug_println!("invalid nonce");
                 return Err(Error::InvalidNonce);
             }
 
             if nonce != self.proposal_nonce + 1 {
+                ink_env::debug_println!("nonce must increment by one");
                 return Err(Error::NonceMustIncrementByOne);
             }
 
@@ -317,6 +365,8 @@ mod governed_token_wrapper {
             self.historical_tokens.insert(token_address, &true);
 
             self.proposal_nonce = nonce;
+
+            ink_env::debug_println!("done literally");
 
             Ok(())
         }
@@ -328,18 +378,22 @@ mod governed_token_wrapper {
         /// nonce: The nonce tracking updates to this contract
         #[ink(message)]
         pub fn remove_token_address(&mut self, token_address: AccountId, nonce: u64) -> Result<()> {
+            ink_env::debug_println!("inside remove token address");
             self.is_governor(self.env().caller());
 
             // check if token address already exists
             if !self.is_valid_address(token_address) {
+                ink_env::debug_println!("invalid token address");
                 return Err(Error::InvalidTokenAddress);
             }
 
             if self.proposal_nonce > nonce {
+                ink_env::debug_println!("invalid nonce");
                 return Err(Error::InvalidNonce);
             }
 
             if nonce != self.proposal_nonce + 1 {
+                ink_env::debug_println!("nonce must increment by 1");
                 return Err(Error::NonceMustIncrementByOne);
             }
 
@@ -414,8 +468,11 @@ mod governed_token_wrapper {
             mint_for: AccountId,
             cost_to_wrap: Balance,
             leftover: Balance,
-        ) {
+        ) -> Result<()> {
+            ink_env::debug_println!("doing wrap");
+
             if token_address.is_none() {
+                ink_env::debug_println!("native token transfer");
                 // mint the native value sent to the contract
                 self.mint(mint_for, leftover);
 
@@ -425,9 +482,11 @@ mod governed_token_wrapper {
                     .transfer(self.fee_recipient, cost_to_wrap)
                     .is_err()
                 {
+                    return Err(Error::TransferError);
                     panic!("{}", ERROR_MSG);
                 }
             } else {
+                ink_env::debug_println!("psp22 token transfer");
                 // psp22 transfer of liquidity to token wrapper contract
                 self.transfer_from(sender, self.env().account_id(), leftover, Vec::<u8>::new())
                     .is_ok();
@@ -439,6 +498,8 @@ mod governed_token_wrapper {
                 // mint the wrapped token for the sender
                 self.mint(mint_for, leftover);
             }
+
+            Ok(())
         }
 
         /// Checks to determine if it's safe to wrap
@@ -457,17 +518,25 @@ mod governed_token_wrapper {
                 }
             } else {
                 if self.env().transferred_value() != 0 {
+                    ink_env::debug_println!("value is not equal to 0");
                     return Err(Error::InvalidValueSentForWrapping);
                 }
 
                 if !self.is_valid_address(token_address.unwrap()) {
+                    ink_env::debug_println!("invalid token address");
                     return Err(Error::InvalidTokenAddress);
                 }
             }
 
             if !self.is_valid_amount(amount) {
+                let message = ink_prelude::format!("amount to wrap is {:?}", amount);
+                ink_env::debug_println!("{}", &message);
+
+                ink_env::debug_println!("invalid token amount");
                 return Err(Error::InvalidTokenAmount);
             }
+
+            ink_env::debug_println!("wrapping is valid");
 
             Ok(())
         }
@@ -500,7 +569,13 @@ mod governed_token_wrapper {
 
         /// Determines if token address is a valid one
         fn is_valid_address(&mut self, token_address: AccountId) -> bool {
-            self.valid.get(token_address).is_some()
+           let res =  self.valid.get(token_address).is_some();
+            let message = ink_prelude::format!("res is {:?}", res);
+            ink_env::debug_println!("{}", &message);
+
+            let message = ink_prelude::format!("nonce is {:?}", self.proposal_nonce);
+            ink_env::debug_println!("{}", &message);
+           res
         }
 
         /// Determines if token address is historically valid
@@ -510,7 +585,14 @@ mod governed_token_wrapper {
 
         /// Determines if amount is valid for wrapping
         fn is_valid_amount(&mut self, amount: Balance) -> bool {
-            amount.saturating_add(self.psp22.supply) <= self.wrapping_limit
+            let amount_add_supply =  amount.saturating_add(self.psp22.supply);
+            let message = ink_prelude::format!("addition of amount to supply is {:?}", amount);
+            ink_env::debug_println!("{}", &message);
+
+            let message = ink_prelude::format!("wrapping limit is{:?}", self.wrapping_limit);
+            ink_env::debug_println!("{}", &message);
+
+            amount_add_supply <= self.wrapping_limit
         }
 
         /// Calculates the fee to be sent to fee recipient
@@ -526,6 +608,34 @@ mod governed_token_wrapper {
             }
 
             Ok(())
+        }
+
+        /// Returns the `governor` value.
+        #[ink(message)]
+        pub fn governor(&self) -> AccountId {
+            self.governor
+        }
+
+        #[ink(message)]
+        pub fn name(&self) -> Option<String> {
+            self.metadata.name.clone()
+        }
+
+        #[ink(message)]
+        pub fn nonce(&self) -> u64 {
+            let message = ink_prelude::format!("nonce in query is {:?}", self.proposal_nonce);
+            ink_env::debug_println!("{}", &message);
+            self.proposal_nonce
+        }
+
+        #[ink(message)]
+        pub fn is_valid_token_address(&self, token_address: AccountId) -> bool {
+            self.valid.get(token_address).is_some()
+        }
+
+        #[ink(message)]
+        pub fn total_supply(&self) -> Balance {
+            self.psp22.supply
         }
     }
 }

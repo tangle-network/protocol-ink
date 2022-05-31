@@ -48,7 +48,7 @@ describe('mixer', () => {
     return { sender, Alice };
   }
 
-  it('Creates a new instance of the mixer', async () => {
+  it.skip('Creates a new instance of the mixer', async () => {
     const { sender } = await setup();
 
     // Poseidon instantiation
