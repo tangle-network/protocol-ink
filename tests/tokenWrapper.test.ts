@@ -5,7 +5,6 @@ const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
 
 
-// to call a "method", you use contract.tx.methodName(args). to get a value, you use contract.query.methodName(args).
 describe('token-wrapper', () => {
     after(() => {
         return api.disconnect()
@@ -71,17 +70,17 @@ describe('token-wrapper', () => {
         let governorBalance = 1000;
 
         // token wrapper instantiation
-        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', BobSigner.address);
+        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
         const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
             'Webb', 'Webb', 4, sender.address, sender.address, 10, true, 10, proposalNonce, sender.address,
             totalSupply, governorBalance);
 
         // first add a token address
-        let addTokenFunction = await tokenWrapperContract.tx.addTokenAddress(sender.address, proposalNonce + 1)
+        let addTokenFunction = await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, proposalNonce + 1)
         expect(addTokenFunction).to.be.ok;
 
         // validate that address has been added successfully
-        let  isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(sender.address);
+        let  isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
         expect(isValidAddress.output).to.equal(true);
 
         // validate that proposalNonce has increased
@@ -101,9 +100,11 @@ describe('token-wrapper', () => {
         // validate that address has been removed successfully
         let isValidAddressAgain = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
         expect(isValidAddressAgain.output).to.equal(false);
+        console.log(`new proposalNonce is ${isValidAddressAgain.output}`);
 
         // validate that proposalNonce has increased
         let  newProposalNonceAgain  = await tokenWrapperContract.query.nonce();
+        console.log(`new proposalNonce is ${newProposalNonceAgain.output}`);
         expect(newProposalNonceAgain.output).to.be.equal(proposalNonce);
     });
 

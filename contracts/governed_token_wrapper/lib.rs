@@ -630,7 +630,7 @@ mod governed_token_wrapper {
 
         #[ink(message)]
         pub fn is_valid_token_address(&self, token_address: AccountId) -> bool {
-            self.valid.get(token_address).is_some()
+            self.valid.get(token_address).unwrap()
         }
 
         #[ink(message)]
