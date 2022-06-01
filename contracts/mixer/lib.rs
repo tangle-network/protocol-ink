@@ -179,7 +179,8 @@ pub mod mixer {
             self.used_nullifiers
                 .insert(withdraw_params.nullifier_hash, &true);
             // Send the funds
-            // TODO: Support "ERC20"-like tokens
+            // TODO: Support "PSP22"-like tokens and Native token
+            // TODO: SPEC this more with Drew and create task/issue
             if self
                 .env()
                 .transfer(
