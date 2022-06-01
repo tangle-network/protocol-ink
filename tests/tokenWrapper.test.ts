@@ -187,18 +187,25 @@ describe('token-wrapper', () => {
             tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
             totalSupply, governorBalance);
 
-        let initialBalance = await tokenWrapperContract.query.psp22Balance(sender.address);
-        console.log(`initialBalance is ${initialBalance.output}`);
-        expect(Number(initialBalance.output)).to.not.equal(0);
+        let initialSenderWrappedBalance = await tokenWrapperContract.query.psp22Balance(sender.address);
+        let initialContractBalance = await tokenWrapperContract.query.nativeContractBalance();
+
+        expect(Number(initialSenderWrappedBalance.output)).to.not.equal(0);
+        expect(Number(initialContractBalance.output)).to.equal(0);
 
         let wrapFunction = await tokenWrapperContract.tx.wrap( null, 0, { value: 1000 });
 
          expect(wrapFunction).to.be.ok;
 
-        let balanceAfter = await tokenWrapperContract.query.psp22Balance(sender.address);
-        console.log(`balanceAfter is ${balanceAfter.output}`);
-        expect(Number(balanceAfter.output)).to.not.equal(0);
-        expect(Number(balanceAfter.output)).to.be.greaterThan(Number(initialBalance.output));
+        let senderWrappedBalanceAfter = await tokenWrapperContract.query.psp22Balance(sender.address);
+        let contractBalanceAfter = await tokenWrapperContract.query.nativeContractBalance();
+
+        expect(Number(senderWrappedBalanceAfter.output)).to.not.equal(0);
+        expect(Number(contractBalanceAfter.output)).to.not.equal(0);
+
+        expect(Number(senderWrappedBalanceAfter.output)).to.be.greaterThan(Number(initialSenderWrappedBalance.output));
+        expect(Number(contractBalanceAfter.output)).to.be.greaterThan(Number(initialContractBalance.output));
+
 
     });
 
