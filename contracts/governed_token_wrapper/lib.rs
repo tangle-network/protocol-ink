@@ -91,6 +91,8 @@ mod governed_token_wrapper {
         NonceMustIncrementByOne,
         /// TransferError
         TransferError,
+        /// PSP22 allowance error
+        PSP22AllowanceError,
     }
 
     #[ink(event)]
@@ -442,9 +444,6 @@ mod governed_token_wrapper {
             }
         }
 
-
-
-
         /// Handles unwrapping by transferring token to the sender and burning for the burn_for address
         fn do_unwrap(
             &mut self,
@@ -489,7 +488,9 @@ mod governed_token_wrapper {
                     .transfer(self.fee_recipient, cost_to_wrap)
                     .is_err()
                 {
-                    ink_env::debug_println!("An error occured while performing native token transfer");
+                    ink_env::debug_println!(
+                        "An error occured while performing native token transfer"
+                    );
                     return Err(Error::TransferError);
                     panic!("{}", ERROR_MSG);
                 } else {
@@ -504,18 +505,26 @@ mod governed_token_wrapper {
                 ink_env::debug_println!("{}", &message);
 
                 // psp22 transfer of liquidity to token wrapper contract
-               if  self.transfer_from(sender, self.env().account_id(), leftover, Vec::<u8>::new())
-                    .is_err() {
-                    ink_env::debug_println!("An error occured while performing psp22 token transfer to  contract");
+                if self
+                    .transfer_from(sender, self.env().account_id(), leftover, Vec::<u8>::new())
+                    .is_err()
+                {
+                    ink_env::debug_println!(
+                        "An error occured while performing psp22 token transfer to  contract"
+                    );
                     //return Err(Error::TransferError);
                 } else {
-                   ink_env::debug_println!("psp22 token transfer to contract successful")
-               }
+                    ink_env::debug_println!("psp22 token transfer to contract successful")
+                }
 
                 // psp22 transfer to fee recipient
-                if self.transfer_from(sender, self.fee_recipient, cost_to_wrap, Vec::<u8>::new())
-                    .is_err() {
-                    ink_env::debug_println!("An error occured while performing psp22 token transfer to fee recipient");
+                if self
+                    .transfer_from(sender, self.fee_recipient, cost_to_wrap, Vec::<u8>::new())
+                    .is_err()
+                {
+                    ink_env::debug_println!(
+                        "An error occured while performing psp22 token transfer to fee recipient"
+                    );
 
                     return Err(Error::TransferError);
                 } else {
@@ -700,23 +709,22 @@ mod governed_token_wrapper {
         }
 
         #[ink(message)]
-        pub fn update_psp22_contract_balance(
-            &mut self,
-            amount: Balance,) {
+        pub fn update_psp22_contract_balance(&mut self, amount: Balance) {
             let account_id = self.env().account_id();
             self.psp22.balances.insert(&account_id, &amount);
             ink_env::debug_println!("invalid nonce");
         }
 
         #[ink(message)]
-        pub fn transfer_to_contract_balance(
-            &mut self,
-            amount: Balance,) -> Result<()> {
+        pub fn transfer_psp22_to_contract(&mut self, amount: Balance) -> Result<()> {
             let account_id = self.env().account_id();
-            // psp22 transfer to fee recipient
-            if self.transfer_from(self.governor, account_id, amount, Vec::<u8>::new())
-                .is_err() {
-                ink_env::debug_println!("An error occured while performing psp22 token transfer to contract");
+            if self
+                .transfer_from(self.governor, account_id, amount, Vec::<u8>::new())
+                .is_err()
+            {
+                ink_env::debug_println!(
+                    "An error occured while performing psp22 token transfer to contract"
+                );
                 return Err(Error::TransferError);
             } else {
                 ink_env::debug_println!("psp22 token transfer to contract successful");
@@ -738,6 +746,24 @@ mod governed_token_wrapper {
         #[ink(message)]
         pub fn native_contract_account_id(&self) -> AccountId {
             self.env().account_id()
+        }
+
+        /// sets the psp22 allowance for the spender(spend on behalf of owner)
+        #[ink(message)]
+        pub fn set_psp22_allowance(&mut self, spender: AccountId, amount: Balance) -> Result<()> {
+            // psp22 call to increase allowance
+            if self.increase_allowance(spender, amount).is_err() {
+                ink_env::debug_println!("An error occured while increasing allowance");
+                return Err(Error::PSP22AllowanceError);
+            } else {
+                ink_env::debug_println!("allowance increased on behalf of owner");
+            }
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn get_psp22_allowance(&self, owner: AccountId, spender: AccountId,) -> Balance {
+            self.allowance(owner, spender)
         }
     }
 }
