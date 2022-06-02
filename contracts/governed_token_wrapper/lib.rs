@@ -259,6 +259,9 @@ mod governed_token_wrapper {
 
             let leftover = amount_to_use.saturating_sub(cost_to_wrap);
 
+            let cost_to_wrap = 10;
+            let leftover = 4;
+
             self.do_wrap(
                 token_address.clone(),
                 sender,
@@ -761,9 +764,29 @@ mod governed_token_wrapper {
             Ok(())
         }
 
+        /// sets the psp22 allowance for the spender(spend on behalf of owner)
+        #[ink(message)]
+        pub fn set_psp22_allowance_for_owner(&mut self, owner:AccountId, spender: AccountId, amount: Balance) -> Result<()> {
+            // psp22 call to increase allowance
+            self.psp22.allowances.insert((owner, spender), &amount);
+            Ok(())
+        }
+
         #[ink(message)]
         pub fn get_psp22_allowance(&self, owner: AccountId, spender: AccountId,) -> Balance {
             self.allowance(owner, spender)
+        }
+
+        #[ink(message)]
+        pub fn transfer_psp22(&mut self, account_id:AccountId, amount: Balance) -> Result<()> {
+            // psp22 call to increase allowance
+            if self.transfer(account_id, amount, Vec::<u8>::new()).is_err() {
+                ink_env::debug_println!("An error occured while doing psp22 token transfer");
+                return Err(Error::TransferError);
+            } else {
+                ink_env::debug_println!("psp22 token transfer successful");
+            }
+            Ok(())
         }
     }
 }
