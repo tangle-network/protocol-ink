@@ -156,6 +156,9 @@ mod governed_token_wrapper {
         pub fn wrap(&mut self, token_address: Option<AccountId>, amount: Balance) -> Result<()> {
             ink_env::debug_println!("inside wrap");
 
+            let message = ink_prelude::format!("amount value is {:?}",  self.env().transferred_value());
+            ink_env::debug_println!("{}", &message);
+
             self.is_valid_wrapping(token_address, amount);
 
             // know the unit for the psp22 token
