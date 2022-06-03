@@ -11,22 +11,40 @@ describe('token-wrapper', () => {
     });
 
     async function setup() {
+        console.log("setting up")
         await api.isReady;
+        console.log("api is ready")
         const signerAddresses = await getAddresses();
+        console.log("signer addresses")
         const Alice = signerAddresses[0];
         const Bob = signerAddresses[1];
         const Charlie = signerAddresses[2];
         const Ferdie = signerAddresses[3];
         const Eve = signerAddresses[4];
         const Dave = signerAddresses[5];
+        console.log("gotten addresses")
         const sender = await getRandomSigner(Alice, '20000 UNIT');
+        console.log("alice")
         const CharlieSigner = await getRandomSigner(Charlie, '20000 UNIT');
         const BobSigner = await getRandomSigner(Charlie, '20000 UNIT');
         const FerdieSigner = await getRandomSigner(Ferdie, '20000 UNIT');
         const EveSigner = await getRandomSigner(Eve, '20000 UNIT');
         const DaveSigner = await getRandomSigner(Dave, '20000 UNIT');
 
-        return { sender, Alice, Charlie, CharlieSigner, Bob, BobSigner, Ferdie, FerdieSigner, Eve, EveSigner, Dave, DaveSigner};
+        console.log("returning")
+
+        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
+            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
+
+
+        // token wrapper instantiation
+        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
+        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
+            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
+            totalSupply, governorBalance);
+
+        return { sender, Alice, Charlie, CharlieSigner, Bob, BobSigner, Ferdie, FerdieSigner, Eve, EveSigner, Dave, DaveSigner,
+            tokenWrapperContractFactory, tokenWrapperContract};
     }
 
      function tokenWrapperContractInitParams(sender: any, BobSigner: any, CharlieSigner: any) {
@@ -43,21 +61,14 @@ describe('token-wrapper', () => {
         let totalSupply = 1_000_000_000_000_000;
         let governorBalance = 9_000_000;
 
+
         return {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
         contractProposalNonce, tokenAddress, totalSupply, governorBalance}
     }
 
     it.skip('Add token address', async () => {
-        const { sender, BobSigner, CharlieSigner } = await setup();
-
-        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
-
-        // token wrapper instantiation
-        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
-        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
-            totalSupply, governorBalance);
+        const { tokenWrapperContract, sender, BobSigner, CharlieSigner } = await setup();
+        const {tokenName, contractProposalNonce} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
         let governor = await tokenWrapperContract.query.governor();
         let name = await tokenWrapperContract.query.name();
@@ -82,20 +93,15 @@ describe('token-wrapper', () => {
         let  newProposalNonce = await tokenWrapperContract.query.nonce();
         expect(newProposalNonce.output).to.be.equal(contractProposalNonce + 1);
 
-        //expect(await tokenWrapperContract.tx.killContract({ value: 10 }))
+        expect(await tokenWrapperContract.tx.killContract({ value: 10 }))
+        await api.disconnect();
     });
 
     it.skip('Remove token address', async () => {
-        const { sender, BobSigner, CharlieSigner } = await setup();
-        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
+        const { tokenWrapperContract, sender, BobSigner, CharlieSigner } = await setup();
+        const {contractProposalNonce,} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
-
-        // token wrapper instantiation
-        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
-        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
-            totalSupply, governorBalance);
+        console.log("contract deployed in remove")
 
         // first add a token address
         let addTokenFunction = await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)
@@ -133,18 +139,8 @@ describe('token-wrapper', () => {
     });
 
     it.skip('Update config', async () => {
-        const { sender, BobSigner, CharlieSigner } = await setup();
-        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient,
-            feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
-
-        // token wrapper instantiation
-        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
-        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage,
-            isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
-            totalSupply, governorBalance);
-
+        const { tokenWrapperContract, sender, BobSigner, CharlieSigner } = await setup();
+        const {contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
         let newGovernor = BobSigner.address;
         let newIsNativeAllowed = false;
@@ -185,15 +181,7 @@ describe('token-wrapper', () => {
     });
 
     it.skip('Test native wrapping functionality', async () => {
-        const { sender, BobSigner, CharlieSigner, DaveSigner} = await setup();
-        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
-
-        // token wrapper instantiation
-        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
-        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
-            totalSupply, governorBalance);
+        const { tokenWrapperContract, sender, } = await setup();
 
         let initialSenderWrappedBalance = await tokenWrapperContract.query.psp22Balance(sender.address);
         let initialContractBalance = await tokenWrapperContract.query.nativeContractBalance();
@@ -218,15 +206,8 @@ describe('token-wrapper', () => {
     });
 
     it.skip('Test psp22 wrapping functionality', async () => {
-        const { sender, BobSigner, CharlieSigner, DaveSigner } = await setup();
-        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
-
-        // token wrapper instantiation
-        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
-        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
-            totalSupply, governorBalance);
+        const { tokenWrapperContract, sender, BobSigner, CharlieSigner } = await setup();
+        const {feeRecipient, contractProposalNonce,} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
         // first add token address
         expect( await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
@@ -278,15 +259,7 @@ describe('token-wrapper', () => {
     });
 
     it.skip('Test native wrapping for functionality', async () => {
-        const { sender, BobSigner, CharlieSigner, FerdieSigner } = await setup();
-        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
-
-        // token wrapper instantiation
-        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
-        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
-            totalSupply, governorBalance);
+        const { tokenWrapperContract, sender, BobSigner, CharlieSigner, FerdieSigner } = await setup();
 
         let initialSenderWrappedBalance = await tokenWrapperContract.query.psp22Balance(FerdieSigner.address);
         let initialContractBalance = await tokenWrapperContract.query.nativeContractBalance();
@@ -314,15 +287,9 @@ describe('token-wrapper', () => {
     });
 
     it.skip('Test psp22 wrapping for functionality', async () => {
-        const { sender, BobSigner, CharlieSigner, FerdieSigner, EveSigner} = await setup();
-        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
+        const { tokenWrapperContract, sender, BobSigner, CharlieSigner, FerdieSigner } = await setup();
+        const {feeRecipient, contractProposalNonce, } = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
-        // token wrapper instantiation
-        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
-        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
-            totalSupply, governorBalance);
 
         // first add token address
         expect( await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
@@ -376,15 +343,7 @@ describe('token-wrapper', () => {
     });
 
     it.skip('Test native wrapping for and send to functionality', async () => {
-        const { sender, BobSigner, CharlieSigner, FerdieSigner, EveSigner } = await setup();
-        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
-
-        // token wrapper instantiation
-        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
-        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
-            totalSupply, governorBalance);
+        const { tokenWrapperContract, sender, BobSigner, CharlieSigner, FerdieSigner, EveSigner } = await setup();
 
         let initialSenderWrappedBalance = await tokenWrapperContract.query.psp22Balance(EveSigner.address);
         let initialContractBalance = await tokenWrapperContract.query.nativeContractBalance();
@@ -410,15 +369,8 @@ describe('token-wrapper', () => {
     });
 
     it.skip('Test psp22 wrapping for and send to functionality', async () => {
-        const { sender, BobSigner, CharlieSigner, FerdieSigner, EveSigner} = await setup();
-        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
-
-        // token wrapper instantiation
-        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
-        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
-            totalSupply, governorBalance);
+        const { tokenWrapperContract,  sender, BobSigner, CharlieSigner, FerdieSigner, EveSigner } = await setup();
+        const {feeRecipient, contractProposalNonce, } = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
         // first add token address
         expect( await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
@@ -474,15 +426,7 @@ describe('token-wrapper', () => {
     });
 
     it.skip('Test native unwrap functionality', async () => {
-        const { sender, BobSigner, CharlieSigner, DaveSigner} = await setup();
-        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
-
-        // token wrapper instantiation
-        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
-        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
-            totalSupply, governorBalance);
+        const { tokenWrapperContract, sender, } = await setup();
 
         let initialSenderWrappedBalance = await tokenWrapperContract.query.psp22Balance(sender.address);
         let initialContractBalance = await tokenWrapperContract.query.nativeContractBalance();
@@ -519,15 +463,7 @@ describe('token-wrapper', () => {
     });
 
     it.skip('Test native unwrapping for functionality', async () => {
-        const { sender, BobSigner, CharlieSigner, FerdieSigner } = await setup();
-        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
-
-        // token wrapper instantiation
-        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
-        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
-            totalSupply, governorBalance);
+        const { tokenWrapperContract, sender, BobSigner, CharlieSigner, FerdieSigner } = await setup();
 
         let initialSenderWrappedBalance = await tokenWrapperContract.query.psp22Balance(FerdieSigner.address);
         let initialContractBalance = await tokenWrapperContract.query.nativeContractBalance();
@@ -565,15 +501,7 @@ describe('token-wrapper', () => {
     });
 
     it.skip('Test native wrapping for and send to functionality', async () => {
-        const { sender, BobSigner, CharlieSigner, FerdieSigner, EveSigner } = await setup();
-        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
-
-        // token wrapper instantiation
-        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
-        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
-            totalSupply, governorBalance);
+        const { tokenWrapperContract, sender, BobSigner, CharlieSigner, EveSigner, FerdieSigner } = await setup();
 
         let initialSenderWrappedBalance = await tokenWrapperContract.query.psp22Balance(EveSigner.address);
         let initialContractBalance = await tokenWrapperContract.query.nativeContractBalance();
@@ -587,38 +515,34 @@ describe('token-wrapper', () => {
         expect(wrapFunction).to.be.ok;
 
         // to validate that psp22 token has been minted for the recipient specified, in this case Eve
-        let senderWrappedBalanceAfter = await tokenWrapperContract.query.psp22Balance(EveSigner.address);
+        let eveWrappedBalanceAfter = await tokenWrapperContract.query.psp22Balance(EveSigner.address);
         // to validate that native funds was transferred to the contract
         let contractBalanceAfter = await tokenWrapperContract.query.nativeContractBalance();
 
-        expect(Number(senderWrappedBalanceAfter.output)).to.not.equal(0);
+        expect(Number(eveWrappedBalanceAfter.output)).to.not.equal(0);
         expect(Number(contractBalanceAfter.output)).to.not.equal(0);
 
-        expect(Number(senderWrappedBalanceAfter.output)).to.be.greaterThan(Number(initialSenderWrappedBalance.output));
+        expect(Number(eveWrappedBalanceAfter.output)).to.be.greaterThan(Number(initialSenderWrappedBalance.output));
         expect(Number(contractBalanceAfter.output)).to.be.greaterThan(Number(initialContractBalance.output));
 
-        let unwrapFunction = await tokenWrapperContract.tx.unwrapForAndSendTo( null, FerdieSigner.address, 0, EveSigner.address, { value: 1000 });
+        let senderBalance = await tokenWrapperContract.query.psp22Balance(sender.address);
+
+        let unwrapFunction = await tokenWrapperContract.tx.unwrapAndSendTo( null,  2, sender.address, { value: 1000 });
 
         expect(unwrapFunction).to.be.ok;
 
-        let senderBurntBalance = await tokenWrapperContract.query.psp22Balance(EveSigner.address);
+        let senderBurntBalance = await tokenWrapperContract.query.psp22Balance(sender.address);
 
         expect(Number(senderBurntBalance.output)).to.not.equal(0);
 
         // validate that balance has reduced for sender
-        expect(Number(senderBurntBalance.output)).to.be.lessThan(Number(senderWrappedBalanceAfter.output));
+        expect(Number(senderBurntBalance.output)).to.be.lessThan(Number(senderBalance.output));
     });
 
     it.skip('Test psp22 wrapping functionality', async () => {
-        const { sender, BobSigner, CharlieSigner, DaveSigner } = await setup();
-        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
+        const { tokenWrapperContract,  sender, BobSigner, CharlieSigner, EveSigner, FerdieSigner } = await setup();
+        const {feeRecipient, contractProposalNonce, } = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
-        // token wrapper instantiation
-        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
-        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
-            totalSupply, governorBalance);
 
         // first add token address
         expect( await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
@@ -689,15 +613,9 @@ describe('token-wrapper', () => {
     });
 
     it.skip('Test psp22 unwrapping for functionality', async () => {
-        const { sender, BobSigner, CharlieSigner, FerdieSigner, EveSigner} = await setup();
-        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
+        const { tokenWrapperContract, sender, BobSigner, CharlieSigner, EveSigner, FerdieSigner } = await setup();
+        const {feeRecipient, contractProposalNonce, } = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
-        // token wrapper instantiation
-        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
-        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
-            totalSupply, governorBalance);
 
         // first add token address
         expect( await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
@@ -769,15 +687,9 @@ describe('token-wrapper', () => {
     });
 
     it('Test psp22 unwrapping and send to functionality', async () => {
-        const { sender, BobSigner, CharlieSigner, FerdieSigner, EveSigner} = await setup();
-        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
+        const { tokenWrapperContract,  sender, BobSigner, CharlieSigner, EveSigner, FerdieSigner } = await setup();
+        const {feeRecipient, contractProposalNonce, } = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
-        // token wrapper instantiation
-        const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
-        const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
-            totalSupply, governorBalance);
 
         // first add token address
         expect( await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
