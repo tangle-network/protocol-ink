@@ -459,16 +459,30 @@ mod governed_token_wrapper {
             amount: Balance,
         ) {
             // burn wrapped token from sender
-            self.burn(burn_for, amount);
+            if self.burn(burn_for, amount).is_err() {
+                ink_env::debug_println!("error occurred while burning token for sender");
+            } else {
+                ink_env::debug_println!("token burn successful");
+            }
 
             if token_address.is_none() {
                 // transfer native liquidity from the token wrapper to the sender
                 if self.env().transfer(sender, amount).is_err() {
-                    panic!("{}", ERROR_MSG);
+                    //panic!("{}", ERROR_MSG);
+                    ink_env::debug_println!("error occurred doing native transfer to sender");
+                } else {
+                    ink_env::debug_println!("native transfer to sender successful");
                 }
             } else {
                 // transfer PSP22 liquidity from the token wrapper to the sender
-                self.transfer(sender, amount, Vec::<u8>::new()).is_ok();
+                if self
+                    .transfer_from(self.env().account_id(), sender, amount, Vec::<u8>::new())
+                    .is_err()
+                {
+                    ink_env::debug_println!("error occurred doing psp22 transfer to sender");
+                } else {
+                    ink_env::debug_println!("psp22 transfer successful");
+                }
             }
         }
 
@@ -590,18 +604,36 @@ mod governed_token_wrapper {
         ) -> Result<()> {
             if token_address.is_none() {
                 if amount >= self.env().balance() {
+                    let message = ink_prelude::format!(
+                        "amount {:?} is greater than native balance {:?}",
+                        amount,
+                        self.env().balance()
+                    );
+                    ink_env::debug_println!("{}", &message);
                     return Err(Error::InsufficientNativeBalance);
                 }
 
                 if !self.is_native_allowed {
+                    ink_env::debug_println!("native unwrapping is not allowed");
                     return Err(Error::NativeUnwrappingNotAllowed);
                 }
             } else {
                 if amount >= self.balance_of(self.env().account_id()) {
+                    let message = ink_prelude::format!(
+                        "amount {:?} is greater than psp22 balance {:?}",
+                        amount,
+                        self.balance_of(self.env().account_id())
+                    );
+                    ink_env::debug_println!("{}", &message);
                     return Err(Error::InsufficientPSP22Balance);
                 }
 
                 if !self.is_address_historically_valid(token_address.unwrap()) {
+                    let message = ink_prelude::format!(
+                        "address {:?} is not historically valid",
+                        token_address.unwrap()
+                    );
+                    ink_env::debug_println!("{}", &message);
                     return Err(Error::InvalidHistoricalTokenAddress);
                 }
             }
@@ -807,6 +839,11 @@ mod governed_token_wrapper {
                 ink_env::debug_println!("native token transfer successful");
             }
             Ok(())
+        }
+
+        #[ink(message, payable)]
+        pub fn kill_contract(&mut self) {
+            self.env().terminate_contract(self.env().caller())
         }
     }
 }
