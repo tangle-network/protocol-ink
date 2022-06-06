@@ -136,7 +136,15 @@ mod governed_token_wrapper {
             is_native_allowed: bool,
             wrapping_limit: u128,
             proposal_nonce: u64,
+            token_address: AccountId,
+            total_supply: Balance,
+            governor_balance: Balance,
         ) -> Self {
+            ink_env::debug_println!(
+                "created new instance of token wrapper at {}",
+                Self::env().block_number()
+            );
+
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
                 instance.metadata.name = name;
                 instance.metadata.symbol = symbol;
@@ -163,7 +171,7 @@ mod governed_token_wrapper {
         /// then it's a Native token address
         /// * `amount` - The amount of token to transfer
         #[ink(message, payable)]
-        pub fn wrap(&mut self, token_address: Option<AccountId>, amount: Balance) {
+        pub fn wrap(&mut self, token_address: Option<AccountId>, amount: Balance) -> Result<()> {
             self.is_valid_wrapping(token_address, amount);
 
             // determine amount to use
@@ -478,7 +486,7 @@ mod governed_token_wrapper {
             mint_for: AccountId,
             cost_to_wrap: Balance,
             leftover: Balance,
-        ) -> Result<()>{
+        ) -> Result<()> {
             if token_address.is_none() {
                 // mint the native value sent to the contract
                 self.mint(mint_for, leftover);
