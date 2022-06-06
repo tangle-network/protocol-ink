@@ -197,11 +197,11 @@ mod governed_token_wrapper {
 
         /// Used to wrap tokens on behalf of a sender
         ///
-        /// token_address is the address/account id of PSP22 to unwrap into,
+        /// token_address is the Account id of PSP22 to unwrap into,
         ///
         /// amount is the amount of tokens to transfer
         ///
-        /// sender is the account id of sender where assets are sent from.
+        /// sender is the Account id of sender where assets are sent from.
         #[ink(message, payable)]
         pub fn wrap_for(
             &mut self,
@@ -231,9 +231,13 @@ mod governed_token_wrapper {
             );
         }
         /// Used to wrap tokens on behalf of a sender and mint to a potentially different address
+        ///
         /// token_address is the address of PSP22 to unwrap into,
+        ///
         /// sender is Address of sender where assets are sent from.
+        ///
         /// amount is the amount of tokens to transfer
+        ///
         /// Recipient is the recipient of the wrapped tokens.
         #[ink(message, payable)]
         pub fn wrap_for_and_send_to(
@@ -271,6 +275,7 @@ mod governed_token_wrapper {
         /// then it's a Native token address
         ///
         /// amount is the amount of token to transfer
+        ///
         /// sender is the Address of sender where liquidity is send to.
         #[ink(message, payable)]
         pub fn unwrap_for(
@@ -315,7 +320,9 @@ mod governed_token_wrapper {
         }
 
         ///  Removes a token at `token_address` from the GovernedTokenWrapper's wrapping list
-        /// token_address:  The address of the token to be removed
+        ///
+        /// token_address:  The address of the token to be added
+        ///
         /// nonce: The nonce tracking updates to this contract
         #[ink(message)]
         pub fn remove_token_address(&mut self, token_address: AccountId, nonce: u64) -> Result<()> {
