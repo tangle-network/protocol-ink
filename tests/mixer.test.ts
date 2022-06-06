@@ -29,7 +29,7 @@ export function generateDeposit(amount: number) {
   noteBuilder.width('3');
   noteBuilder.exponentiation('5');
   const note = noteBuilder.build();
-  
+
   return note;
 }
 
@@ -44,7 +44,7 @@ describe('mixer', () => {
     const signerAddresses = await getAddresses();
     const Alice = signerAddresses[0];
     const sender = await getRandomSigner(Alice, '20000 UNIT');
-  
+
     return { sender, Alice };
   }
 
