@@ -34,8 +34,9 @@ mod governed_token_wrapper {
         #[PSP22WrapperStorageField]
         wrapper: PSP22WrapperData,
 
-        // /// Governance - related params
+        /// The contract governor
         governor: AccountId,
+        /// The address of the fee recipient
         fee_recipient: AccountId,
         fee_percentage: Balance,
         is_native_allowed: bool,
@@ -141,7 +142,6 @@ mod governed_token_wrapper {
             };
 
             let cost_to_wrap = self.get_fee_from_amount(amount_to_use);
-
             let leftover = amount_to_use.saturating_sub(cost_to_wrap);
 
             self.do_wrap(
@@ -197,11 +197,11 @@ mod governed_token_wrapper {
 
         /// Used to wrap tokens on behalf of a sender
         ///
-        /// token_address is the address of PSP22 to unwrap into,
+        /// token_address is the address/account id of PSP22 to unwrap into,
         ///
         /// amount is the amount of tokens to transfer
         ///
-        /// sender is the Address of sender where assets are sent from.
+        /// sender is the account id of sender where assets are sent from.
         #[ink(message, payable)]
         pub fn wrap_for(
             &mut self,
@@ -231,13 +231,9 @@ mod governed_token_wrapper {
             );
         }
         /// Used to wrap tokens on behalf of a sender and mint to a potentially different address
-        ///
         /// token_address is the address of PSP22 to unwrap into,
-        ///
         /// sender is Address of sender where assets are sent from.
-        ///
         /// amount is the amount of tokens to transfer
-        ///
         /// Recipient is the recipient of the wrapped tokens.
         #[ink(message, payable)]
         pub fn wrap_for_and_send_to(
@@ -275,7 +271,6 @@ mod governed_token_wrapper {
         /// then it's a Native token address
         ///
         /// amount is the amount of token to transfer
-        ///
         /// sender is the Address of sender where liquidity is send to.
         #[ink(message, payable)]
         pub fn unwrap_for(
@@ -288,10 +283,8 @@ mod governed_token_wrapper {
             self.do_unwrap(token_address.clone(), sender, sender, amount);
         }
 
-        ///  Adds a token at `_tokenAddress` to the GovernedTokenWrapper's wrapping list
-        ///
-        /// tokenAddress:  The address of the token to be added
-        ///
+        /// Adds a token at `token_address` to the GovernedTokenWrapper's wrapping list
+        /// token_address:  The address of the token to be added
         /// nonce: The nonce tracking updates to this contract
         #[ink(message)]
         pub fn add_token_address(&mut self, token_address: AccountId, nonce: u64) -> Result<()> {
@@ -321,10 +314,8 @@ mod governed_token_wrapper {
             Ok(())
         }
 
-        ///  Removes a token at `_tokenAddress` from the GovernedTokenWrapper's wrapping list
-        ///
-        /// tokenAddress:  The address of the token to be added
-        ///
+        ///  Removes a token at `token_address` from the GovernedTokenWrapper's wrapping list
+        /// token_address:  The address of the token to be removed
         /// nonce: The nonce tracking updates to this contract
         #[ink(message)]
         pub fn remove_token_address(&mut self, token_address: AccountId, nonce: u64) -> Result<()> {
@@ -472,6 +463,7 @@ mod governed_token_wrapper {
             Ok(())
         }
 
+        /// Checks to determine if it's safe to unwrap
         fn is_valid_unwrapping(
             &mut self,
             token_address: Option<AccountId>,
@@ -520,6 +512,7 @@ mod governed_token_wrapper {
                 .saturating_div(100)
         }
 
+        /// Determine if an account id/address is a governor
         fn is_governor(&mut self, address: AccountId) -> Result<()> {
             if self.governor != address {
                 return Err(Error::Unauthorize);
