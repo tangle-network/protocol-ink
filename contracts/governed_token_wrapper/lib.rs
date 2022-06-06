@@ -288,7 +288,7 @@ mod governed_token_wrapper {
             self.do_unwrap(token_address.clone(), sender, sender, amount);
         }
 
-        ///  Adds a token at `_tokenAddress` to the GovernedTokenWrapper's wrapping list
+        /// Adds a token at `token_address` to the GovernedTokenWrapper's wrapping list
         ///
         /// tokenAddress:  The address of the token to be added
         ///
