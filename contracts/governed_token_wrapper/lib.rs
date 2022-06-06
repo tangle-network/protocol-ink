@@ -449,7 +449,10 @@ mod governed_token_wrapper {
             }
 
             if fee_recipient.is_some() {
+                ink_env::debug_println!("fee recipient set");
                 self.fee_recipient = fee_recipient.unwrap();
+            } else {
+                ink_env::debug_println!("fee recipient not set");
             }
         }
 
