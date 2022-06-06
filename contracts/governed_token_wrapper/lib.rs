@@ -38,15 +38,21 @@ mod governed_token_wrapper {
         governor: AccountId,
         /// The address of the fee recipient
         fee_recipient: AccountId,
+        /// The percentage fee for wrapping
         fee_percentage: Balance,
+        /// To determine if native wrapping is allowed
         is_native_allowed: bool,
+        /// The contract wrapping limit
         wrapping_limit: u128,
+        /// The nonce for adding/removing address
         proposal_nonce: u64,
-
+        /// Map of token addresses
         tokens: Mapping<AccountId, bool>,
+        /// Map of historical token addresses
         historical_tokens: Mapping<AccountId, bool>,
-
+        /// Map of tokens that are valid
         valid: Mapping<AccountId, bool>,
+        /// Map of tokens that are historically valid
         historically_valid: Mapping<AccountId, bool>,
     }
 
@@ -104,12 +110,8 @@ mod governed_token_wrapper {
             is_native_allowed: bool,
             wrapping_limit: u128,
             proposal_nonce: u64,
-            token_address: AccountId,
         ) -> Self {
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
-                // for wrapping
-                instance._init(token_address);
-
                 instance.metadata.name = name;
                 instance.metadata.symbol = symbol;
                 instance.metadata.decimals = decimal;
