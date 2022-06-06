@@ -34,7 +34,7 @@ mod governed_token_wrapper {
         #[PSP22WrapperStorageField]
         wrapper: PSP22WrapperData,
 
-        // /// Governance - related params
+        /// Governance - related params
         governor: AccountId,
         fee_recipient: AccountId,
         fee_percentage: Balance,
