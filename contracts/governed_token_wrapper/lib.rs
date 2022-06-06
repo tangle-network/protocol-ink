@@ -154,11 +154,6 @@ mod governed_token_wrapper {
         /// amount is the amount of token to transfer
         #[ink(message, payable)]
         pub fn wrap(&mut self, token_address: Option<AccountId>, amount: Balance) -> Result<()> {
-            ink_env::debug_println!("inside wrap");
-
-            let message = ink_prelude::format!("amount value is {:?}",  self.env().transferred_value());
-            ink_env::debug_println!("{}", &message);
-
             self.is_valid_wrapping(token_address, amount);
 
             // know the unit for the psp22 token
@@ -171,16 +166,7 @@ mod governed_token_wrapper {
 
             let cost_to_wrap = self.get_fee_from_amount(amount_to_use);
 
-            let message = ink_prelude::format!("cost_to_wrap is {:?}", cost_to_wrap);
-            ink_env::debug_println!("{}", &message);
-            let cost_to_wrap = 10;
-
             let leftover = amount_to_use.saturating_sub(cost_to_wrap);
-
-            let message = ink_prelude::format!("leftover is {:?}", leftover);
-            ink_env::debug_println!("{}", &message);
-
-            let leftover = 4;
 
             self.do_wrap(
                 token_address.clone(),
@@ -347,30 +333,19 @@ mod governed_token_wrapper {
         /// nonce: The nonce tracking updates to this contract
         #[ink(message)]
         pub fn add_token_address(&mut self, token_address: AccountId, nonce: u64) -> Result<()> {
-            ink_env::debug_println!("inside add token address");
-
-            let message = ink_prelude::format!("caller is {:?}", self.env().caller());
-            ink_env::debug_println!("{}", &message);
-
-            let message = ink_prelude::format!("governor is {:?}", self.governor);
-            ink_env::debug_println!("{}", &message);
-
             // only contract governor can execute this function
             self.is_governor(self.env().caller());
 
             // check if token address already exists
             if self.is_valid_address(token_address) {
-                ink_env::debug_println!("token address already exists");
                 return Err(Error::TokenAddressAlreadyExists);
             }
 
             if self.proposal_nonce > nonce {
-                ink_env::debug_println!("invalid nonce");
                 return Err(Error::InvalidNonce);
             }
 
             if nonce != self.proposal_nonce + 1 {
-                ink_env::debug_println!("nonce must increment by one");
                 return Err(Error::NonceMustIncrementByOne);
             }
 
@@ -380,8 +355,6 @@ mod governed_token_wrapper {
             self.historical_tokens.insert(token_address, &true);
 
             self.proposal_nonce = nonce;
-
-            ink_env::debug_println!("done literally");
 
             Ok(())
         }
@@ -393,22 +366,18 @@ mod governed_token_wrapper {
         /// nonce: The nonce tracking updates to this contract
         #[ink(message)]
         pub fn remove_token_address(&mut self, token_address: AccountId, nonce: u64) -> Result<()> {
-            ink_env::debug_println!("inside remove token address");
             self.is_governor(self.env().caller());
 
             // check if token address already exists
             if !self.is_valid_address(token_address) {
-                ink_env::debug_println!("invalid token address");
                 return Err(Error::InvalidTokenAddress);
             }
 
             if self.proposal_nonce > nonce {
-                ink_env::debug_println!("invalid nonce");
                 return Err(Error::InvalidNonce);
             }
 
             if nonce != self.proposal_nonce + 1 {
-                ink_env::debug_println!("nonce must increment by 1");
                 return Err(Error::NonceMustIncrementByOne);
             }
 
@@ -449,10 +418,7 @@ mod governed_token_wrapper {
             }
 
             if fee_recipient.is_some() {
-                ink_env::debug_println!("fee recipient set");
                 self.fee_recipient = fee_recipient.unwrap();
-            } else {
-                ink_env::debug_println!("fee recipient not set");
             }
         }
 
@@ -466,18 +432,14 @@ mod governed_token_wrapper {
         ) {
             // burn wrapped token from sender
             if self.burn(burn_for, amount).is_err() {
-                ink_env::debug_println!("error occurred while burning token for sender");
             } else {
-                ink_env::debug_println!("token burn successful");
             }
 
             if token_address.is_none() {
                 // transfer native liquidity from the token wrapper to the sender
                 if self.env().transfer(sender, amount).is_err() {
                     //panic!("{}", ERROR_MSG);
-                    ink_env::debug_println!("error occurred doing native transfer to sender");
                 } else {
-                    ink_env::debug_println!("native transfer to sender successful");
                 }
             } else {
                 // transfer PSP22 liquidity from the token wrapper to the sender
@@ -485,9 +447,7 @@ mod governed_token_wrapper {
                     .transfer_from(self.env().account_id(), sender, amount, Vec::<u8>::new())
                     .is_err()
                 {
-                    ink_env::debug_println!("error occurred doing psp22 transfer to sender");
-                } else {
-                    ink_env::debug_println!("psp22 transfer successful");
+                    //panic!("{}", ERROR_MSG);
                 }
             }
         }
@@ -501,10 +461,7 @@ mod governed_token_wrapper {
             cost_to_wrap: Balance,
             leftover: Balance,
         ) -> Result<()> {
-            ink_env::debug_println!("doing wrap");
-
             if token_address.is_none() {
-                ink_env::debug_println!("native token transfer");
                 // mint the native value sent to the contract
                 self.mint(mint_for, leftover);
 
@@ -514,33 +471,16 @@ mod governed_token_wrapper {
                     .transfer(self.fee_recipient, cost_to_wrap)
                     .is_err()
                 {
-                    ink_env::debug_println!(
-                        "An error occured while performing native token transfer"
-                    );
                     return Err(Error::TransferError);
                     panic!("{}", ERROR_MSG);
-                } else {
-                    ink_env::debug_println!("native token transfer to fee recipient successful")
                 }
             } else {
-                ink_env::debug_println!("psp22 token transfer");
-                let message = ink_prelude::format!("cost_to_wrap is {:?}", cost_to_wrap);
-                ink_env::debug_println!("{}", &message);
-
-                let message = ink_prelude::format!("leftover is {:?}", leftover);
-                ink_env::debug_println!("{}", &message);
-
                 // psp22 transfer of liquidity to token wrapper contract
                 if self
                     .transfer_from(sender, self.env().account_id(), leftover, Vec::<u8>::new())
                     .is_err()
                 {
-                    ink_env::debug_println!(
-                        "An error occured while performing psp22 token transfer to  contract"
-                    );
-                    //return Err(Error::TransferError);
-                } else {
-                    ink_env::debug_println!("psp22 token transfer to contract successful")
+                    return Err(Error::TransferError);
                 }
 
                 // psp22 transfer to fee recipient
@@ -548,13 +488,7 @@ mod governed_token_wrapper {
                     .transfer_from(sender, self.fee_recipient, cost_to_wrap, Vec::<u8>::new())
                     .is_err()
                 {
-                    ink_env::debug_println!(
-                        "An error occured while performing psp22 token transfer to fee recipient"
-                    );
-
                     return Err(Error::TransferError);
-                } else {
-                    ink_env::debug_println!("psp22 token transfer to fee recipient successful");
                 }
 
                 // mint the wrapped token for the sender
@@ -580,25 +514,17 @@ mod governed_token_wrapper {
                 }
             } else {
                 if self.env().transferred_value() != 0 {
-                    ink_env::debug_println!("value is not equal to 0");
                     return Err(Error::InvalidValueSentForWrapping);
                 }
 
                 if !self.is_valid_address(token_address.unwrap()) {
-                    ink_env::debug_println!("invalid token address");
                     return Err(Error::InvalidTokenAddress);
                 }
             }
 
             if !self.is_valid_amount(amount) {
-                let message = ink_prelude::format!("amount to wrap is {:?}", amount);
-                ink_env::debug_println!("{}", &message);
-
-                ink_env::debug_println!("invalid token amount");
                 return Err(Error::InvalidTokenAmount);
             }
-
-            ink_env::debug_println!("wrapping is valid");
 
             Ok(())
         }
@@ -610,36 +536,18 @@ mod governed_token_wrapper {
         ) -> Result<()> {
             if token_address.is_none() {
                 if amount >= self.env().balance() {
-                    let message = ink_prelude::format!(
-                        "amount {:?} is greater than native balance {:?}",
-                        amount,
-                        self.env().balance()
-                    );
-                    ink_env::debug_println!("{}", &message);
                     return Err(Error::InsufficientNativeBalance);
                 }
 
                 if !self.is_native_allowed {
-                    ink_env::debug_println!("native unwrapping is not allowed");
                     return Err(Error::NativeUnwrappingNotAllowed);
                 }
             } else {
                 if amount >= self.balance_of(self.env().account_id()) {
-                    let message = ink_prelude::format!(
-                        "amount {:?} is greater than psp22 balance {:?}",
-                        amount,
-                        self.balance_of(self.env().account_id())
-                    );
-                    ink_env::debug_println!("{}", &message);
                     return Err(Error::InsufficientPSP22Balance);
                 }
 
                 if !self.is_address_historically_valid(token_address.unwrap()) {
-                    let message = ink_prelude::format!(
-                        "address {:?} is not historically valid",
-                        token_address.unwrap()
-                    );
-                    ink_env::debug_println!("{}", &message);
                     return Err(Error::InvalidHistoricalTokenAddress);
                 }
             }
@@ -650,11 +558,6 @@ mod governed_token_wrapper {
         /// Determines if token address is a valid one
         fn is_valid_address(&mut self, token_address: AccountId) -> bool {
             let res = self.valid.get(token_address).is_some();
-            let message = ink_prelude::format!("res is {:?}", res);
-            ink_env::debug_println!("{}", &message);
-
-            let message = ink_prelude::format!("nonce is {:?}", self.proposal_nonce);
-            ink_env::debug_println!("{}", &message);
             res
         }
 
@@ -666,11 +569,6 @@ mod governed_token_wrapper {
         /// Determines if amount is valid for wrapping
         fn is_valid_amount(&mut self, amount: Balance) -> bool {
             let amount_add_supply = amount.saturating_add(self.psp22.supply);
-            let message = ink_prelude::format!("addition of amount to supply is {:?}", amount);
-            ink_env::debug_println!("{}", &message);
-
-            let message = ink_prelude::format!("wrapping limit is{:?}", self.wrapping_limit);
-            ink_env::debug_println!("{}", &message);
 
             amount_add_supply <= self.wrapping_limit
         }
@@ -730,8 +628,6 @@ mod governed_token_wrapper {
         /// Returns the `proposal_nonce` value.
         #[ink(message)]
         pub fn nonce(&self) -> u64 {
-            let message = ink_prelude::format!("nonce in query is {:?}", self.proposal_nonce);
-            ink_env::debug_println!("{}", &message);
             self.proposal_nonce
         }
 
@@ -766,14 +662,8 @@ mod governed_token_wrapper {
                 .transfer_from(self.governor, account_id, amount, Vec::<u8>::new())
                 .is_err()
             {
-                ink_env::debug_println!(
-                    "An error occured while performing psp22 token transfer to contract"
-                );
                 return Err(Error::TransferError);
-            } else {
-                ink_env::debug_println!("psp22 token transfer to contract successful");
             }
-
             Ok(())
         }
 
@@ -797,10 +687,7 @@ mod governed_token_wrapper {
         pub fn set_psp22_allowance(&mut self, spender: AccountId, amount: Balance) -> Result<()> {
             // psp22 call to increase allowance
             if self.increase_allowance(spender, amount).is_err() {
-                ink_env::debug_println!("An error occured while increasing allowance");
                 return Err(Error::PSP22AllowanceError);
-            } else {
-                ink_env::debug_println!("allowance increased on behalf of owner");
             }
             Ok(())
         }
@@ -827,10 +714,7 @@ mod governed_token_wrapper {
         pub fn transfer_psp22(&mut self, account_id: AccountId, amount: Balance) -> Result<()> {
             // psp22 call to increase allowance
             if self.transfer(account_id, amount, Vec::<u8>::new()).is_err() {
-                ink_env::debug_println!("An error occured while doing psp22 token transfer");
                 return Err(Error::TransferError);
-            } else {
-                ink_env::debug_println!("psp22 token transfer successful");
             }
             Ok(())
         }
@@ -839,10 +723,7 @@ mod governed_token_wrapper {
         pub fn transfer_native(&mut self, account_id: AccountId, amount: Balance) -> Result<()> {
             // psp22 call to increase allowance
             if self.env().transfer(account_id, amount).is_err() {
-                ink_env::debug_println!("An error occured while doing native token transfer");
                 return Err(Error::TransferError);
-            } else {
-                ink_env::debug_println!("native token transfer successful");
             }
             Ok(())
         }

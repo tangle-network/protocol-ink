@@ -117,8 +117,6 @@ describe('token-wrapper', () => {
     it('Remove token address', async () => {
         const {contractProposalNonce,} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
-        console.log("contract deployed in remove")
-
         // first add a token address
         let addTokenFunction = await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)
         expect(addTokenFunction).to.be.ok;
