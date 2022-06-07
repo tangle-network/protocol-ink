@@ -193,7 +193,7 @@ describe('token-wrapper', () => {
 
     });
 
-    it.only('Test native wrapping functionality', async () => {
+    it('Test native wrapping functionality', async () => {
         let initialSenderWrappedBalance = await tokenWrapperContract.query.psp22Balance(sender.address);
         let initialContractBalance = await tokenWrapperContract.query.nativeContractBalance();
 

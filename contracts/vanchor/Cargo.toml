@@ -1,7 +1,7 @@
 [package]
 name = "vanchor"
 version = "0.1.0"
-authors = ["[Webb Developers]"]
+authors = ["[your_name] <[your_email]>"]
 edition = "2021"
 
 [dependencies]
@@ -14,14 +14,6 @@ ink_prelude = { version = "3.0", default-features = false }
 
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
-
-ark-ff = { version = "^0.3.0", default-features = false }
-ark-std = { version = "^0.3.0", default-features = false }
-ark-bn254 = { version = "^0.3.0", default-features = false, features = [ "curve" ] }
-ark-crypto-primitives = { version = "^0.3.0", features = ["r1cs"], default-features = false }
-
-arkworks-setups = { version = "1.1.1",  features = ["r1cs"], default-features = false }
-arkworks-native-gadgets = { version = "1.0.0", default-features = false }
 
 verifier = { package = "vanchor_verifier", path = "vanchor_verifier", default-features = false, features = ["ink-as-dependency"] }
 poseidon = { path = "../poseidon", default-features = false, features = ["ink-as-dependency"] }
@@ -43,13 +35,6 @@ std = [
     "ink_primitives/std",
     "scale/std",
     "scale-info/std",
-
-    "ark-ff/std",
-    "ark-std/std",
-    "ark-bn254/std",
-    "ark-crypto-primitives/std",
-    "arkworks-setups/std",
-    "arkworks-native-gadgets/std",
 
     "poseidon/std",
     "verifier/std"

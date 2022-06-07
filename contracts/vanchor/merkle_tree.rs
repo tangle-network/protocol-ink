@@ -21,6 +21,22 @@ pub struct MerkleTree {
     pub roots: Mapping<u32, [u8; 32]>,
 }
 
+impl Encode for MerkleTree {}
+
+impl Decode for MerkleTree {
+    fn decode<I: Input>(input: &mut I) -> Result<Self, Error> {
+        todo!()
+    }
+
+    fn skip<I: Input>(input: &mut I) -> Result<(), Error> {
+        todo!()
+    }
+
+    fn encoded_fixed_size() -> Option<usize> {
+        todo!()
+    }
+}
+
 impl MerkleTree {
     fn hash_left_right(
         &self,

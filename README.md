@@ -30,6 +30,10 @@ Or optionally for each contract:
 - `cargo contract build`
 ## Testing 
 
+- First run `yarn install`.
+- Then run `yarn build` to build all the contracts.
+- Then run `yarn test`.
+
 ## License
 
 <sup>
