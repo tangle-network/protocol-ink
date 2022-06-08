@@ -347,6 +347,9 @@ mod governed_token_wrapper {
             // only contract governor can execute this function
             self.is_governor(self.env().caller());
 
+            let message = ink_prelude::format!("nonce is  {:?}", nonce);
+            ink_env::debug_println!("{}", &message);
+
             // check if token address already exists
             if self.is_valid_address(token_address) {
                 return Err(Error::TokenAddressAlreadyExists);
@@ -457,7 +460,12 @@ mod governed_token_wrapper {
             amount: Balance,
         ) {
             // burn wrapped token from sender
-            self.burn(burn_for, amount);
+            if self.burn(burn_for, amount).is_err() {
+                ink_env::debug_println!("error occured burning for token");
+            } else {
+                ink_env::debug_println!("burning successful");
+            }
+
 
             if token_address.is_none() {
                 // transfer native liquidity from the token wrapper to the sender
@@ -466,7 +474,14 @@ mod governed_token_wrapper {
                 }
             } else {
                 // transfer PSP22 liquidity from the token wrapper to the sender
-                self.transfer(sender, amount, Vec::<u8>::new()).is_ok();
+                if self.transfer(sender, amount, Vec::<u8>::new()).is_err()
+                {
+                    ink_env::debug_println!("psp22 transfer unwrap failed");
+                   // return Err(Error::TransferError);
+                    panic!("{}", ERROR_MSG);
+                } else {
+                    ink_env::debug_println!("psp22 transfer unwrap successful");
+                }
             }
         }
 
@@ -489,7 +504,11 @@ mod governed_token_wrapper {
         ) -> Result<()> {
             if token_address.is_none() {
                 // mint the native value sent to the contract
-                self.mint(mint_for, leftover);
+                if self.mint(mint_for, leftover).is_err() {
+                    ink_env::debug_println!("error occured minting for native token");
+                } else {
+                    ink_env::debug_println!("minting successful for native");
+                }
 
                 // transfer costToWrap to the feeRecipient
                 if self
@@ -497,7 +516,10 @@ mod governed_token_wrapper {
                     .transfer(self.fee_recipient, cost_to_wrap)
                     .is_err()
                 {
+                    ink_env::debug_println!("native transfer fee recipient failed");
                     return Err(Error::TransferError);
+                } else {
+                    ink_env::debug_println!("native transfer fee recipient successful");
                 }
             } else {
                 // psp22 transfer of liquidity to token wrapper contract
@@ -505,7 +527,10 @@ mod governed_token_wrapper {
                     .transfer_from(sender, self.env().account_id(), leftover, Vec::<u8>::new())
                     .is_err()
                 {
+                    ink_env::debug_println!("psp22 transfer contract failed");
                     return Err(Error::TransferError);
+                } else {
+                    ink_env::debug_println!("psp22 transfer contract successful");
                 }
 
                 // psp22 transfer to fee recipient
@@ -513,11 +538,18 @@ mod governed_token_wrapper {
                     .transfer_from(sender, self.fee_recipient, cost_to_wrap, Vec::<u8>::new())
                     .is_err()
                 {
+                    ink_env::debug_println!("psp22 transfer fee recipient failed");
                     return Err(Error::TransferError);
+                } else {
+                    ink_env::debug_println!("psp22 transfer contract successful");
                 }
 
                 // mint the wrapped token for the sender
-                self.mint(mint_for, leftover);
+                if self.mint(mint_for, leftover).is_err() {
+                    ink_env::debug_println!("error occured minting for psp22 token");
+                } else {
+                    ink_env::debug_println!("minting successful for psp22");
+                }
             }
 
             Ok(())
@@ -595,7 +627,11 @@ mod governed_token_wrapper {
         ///
         /// * `token_address` - The token address to chcek
         fn is_valid_address(&mut self, token_address: AccountId) -> bool {
-            self.valid.get(token_address).is_some()
+            let is_valid = self.valid.get(token_address).unwrap_or(false);
+            let message = ink_prelude::format!("valid address is  {:?}", is_valid);
+            ink_env::debug_println!("{}", &message);
+            is_valid
+
         }
 
         /// Determines if token address is historically valid
