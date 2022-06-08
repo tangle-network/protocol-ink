@@ -112,6 +112,14 @@ mod governed_token_wrapper {
         amount: Balance,
     }
 
+    #[ink(event)]
+    pub struct AddTokenAddress {
+        #[ink(topic)]
+        token_address: Option<AccountId>,
+        #[ink(topic)]
+        nonce: u64,
+    }
+
     impl GovernedTokenWrapper {
         /// Initializes the contract
         ///
@@ -369,6 +377,11 @@ mod governed_token_wrapper {
             self.historical_tokens.insert(token_address, &true);
 
             self.proposal_nonce = nonce;
+
+            self.env().emit_event(AddTokenAddress {
+                token_address: Some(token_address),
+               nonce,
+            });
 
             Ok(())
         }
@@ -720,7 +733,7 @@ mod governed_token_wrapper {
         /// Checks if a token_address is a valid one.
         #[ink(message)]
         pub fn is_valid_token_address(&self, token_address: AccountId) -> bool {
-            self.valid.get(token_address).unwrap()
+            self.valid.get(token_address).unwrap_or(false)
         }
 
         /// Returns total psp22 token supply

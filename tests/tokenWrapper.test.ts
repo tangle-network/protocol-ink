@@ -569,7 +569,7 @@ describe('token-wrapper', () => {
         expect(Number(senderBurntBalance.output)).to.be.lessThan(Number(senderBalance.output));
     });
 
-    it.only('Test psp22 unwrap functionality', async () => {
+    it('Test psp22 unwrap functionality', async () => {
         const {feeRecipient, contractProposalNonce, } = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
 
@@ -649,7 +649,7 @@ describe('token-wrapper', () => {
         //expect(Number(contractBalanceAfterUnwrap.output)).to.not.equal(Number(contractBalanceAfter.output));
     });
 
-    it.only('Test psp22 unwrap for functionality', async () => {
+    it('Test psp22 unwrap for functionality', async () => {
         const {feeRecipient, contractProposalNonce, } = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
 
@@ -730,7 +730,7 @@ describe('token-wrapper', () => {
        //expect(Number(contractBalanceAfterUnwrap.output)).to.not.equal(Number(contractBalanceAfter.output));
     });
 
-    it.only('Test psp22 unwrapping and send to functionality', async () => {
+    it('Test psp22 unwrapping and send to functionality', async () => {
         const {feeRecipient, contractProposalNonce, } = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
         // first add token address
