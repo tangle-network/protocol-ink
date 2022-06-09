@@ -1,10 +1,10 @@
-import { expect } from "chai";
-import { artifacts, network, patract } from "redspot";
+import {expect} from "chai";
+import {artifacts, network, patract} from "redspot";
 import BN from "bn.js";
 
-const { getContractFactory, getRandomSigner } = patract;
-const { api, getAddresses, getSigners } = network;
-const { exec } = require('child_process');
+const {getContractFactory, getRandomSigner} = patract;
+const {api, getAddresses, getSigners} = network;
+const {exec} = require('child_process');
 
 export function normalizeBalance(balance: number): BN {
     return new BN(balance).mul(new BN(10).pow(new BN(api.registry.chainDecimals[0])));
@@ -23,12 +23,21 @@ describe('token-wrapper', () => {
         return api.disconnect()
     });
 
-    before (async () => {
+    before(async () => {
         await api.isReady;
     })
 
     beforeEach(async () => {
-        ({ tokenWrapperContract, tokenWrapperContractFactory, sender, BobSigner, CharlieSigner, FerdieSigner, EveSigner, DaveSigner } =  await setup());
+        ({
+            tokenWrapperContract,
+            tokenWrapperContractFactory,
+            sender,
+            BobSigner,
+            CharlieSigner,
+            FerdieSigner,
+            EveSigner,
+            DaveSigner
+        } = await setup());
     });
 
     async function setup() {
@@ -44,26 +53,51 @@ describe('token-wrapper', () => {
         const Eve = signerAddresses[4];
         const Dave = signerAddresses[5];
 
-        const sender = await getRandomSigner(signers[0],one.muln(10));
-        const CharlieSigner = await getRandomSigner(signers[0],  one.muln(10));
+        const sender = await getRandomSigner(signers[0], one.muln(10));
+        const CharlieSigner = await getRandomSigner(signers[0], one.muln(10));
         const BobSigner = await getRandomSigner(signers[0], one.muln(10));
-        const FerdieSigner = await getRandomSigner(signers[0],  one.muln(10));
-        const EveSigner = await getRandomSigner(signers[0],  one.muln(10));
+        const FerdieSigner = await getRandomSigner(signers[0], one.muln(10));
+        const EveSigner = await getRandomSigner(signers[0], one.muln(10));
         const DaveSigner = await getRandomSigner(signers[0], one.muln(10));
 
-        const {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
+        const {
+            tokenName,
+            tokenSymbol,
+            decimal,
+            contractGovernor,
+            feeRecipient,
+            feePercentage,
+            isNativeAllowed,
+            wrappingLimit,
+            contractProposalNonce,
+            totalSupply,
+            governorBalance
+        } = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
 
         // token wrapper instantiation
         const tokenWrapperContractFactory = await getContractFactory('governed_token_wrapper', sender.address);
 
         const tokenWrapperContract = await tokenWrapperContractFactory.deploy('new',
-            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce, tokenAddress,
+            tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit, contractProposalNonce,
             totalSupply, governorBalance);
 
-        return { sender, Alice, Charlie, CharlieSigner, Bob, BobSigner, Ferdie, FerdieSigner, Eve, EveSigner, Dave, DaveSigner,
-            tokenWrapperContractFactory, tokenWrapperContract};
+        return {
+            sender,
+            Alice,
+            Charlie,
+            CharlieSigner,
+            Bob,
+            BobSigner,
+            Ferdie,
+            FerdieSigner,
+            Eve,
+            EveSigner,
+            Dave,
+            DaveSigner,
+            tokenWrapperContractFactory,
+            tokenWrapperContract
+        };
     }
 
     function tokenWrapperContractInitParams(sender: any, BobSigner: any, CharlieSigner: any) {
@@ -81,8 +115,20 @@ describe('token-wrapper', () => {
         let governorBalance = 9_000_000;
 
 
-        return {tokenName, tokenSymbol, decimal, contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,
-            contractProposalNonce, tokenAddress, totalSupply, governorBalance}
+        return {
+            tokenName,
+            tokenSymbol,
+            decimal,
+            contractGovernor,
+            feeRecipient,
+            feePercentage,
+            isNativeAllowed,
+            wrappingLimit,
+            contractProposalNonce,
+            tokenAddress,
+            totalSupply,
+            governorBalance
+        }
     }
 
     it('Add token address', async () => {
@@ -101,14 +147,14 @@ describe('token-wrapper', () => {
 
         console.log(`signer is ${signer}`);
 
-        expect( await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
+        expect(await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
 
         // validate that address has been added successfully
-        let  isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
+        let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
         expect(isValidAddress.output).to.equal(true);
 
         // validate that proposalNonce has increased
-        let  newProposalNonce = await tokenWrapperContract.query.nonce();
+        let newProposalNonce = await tokenWrapperContract.query.nonce();
         expect(newProposalNonce.output).to.be.equal(contractProposalNonce + 1);
     });
 
@@ -120,11 +166,11 @@ describe('token-wrapper', () => {
         expect(addTokenFunction).to.be.ok;
 
         // validate that address has been added successfully
-        let  isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
+        let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
         expect(isValidAddress.output).to.equal(true);
 
         // validate that proposalNonce has increased
-        let  newProposalNonce = await tokenWrapperContract.query.nonce();
+        let newProposalNonce = await tokenWrapperContract.query.nonce();
         expect(newProposalNonce.output).to.be.equal(contractProposalNonce + 1);
 
         // increase nonce
@@ -143,13 +189,19 @@ describe('token-wrapper', () => {
         console.log(`new proposalNonce is ${isValidAddressAgain.output}`);
 
         // validate that proposalNonce has increased
-        let  newProposalNonceAgain  = await tokenWrapperContract.query.nonce();
+        let newProposalNonceAgain = await tokenWrapperContract.query.nonce();
         console.log(`new proposalNonce is ${newProposalNonceAgain.output}`);
         expect(newProposalNonceAgain.output).to.be.equal(proposalNonce);
     });
 
     it('Update config', async () => {
-        const {contractGovernor, feeRecipient, feePercentage, isNativeAllowed, wrappingLimit,} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
+        const {
+            contractGovernor,
+            feeRecipient,
+            feePercentage,
+            isNativeAllowed,
+            wrappingLimit,
+        } = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
         let newGovernor = BobSigner.address;
         let newIsNativeAllowed = false;
@@ -168,7 +220,7 @@ describe('token-wrapper', () => {
         expect(newGovernorFromStorage.output).to.not.equal(contractGovernor);
 
         // validate that isNativeAllowed has changed
-        let  newIsNativeAllowedFromStorage = await tokenWrapperContract.query.isNativeAllowed();
+        let newIsNativeAllowedFromStorage = await tokenWrapperContract.query.isNativeAllowed();
         expect(newIsNativeAllowedFromStorage.output).to.be.equal(newIsNativeAllowed);
         expect(newIsNativeAllowedFromStorage.output).to.not.equal(isNativeAllowed);
 
@@ -196,7 +248,7 @@ describe('token-wrapper', () => {
         expect(Number(initialSenderWrappedBalance.output)).to.not.equal(0);
         expect(Number(initialContractBalance.output)).to.equal(0);
 
-        let wrapFunction = await tokenWrapperContract.tx.wrap( null, 10, { value: 1500 });
+        let wrapFunction = await tokenWrapperContract.tx.wrap(null, 10, {value: 1500});
 
         expect(wrapFunction).to.be.ok;
 
@@ -213,10 +265,10 @@ describe('token-wrapper', () => {
     });
 
     it('Test psp22 wrapping functionality', async () => {
-        const {feeRecipient, contractProposalNonce} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner, )
+        const {feeRecipient, contractProposalNonce} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner,)
 
         // first add token address
-        expect( await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
+        expect(await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
 
         // validate that address has been added successfully
         let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
@@ -224,17 +276,17 @@ describe('token-wrapper', () => {
 
         // secondly set psp22 allowance
         let allowedAmount = 500000;
-        expect( await tokenWrapperContract.tx.setPsp22Allowance(sender.address, allowedAmount)).to.be.ok;
+        expect(await tokenWrapperContract.tx.setPsp22Allowance(sender.address, allowedAmount)).to.be.ok;
 
         let allowanceSet = await tokenWrapperContract.query.getPsp22Allowance(sender.address, sender.address);
 
         // validate that psp22 allowance was set
-        expect( Number(allowanceSet.output)).to.be.equal(allowedAmount);
+        expect(Number(allowanceSet.output)).to.be.equal(allowedAmount);
 
         let newFeeRecipient = EveSigner.address;
 
         // update config with new states
-        let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(0,0,0,1,newFeeRecipient)
+        let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(0, 0, 0, 1, newFeeRecipient)
         expect(updateConfigFunction).to.be.ok;
 
         // validate that feeRecipient has changed
@@ -252,7 +304,7 @@ describe('token-wrapper', () => {
         expect(Number(initialFeeRecipientBalance.output)).to.equal(0);
 
         // now do wrapping
-        let wrapFunction = await tokenWrapperContract.tx.wrap( BobSigner.address, 10, { value: 10 });
+        let wrapFunction = await tokenWrapperContract.tx.wrap(BobSigner.address, 10, {value: 10});
         expect(wrapFunction).to.be.ok;
 
         // to validate that psp22 token has been minted for sender
@@ -262,7 +314,6 @@ describe('token-wrapper', () => {
         // to validate that fee has been transferred to the fee recipient
         let feeRecipientBalanceAfter = await tokenWrapperContract.query.psp22Balance(feeRecipient);
 
-
         expect(Number(senderWrappedBalanceAfter.output)).to.not.equal(0);
         expect(Number(contractBalanceAfter.output)).to.not.equal(0);
         expect(Number(feeRecipientBalanceAfter.output)).to.not.equal(0);
@@ -270,21 +321,16 @@ describe('token-wrapper', () => {
         //expect(Number(senderWrappedBalanceAfter.output)).to.not.equal(Number(initialSenderWrappedBalance.output));
         expect(Number(contractBalanceAfter.output)).to.be.greaterThan(Number(initialContractBalance.output));
         expect(Number(feeRecipientBalanceAfter.output)).to.be.greaterThan(Number(initialFeeRecipientBalance.output));
-
-        //expect(await tokenWrapperContract.tx.terminateContract(DaveSigner.address)).to.be.ok
-
     });
 
     it('Test native wrapping for functionality', async () => {
-
         let initialSenderWrappedBalance = await tokenWrapperContract.query.psp22Balance(FerdieSigner.address);
         let initialContractBalance = await tokenWrapperContract.query.nativeContractBalance();
-
 
         expect(Number(initialSenderWrappedBalance.output)).to.equal(0);
         expect(Number(initialContractBalance.output)).to.equal(0);
 
-        let wrapFunction = await tokenWrapperContract.tx.wrapFor( null, FerdieSigner.address, 0, { value: 1000 });
+        let wrapFunction = await tokenWrapperContract.tx.wrapFor(null, FerdieSigner.address, 0, {value: 1000});
 
         expect(wrapFunction).to.be.ok;
 
@@ -298,15 +344,13 @@ describe('token-wrapper', () => {
 
         expect(Number(senderWrappedBalanceAfter.output)).to.be.greaterThan(Number(initialSenderWrappedBalance.output));
         expect(Number(contractBalanceAfter.output)).to.be.greaterThan(Number(initialContractBalance.output));
-
-
     });
 
     it('Test psp22 wrapping for functionality', async () => {
-        const {feeRecipient, contractProposalNonce, } = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
+        const {feeRecipient, contractProposalNonce,} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
         // first add token address
-        expect( await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
+        expect(await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
 
         // validate that address has been added successfully
         let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
@@ -314,16 +358,16 @@ describe('token-wrapper', () => {
 
         // secondly set psp22 allowance. Make Ferdie the owner, and Alice the spender
         let allowedAmount = 500000;
-        expect( await tokenWrapperContract.tx.setPsp22AllowanceForOwner(FerdieSigner.address, sender.address, allowedAmount)).to.be.ok;
+        expect(await tokenWrapperContract.tx.setPsp22AllowanceForOwner(FerdieSigner.address, sender.address, allowedAmount)).to.be.ok;
 
         let allowanceSet = await tokenWrapperContract.query.getPsp22Allowance(FerdieSigner.address, sender.address);
 
         // validate that psp22 allowance was set
-        expect( Number(allowanceSet.output)).to.be.equal(allowedAmount);
+        expect(Number(allowanceSet.output)).to.be.equal(allowedAmount);
 
         // update config with new states
         let newFeeRecipient = EveSigner.address;
-        let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(0,0,0,1,newFeeRecipient)
+        let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(0, 0, 0, 1, newFeeRecipient)
         expect(updateConfigFunction).to.be.ok;
 
         // validate that feeRecipient has changed
@@ -345,7 +389,7 @@ describe('token-wrapper', () => {
         expect(Number(initialFeeRecipientBalance.output)).to.equal(0);
 
         // now do wrapping for Ferdie
-        let wrapFunction = await tokenWrapperContract.tx.wrapFor( BobSigner.address, FerdieSigner.address, 10, { value: 10 });
+        let wrapFunction = await tokenWrapperContract.tx.wrapFor(BobSigner.address, FerdieSigner.address, 10, {value: 10});
         expect(wrapFunction).to.be.ok;
 
         // to validate that psp22 token has been minted for Ferdie
@@ -354,7 +398,6 @@ describe('token-wrapper', () => {
         let contractBalanceAfter = await tokenWrapperContract.query.psp22ContractBalance();
         // to validate that fee has been transferred to the fee recipient
         let feeRecipientBalanceAfter = await tokenWrapperContract.query.psp22Balance(feeRecipient);
-
 
         expect(Number(senderWrappedBalanceAfter.output)).to.not.equal(0);
         expect(Number(contractBalanceAfter.output)).to.not.equal(0);
@@ -371,11 +414,10 @@ describe('token-wrapper', () => {
         let initialSenderWrappedBalance = await tokenWrapperContract.query.psp22Balance(EveSigner.address);
         let initialContractBalance = await tokenWrapperContract.query.nativeContractBalance();
 
-
         expect(Number(initialSenderWrappedBalance.output)).to.equal(0);
         expect(Number(initialContractBalance.output)).to.equal(0);
 
-        let wrapFunction = await tokenWrapperContract.tx.wrapForAndSendTo( null, FerdieSigner.address, 0, EveSigner.address, { value: 1000 });
+        let wrapFunction = await tokenWrapperContract.tx.wrapForAndSendTo(null, FerdieSigner.address, 0, EveSigner.address, {value: 1000});
 
         expect(wrapFunction).to.be.ok;
 
@@ -392,10 +434,10 @@ describe('token-wrapper', () => {
     });
 
     it('Test psp22 wrapping for and send to functionality', async () => {
-        const {feeRecipient, contractProposalNonce, } = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
+        const {feeRecipient, contractProposalNonce,} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
         // first add token address
-        expect( await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
+        expect(await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
 
         // validate that address has been added successfully
         let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
@@ -403,13 +445,13 @@ describe('token-wrapper', () => {
 
         // secondly set psp22 allowance. Make Ferdie the owner, and Alice the spender
         let allowedAmount = 500000;
-        expect( await tokenWrapperContract.tx.setPsp22AllowanceForOwner(FerdieSigner.address, sender.address, allowedAmount)).to.be.ok;
+        expect(await tokenWrapperContract.tx.setPsp22AllowanceForOwner(FerdieSigner.address, sender.address, allowedAmount)).to.be.ok;
 
         let allowanceSet = await tokenWrapperContract.query.getPsp22Allowance(FerdieSigner.address, sender.address);
 
         // update config with new states
         let newFeeRecipient = EveSigner.address;
-        let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(0,0,0,1,newFeeRecipient)
+        let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(0, 0, 0, 1, newFeeRecipient)
         expect(updateConfigFunction).to.be.ok;
 
         // validate that feeRecipient has changed
@@ -418,7 +460,7 @@ describe('token-wrapper', () => {
         expect(newFeeRecipientFromStorage.output).to.not.equal(feeRecipient);
 
         // validate that psp22 allowance was set
-        expect( Number(allowanceSet.output)).to.be.equal(allowedAmount);
+        expect(Number(allowanceSet.output)).to.be.equal(allowedAmount);
 
         // Fund Ferdies account
         expect(await tokenWrapperContract.tx.transferPsp22(FerdieSigner.address, 100000)).to.be.ok;
@@ -433,7 +475,7 @@ describe('token-wrapper', () => {
         expect(Number(initialContractBalance.output)).to.equal(0);
 
         // now do wrapping for Ferdie
-        let wrapFunction = await tokenWrapperContract.tx.wrapForAndSendTo( BobSigner.address, FerdieSigner.address, 10, EveSigner.address, { value: 10 });
+        let wrapFunction = await tokenWrapperContract.tx.wrapForAndSendTo(BobSigner.address, FerdieSigner.address, 10, EveSigner.address, {value: 10});
         expect(wrapFunction).to.be.ok;
 
         // to validate that psp22 token has been minted for Ferdie
@@ -462,7 +504,7 @@ describe('token-wrapper', () => {
         expect(Number(initialContractBalance.output)).to.equal(0);
 
         // first do wrapping first
-        let wrapFunction = await tokenWrapperContract.tx.wrap( null, 0, { value: 1000 });
+        let wrapFunction = await tokenWrapperContract.tx.wrap(null, 0, {value: 1000});
 
         expect(wrapFunction).to.be.ok;
 
@@ -477,7 +519,7 @@ describe('token-wrapper', () => {
         expect(Number(senderWrappedBalanceAfter.output)).to.be.greaterThan(Number(initialSenderWrappedBalance.output));
         expect(Number(contractBalanceAfter.output)).to.be.greaterThan(Number(initialContractBalance.output));
 
-        let unwrapFunction = await tokenWrapperContract.tx.unwrap( null, 1000, { value: 1000 });
+        let unwrapFunction = await tokenWrapperContract.tx.unwrap(null, 1000, {value: 1000});
 
         expect(unwrapFunction).to.be.ok;
 
@@ -497,7 +539,7 @@ describe('token-wrapper', () => {
         expect(Number(initialSenderWrappedBalance.output)).to.equal(0);
         expect(Number(initialContractBalance.output)).to.equal(0);
 
-        let wrapFunction = await tokenWrapperContract.tx.wrapFor( null, FerdieSigner.address, 0, { value: 1000 });
+        let wrapFunction = await tokenWrapperContract.tx.wrapFor(null, FerdieSigner.address, 0, {value: 1000});
 
         expect(wrapFunction).to.be.ok;
 
@@ -512,7 +554,7 @@ describe('token-wrapper', () => {
         expect(Number(senderWrappedBalanceAfter.output)).to.be.greaterThan(Number(initialSenderWrappedBalance.output));
         expect(Number(contractBalanceAfter.output)).to.be.greaterThan(Number(initialContractBalance.output));
 
-        let unwrapFunction = await tokenWrapperContract.tx.unwrapFor( null, 4, sender.address, { value: 1000 });
+        let unwrapFunction = await tokenWrapperContract.tx.unwrapFor(null, 4, sender.address, {value: 1000});
 
         expect(unwrapFunction).to.be.ok;
 
@@ -530,7 +572,7 @@ describe('token-wrapper', () => {
         expect(Number(initialSenderWrappedBalance.output)).to.equal(0);
         expect(Number(initialContractBalance.output)).to.equal(0);
 
-        let wrapFunction = await tokenWrapperContract.tx.wrapForAndSendTo( null, FerdieSigner.address, 0, EveSigner.address, { value: 1000 });
+        let wrapFunction = await tokenWrapperContract.tx.wrapForAndSendTo(null, FerdieSigner.address, 0, EveSigner.address, {value: 1000});
 
         expect(wrapFunction).to.be.ok;
 
@@ -547,7 +589,7 @@ describe('token-wrapper', () => {
 
         let senderBalance = await tokenWrapperContract.query.psp22Balance(sender.address);
 
-        let unwrapFunction = await tokenWrapperContract.tx.unwrapAndSendTo( null,  2, sender.address, { value: 1000 });
+        let unwrapFunction = await tokenWrapperContract.tx.unwrapAndSendTo(null, 2, sender.address, {value: 1000});
 
         expect(unwrapFunction).to.be.ok;
 
@@ -560,11 +602,10 @@ describe('token-wrapper', () => {
     });
 
     it('Test psp22 unwrap functionality', async () => {
-        const {feeRecipient, contractProposalNonce, } = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
-
+        const {feeRecipient, contractProposalNonce,} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
         // first add token address
-        expect( await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
+        expect(await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
 
         // validate that address has been added successfully
         let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
@@ -572,16 +613,16 @@ describe('token-wrapper', () => {
 
         // secondly set psp22 allowance
         let allowedAmount = 500000;
-        expect( await tokenWrapperContract.tx.setPsp22Allowance(sender.address, allowedAmount)).to.be.ok;
+        expect(await tokenWrapperContract.tx.setPsp22Allowance(sender.address, allowedAmount)).to.be.ok;
 
         let allowanceSet = await tokenWrapperContract.query.getPsp22Allowance(sender.address, sender.address);
 
         // validate that psp22 allowance was set
-        expect( Number(allowanceSet.output)).to.be.equal(allowedAmount);
+        expect(Number(allowanceSet.output)).to.be.equal(allowedAmount);
 
         // update config with new states
         let newFeeRecipient = EveSigner.address;
-        let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(0,0,0,1,newFeeRecipient)
+        let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(0, 0, 0, 1, newFeeRecipient)
         expect(updateConfigFunction).to.be.ok;
 
         // validate that feeRecipient has changed
@@ -598,7 +639,7 @@ describe('token-wrapper', () => {
         expect(Number(initialFeeRecipientBalance.output)).to.equal(0);
 
         // now do wrapping
-        let wrapFunction = await tokenWrapperContract.tx.wrap( BobSigner.address, 10, { value: 10 });
+        let wrapFunction = await tokenWrapperContract.tx.wrap(BobSigner.address, 10, {value: 10});
         expect(wrapFunction).to.be.ok;
 
         // to validate that psp22 token has been minted for sender
@@ -617,32 +658,32 @@ describe('token-wrapper', () => {
 
         // secondly set psp22 allowance
         let allowedAmountForContract = 500000;
-        expect( await tokenWrapperContract.tx.setPsp22AllowanceForOwner(tokenWrapperContract.address, sender.address, allowedAmount)).to.be.ok;
+        expect(await tokenWrapperContract.tx.setPsp22AllowanceForOwner(tokenWrapperContract.address, sender.address, allowedAmount)).to.be.ok;
 
         let allowanceSetForContract = await tokenWrapperContract.query.getPsp22Allowance(tokenWrapperContract.address, sender.address);
 
         // validate that psp22 allowance was set
-        expect( Number(allowanceSetForContract.output)).to.be.equal(allowedAmountForContract);
+        expect(Number(allowanceSetForContract.output)).to.be.equal(allowedAmountForContract);
 
 
         // validate that psp22 allowance was set
-        expect( Number(allowanceSetForContract.output)).to.be.equal(allowedAmount);
+        expect(Number(allowanceSetForContract.output)).to.be.equal(allowedAmount);
         // now do unwrapping
-        let unwrapFunction = await tokenWrapperContract.tx.unwrap( BobSigner.address, 2, { value: 10 });
+        let unwrapFunction = await tokenWrapperContract.tx.unwrap(BobSigner.address, 2, {value: 10});
         expect(unwrapFunction).to.be.ok;
 
         // to validate that psp22 token funds was transferred from the contract
-        let contractBalanceAfterUnwrap =  await tokenWrapperContract.query.psp22ContractBalance();
+        let contractBalanceAfterUnwrap = await tokenWrapperContract.query.psp22ContractBalance();
         expect(Number(contractBalanceAfterUnwrap.output)).to.not.equal(0);
 
     });
 
     it('Test psp22 unwrap for functionality', async () => {
-        const {feeRecipient, contractProposalNonce, } = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
+        const {feeRecipient, contractProposalNonce,} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
 
         // first add token address
-        expect( await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
+        expect(await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
 
         // validate that address has been added successfully
         let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
@@ -650,12 +691,12 @@ describe('token-wrapper', () => {
 
         // secondly set psp22 allowance. Make Ferdie the owner, and Alice the spender
         let allowedAmount = 500000;
-        expect( await tokenWrapperContract.tx.setPsp22AllowanceForOwner(FerdieSigner.address, sender.address, allowedAmount)).to.be.ok;
+        expect(await tokenWrapperContract.tx.setPsp22AllowanceForOwner(FerdieSigner.address, sender.address, allowedAmount)).to.be.ok;
 
         let allowanceSet = await tokenWrapperContract.query.getPsp22Allowance(FerdieSigner.address, sender.address);
 
         // validate that psp22 allowance was set
-        expect( Number(allowanceSet.output)).to.be.equal(allowedAmount);
+        expect(Number(allowanceSet.output)).to.be.equal(allowedAmount);
 
         // Fund Ferdies account
         expect(await tokenWrapperContract.tx.transferPsp22(FerdieSigner.address, 100000)).to.be.ok;
@@ -671,7 +712,7 @@ describe('token-wrapper', () => {
 
         // update config with new states
         let newFeeRecipient = EveSigner.address;
-        let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(0,0,0,1,newFeeRecipient)
+        let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(0, 0, 0, 1, newFeeRecipient)
         expect(updateConfigFunction).to.be.ok;
 
         // validate that feeRecipient has changed
@@ -679,7 +720,7 @@ describe('token-wrapper', () => {
         expect(newFeeRecipientFromStorage.output).to.equal(EveSigner.address);
 
         // now do wrapping for Ferdie
-        let wrapFunction = await tokenWrapperContract.tx.wrapFor( BobSigner.address, FerdieSigner.address, 10, { value: 10 });
+        let wrapFunction = await tokenWrapperContract.tx.wrapFor(BobSigner.address, FerdieSigner.address, 10, {value: 10});
         expect(wrapFunction).to.be.ok;
 
         // to validate that psp22 token has been minted for Ferdie
@@ -699,27 +740,27 @@ describe('token-wrapper', () => {
 
         // secondly set psp22 allowance
         let allowedAmountForContract = 500000;
-        expect( await tokenWrapperContract.tx.setPsp22AllowanceForOwner(tokenWrapperContract.address, sender.address, allowedAmount)).to.be.ok;
+        expect(await tokenWrapperContract.tx.setPsp22AllowanceForOwner(tokenWrapperContract.address, sender.address, allowedAmount)).to.be.ok;
 
         let allowanceSetForContract = await tokenWrapperContract.query.getPsp22Allowance(tokenWrapperContract.address, sender.address);
 
         // validate that psp22 allowance for contract was set
-        expect( Number(allowanceSetForContract.output)).to.be.equal(allowedAmountForContract);
+        expect(Number(allowanceSetForContract.output)).to.be.equal(allowedAmountForContract);
 
         // now do unwrapping
-        let unwrapFunction = await tokenWrapperContract.tx.unwrapFor( BobSigner.address,  5, FerdieSigner.address, { value: 10 });
+        let unwrapFunction = await tokenWrapperContract.tx.unwrapFor(BobSigner.address, 5, FerdieSigner.address, {value: 10});
         expect(unwrapFunction).to.be.ok;
 
         // to validate that psp22 token funds was transferred from the contract
-        let contractBalanceAfterUnwrap =  await tokenWrapperContract.query.psp22ContractBalance();
+        let contractBalanceAfterUnwrap = await tokenWrapperContract.query.psp22ContractBalance();
         expect(Number(contractBalanceAfterUnwrap.output)).to.not.equal(0);
     });
 
     it('Test psp22 unwrapping and send to functionality', async () => {
-        const {feeRecipient, contractProposalNonce, } = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
+        const {feeRecipient, contractProposalNonce,} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
         // first add token address
-        expect( await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
+        expect(await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
 
         // validate that address has been added successfully
         let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
@@ -727,12 +768,12 @@ describe('token-wrapper', () => {
 
         // secondly set psp22 allowance. Make Ferdie the owner, and Alice the spender
         let allowedAmount = 500000;
-        expect( await tokenWrapperContract.tx.setPsp22AllowanceForOwner(FerdieSigner.address, sender.address, allowedAmount)).to.be.ok;
+        expect(await tokenWrapperContract.tx.setPsp22AllowanceForOwner(FerdieSigner.address, sender.address, allowedAmount)).to.be.ok;
 
         let allowanceSet = await tokenWrapperContract.query.getPsp22Allowance(FerdieSigner.address, sender.address);
 
         // validate that psp22 allowance was set
-        expect( Number(allowanceSet.output)).to.be.equal(allowedAmount);
+        expect(Number(allowanceSet.output)).to.be.equal(allowedAmount);
 
         // Fund Ferdies account
         expect(await tokenWrapperContract.tx.transferPsp22(FerdieSigner.address, 100000)).to.be.ok;
@@ -749,7 +790,7 @@ describe('token-wrapper', () => {
 
         // update config with new states
         let newFeeRecipient = DaveSigner.address;
-        let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(0,0,0,1,newFeeRecipient)
+        let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(0, 0, 0, 1, newFeeRecipient)
         expect(updateConfigFunction).to.be.ok;
 
         // validate that feeRecipient has changed
@@ -757,7 +798,7 @@ describe('token-wrapper', () => {
         expect(newFeeRecipientFromStorage.output).to.equal(DaveSigner.address);
 
         // now do wrapping for Ferdie
-        let wrapFunction = await tokenWrapperContract.tx.wrapForAndSendTo( BobSigner.address, FerdieSigner.address, 10, EveSigner.address, { value: 10 });
+        let wrapFunction = await tokenWrapperContract.tx.wrapForAndSendTo(BobSigner.address, FerdieSigner.address, 10, EveSigner.address, {value: 10});
         expect(wrapFunction).to.be.ok;
 
         // to validate that psp22 token has been minted for Ferdie
@@ -769,30 +810,29 @@ describe('token-wrapper', () => {
 
         console.log(`FeeRecipient balance is ${feeRecipientBalanceAfter.output}`);
 
-
         expect(Number(senderWrappedBalanceAfter.output)).to.not.equal(0);
         expect(Number(contractBalanceAfter.output)).to.not.equal(0);
 
         expect(Number(senderWrappedBalanceAfter.output)).to.not.equal(Number(initialSenderWrappedBalance.output));
         expect(Number(contractBalanceAfter.output)).to.be.greaterThan(Number(initialContractBalance.output));
-//        expect(Number(feeRecipientBalanceAfter.output)).to.be.greaterThan(Number(initialFeeRecipientBalance.output));
+        //expect(Number(feeRecipientBalanceAfter.output)).to.be.greaterThan(Number(initialFeeRecipientBalance.output));
 
         // set psp22 allowance for contract
         let allowedAmountForContract = 500000;
-        expect( await tokenWrapperContract.tx.setPsp22AllowanceForOwner(tokenWrapperContract.address, sender.address, allowedAmount)).to.be.ok;
+        expect(await tokenWrapperContract.tx.setPsp22AllowanceForOwner(tokenWrapperContract.address, sender.address, allowedAmount)).to.be.ok;
 
         let allowanceSetForContract = await tokenWrapperContract.query.getPsp22Allowance(tokenWrapperContract.address, sender.address);
 
         // validate that psp22 allowance for contract was set
-        expect( Number(allowanceSetForContract.output)).to.be.equal(allowedAmountForContract);
+        expect(Number(allowanceSetForContract.output)).to.be.equal(allowedAmountForContract);
 
         // now do unwrapping
         // now do wrapping for Ferdie
-        let unwrapFunction = await tokenWrapperContract.tx.unwrapAndSendTo( BobSigner.address, 1, FerdieSigner.address, { value: 10 });
+        let unwrapFunction = await tokenWrapperContract.tx.unwrapAndSendTo(BobSigner.address, 1, FerdieSigner.address, {value: 10});
         expect(unwrapFunction).to.be.ok;
 
         // to validate that psp22 token funds was transferred from the contract
-        let contractBalanceAfterUnwrap =  await tokenWrapperContract.query.psp22ContractBalance();
+        let contractBalanceAfterUnwrap = await tokenWrapperContract.query.psp22ContractBalance();
         expect(Number(contractBalanceAfterUnwrap.output)).to.not.equal(0);
 
     });

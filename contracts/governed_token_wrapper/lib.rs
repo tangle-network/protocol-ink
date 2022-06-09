@@ -99,6 +99,10 @@ mod governed_token_wrapper {
         NonceMustIncrementByOne,
         /// TransferError
         TransferError,
+        /// Token Mint Error
+        TokenMintError,
+        /// Token Burn Error
+        TokenBurnError,
         /// PSP22 allowance error
         PSP22AllowanceError,
     }
@@ -136,7 +140,6 @@ mod governed_token_wrapper {
             is_native_allowed: bool,
             wrapping_limit: u128,
             proposal_nonce: u64,
-            token_address: AccountId,
             total_supply: Balance,
             governor_balance: Balance,
         ) -> Self {
@@ -164,8 +167,6 @@ mod governed_token_wrapper {
         }
 
         /// Used to wrap tokens on behalf of a sender.
-        ///
-        /// # Arguments
         ///
         /// * `token_address` - The address of PSP22 to transfer to, if token_address is None,
         /// then it's a Native token address
@@ -197,8 +198,6 @@ mod governed_token_wrapper {
 
         /// Used to unwrap/burn the wrapper token on behalf of a sender.
         ///
-        /// # Arguments
-        ///
         /// * `token_address` -  The address of PSP22 to transfer to, if token_address is None,
         /// then it's a Native token address
         /// * `amount` -  The the amount of token to transfer
@@ -215,8 +214,6 @@ mod governed_token_wrapper {
         }
 
         /// Used to unwrap/burn the wrapper token on behalf of a sender.
-        ///
-        /// # Arguments
         ///
         /// * `token_address` - is the address of PSP22 to unwrap into,
         /// * `amount` - is the amount of tokens to burn
@@ -240,7 +237,6 @@ mod governed_token_wrapper {
 
         /// Used to wrap tokens on behalf of a sender
         ///
-        /// # Arguments
         /// * `token_address` - is the Account id of PSP22 to unwrap into,
         ///
         /// * `amount` - is the amount of tokens to transfer
@@ -281,8 +277,6 @@ mod governed_token_wrapper {
         }
         /// Used to wrap tokens on behalf of a sender and mint to a potentially different address
         ///
-        /// # Arguments
-        ///
         /// * `token_address` - is the address of PSP22 to unwrap into,
         /// * `sender` - is Address of sender where assets are sent from.
         /// * `amount` - is the amount of tokens to transfer
@@ -319,8 +313,6 @@ mod governed_token_wrapper {
 
         /// Used to unwrap/burn the wrapper token on behalf of a sender.
         ///
-        /// # Arguments
-        ///
         /// * `token_address` - is the address of PSP22 to transfer to, if token_address is None,
         ///  then it's a Native token address
         /// * `amount` - is the amount of token to transfer
@@ -337,8 +329,6 @@ mod governed_token_wrapper {
         }
 
         /// Adds a token at `token_address` to the GovernedTokenWrapper's wrapping list
-        ///
-        /// # Arguments
         ///
         /// * `token_address` - The address of the token to be added
         /// * `nonce` -  The nonce tracking updates to this contract
@@ -372,8 +362,6 @@ mod governed_token_wrapper {
 
         /// Removes a token at `token_address` from the GovernedTokenWrapper's wrapping list
         ///
-        /// # Arguments
-        ///
         /// * `token_address`:  The address of the token to be added
         /// * `nonce`: The nonce tracking updates to this contract
         #[ink(message)]
@@ -401,8 +389,6 @@ mod governed_token_wrapper {
         }
 
         /// Updates contract configs
-        ///
-        /// # Arguments
         ///
         /// * `governor` - Sets the contract's governor
         /// * `is_native_allowed` - Determines if the contract should allow native token wrapping
@@ -443,7 +429,6 @@ mod governed_token_wrapper {
         }
 
         /// Handles unwrapping by transferring token to the sender and burning for the burn_for address
-        /// # Arguments
         ///
         /// * `token_address` - is the address of PSP22 to unwrap into,
         /// * `sender` - is Address of sender where assets are sent from.
@@ -455,34 +440,28 @@ mod governed_token_wrapper {
             sender: AccountId,
             burn_for: AccountId,
             amount: Balance,
-        ) {
+        ) -> Result<()> {
             // burn wrapped token from sender
             if self.burn(burn_for, amount).is_err() {
-                ink_env::debug_println!("error occured burning for token");
-            } else {
-                ink_env::debug_println!("burning successful");
+                return Err(Error::TokenBurnError);
             }
 
             if token_address.is_none() {
                 // transfer native liquidity from the token wrapper to the sender
                 if self.env().transfer(sender, amount).is_err() {
-                    panic!("{}", ERROR_MSG);
+                    return Err(Error::TransferError);
                 }
             } else {
                 // transfer PSP22 liquidity from the token wrapper to the sender
                 if self.transfer(sender, amount, Vec::<u8>::new()).is_err() {
-                    ink_env::debug_println!("psp22 transfer unwrap failed");
-                    // return Err(Error::TransferError);
-                    panic!("{}", ERROR_MSG);
-                } else {
-                    ink_env::debug_println!("psp22 transfer unwrap successful");
+                    return Err(Error::TransferError);
                 }
             }
+
+            Ok(())
         }
 
         /// Handles wrapping by transferring token to the sender and minting for the mint_for address
-        ///
-        /// # Arguments
         ///
         /// * `token_address` - Is the address of PSP22 to unwrap into,
         /// * `sender` - Is Address of sender where assets are sent from.
@@ -500,9 +479,7 @@ mod governed_token_wrapper {
             if token_address.is_none() {
                 // mint the native value sent to the contract
                 if self.mint(mint_for, leftover).is_err() {
-                    ink_env::debug_println!("error occured minting for native token");
-                } else {
-                    ink_env::debug_println!("minting successful for native");
+                    return Err(Error::TokenMintError);
                 }
 
                 // transfer costToWrap to the feeRecipient
@@ -511,10 +488,7 @@ mod governed_token_wrapper {
                     .transfer(self.fee_recipient, cost_to_wrap)
                     .is_err()
                 {
-                    ink_env::debug_println!("native transfer fee recipient failed");
                     return Err(Error::TransferError);
-                } else {
-                    ink_env::debug_println!("native transfer fee recipient successful");
                 }
             } else {
                 // psp22 transfer of liquidity to token wrapper contract
@@ -522,10 +496,7 @@ mod governed_token_wrapper {
                     .transfer_from(sender, self.env().account_id(), leftover, Vec::<u8>::new())
                     .is_err()
                 {
-                    ink_env::debug_println!("psp22 transfer contract failed");
                     return Err(Error::TransferError);
-                } else {
-                    ink_env::debug_println!("psp22 transfer contract successful");
                 }
 
                 // psp22 transfer to fee recipient
@@ -533,17 +504,12 @@ mod governed_token_wrapper {
                     .transfer_from(sender, self.fee_recipient, cost_to_wrap, Vec::<u8>::new())
                     .is_err()
                 {
-                    ink_env::debug_println!("psp22 transfer fee recipient failed");
                     return Err(Error::TransferError);
-                } else {
-                    ink_env::debug_println!("psp22 transfer contract successful");
                 }
 
                 // mint the wrapped token for the sender
                 if self.mint(mint_for, leftover).is_err() {
-                    ink_env::debug_println!("error occured minting for psp22 token");
-                } else {
-                    ink_env::debug_println!("minting successful for psp22");
+                    return Err(Error::TransferError);
                 }
             }
 
@@ -551,8 +517,6 @@ mod governed_token_wrapper {
         }
 
         /// Checks to determine if it's safe to wrap
-        ///
-        /// # Arguments
         ///
         /// * `token_address` - Is the address for wrapping,
         /// * `amount` - Is the amount for wrapping.
@@ -618,7 +582,6 @@ mod governed_token_wrapper {
         }
 
         /// Determines if token address is a valid one
-        /// # Arguments
         ///
         /// * `token_address` - The token address to chcek
         fn is_valid_address(&mut self, token_address: AccountId) -> bool {
@@ -627,7 +590,6 @@ mod governed_token_wrapper {
         }
 
         /// Determines if token address is historically valid
-        /// # Arguments
         ///
         /// * `token_address` - The token address to check
         fn is_address_historically_valid(&mut self, token_address: AccountId) -> bool {
@@ -635,7 +597,6 @@ mod governed_token_wrapper {
         }
 
         /// Determines if amount is valid for wrapping
-        /// # Arguments
         ///
         /// * `amount` - The amount
         fn is_valid_amount(&mut self, amount: Balance) -> bool {
@@ -645,7 +606,6 @@ mod governed_token_wrapper {
         }
 
         /// Calculates the fee to be sent to fee recipient
-        /// # Arguments
         ///
         /// * `amount_to_wrap` - The amount to wrap
         fn get_fee_from_amount(&mut self, amount_to_wrap: Balance) -> Balance {
@@ -655,8 +615,6 @@ mod governed_token_wrapper {
         }
 
         /// Determine if an account id/address is a governor
-        ///
-        /// # Arguments
         ///
         /// * `address` - The address to check
         fn is_governor(&mut self, address: AccountId) -> Result<()> {
@@ -711,8 +669,6 @@ mod governed_token_wrapper {
 
         /// Checks if a token_address is a valid one.
         ///
-        /// # Arguments
-        ///
         /// * `token_address` - The address to check
         #[ink(message)]
         pub fn is_valid_token_address(&self, token_address: AccountId) -> bool {
@@ -726,16 +682,14 @@ mod governed_token_wrapper {
         }
 
         /// Returns psp22 balance for an address
-        /// # Arguments
         ///
-        /// * `token_address` - The address to check
+        /// * `address` - The address to check
         #[ink(message)]
-        pub fn psp22_balance(&self, token_address: AccountId) -> Balance {
-            self.balance_of(token_address)
+        pub fn psp22_balance(&self, address: AccountId) -> Balance {
+            self.balance_of(address)
         }
 
         /// Updates psp22 contract balance
-        /// # Arguments
         ///
         /// * `amount` - the amount
         #[ink(message)]
@@ -745,7 +699,6 @@ mod governed_token_wrapper {
         }
 
         /// Transfers psp22 token to contract
-        /// # Arguments
         ///
         /// * `amount` - the amount
         #[ink(message)]
@@ -789,7 +742,6 @@ mod governed_token_wrapper {
         }
 
         /// sets the psp22 allowance for the spender(spend on behalf of owner)
-        /// # Arguments
         ///
         /// * `owner` - owner's address
         /// * `spender` - spender's address
@@ -807,7 +759,6 @@ mod governed_token_wrapper {
         }
 
         /// Gets the psp22 allowance for the spender(spend on behalf of owner)
-        /// # Arguments
         ///
         /// * `owner` - owner's address
         /// * `spender` - spender's address
@@ -817,7 +768,6 @@ mod governed_token_wrapper {
         }
 
         /// Transfer's psp22 token to an address
-        /// # Arguments
         ///
         /// * `account_id` - address to transfer to
         /// * `amount` - amount to transfer
@@ -830,7 +780,6 @@ mod governed_token_wrapper {
         }
 
         /// Transfer's native token to an address
-        /// # Arguments
         ///
         /// * `account_id` - address to transfer to
         /// * `amount` - amount to transfer
