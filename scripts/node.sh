@@ -1,4 +1,4 @@
-cd workspace
+cd <workspace>
 cd node
 cd artifacts
 cd substrate-contracts-node-linux
