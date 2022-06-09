@@ -7,6 +7,7 @@ jobs:
   linux:
     runs-on: ubuntu-latest
     steps:
+      -  uses: ./
       - uses: dsaltares/fetch-gh-release-asset@master
         with:
           repo: 'paritytech/substrate-contracts-node'
