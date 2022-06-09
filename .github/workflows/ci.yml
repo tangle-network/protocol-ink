@@ -18,7 +18,7 @@ jobs:
         name: Check file existence
         id: check_files
         with:
-          files: "assets/substrate-contracts-node-linux.tar.gz"
+          files: "substrate-contracts-node-linux.tar.gz"
 
       - name: File exists
         if: steps.check_files.outputs.files_exists == 'true'
