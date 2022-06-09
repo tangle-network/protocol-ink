@@ -29,5 +29,13 @@ jobs:
         run: echo "It exists !"
 
       - uses: actions/checkout@v2
-      - name: Run script file
-        run: ./substrate-contracts-node --dev
+      - name: Install
+        run: yarn install
+
+      - uses: actions/checkout@v2
+      - name: Build
+        run: yarn build
+
+      - uses: actions/checkout@v2
+      - name: Build
+        run: yarn test

@@ -4,6 +4,7 @@ import BN from "bn.js";
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
+const { exec } = require('child_process');
 
 export function normalizeBalance(balance: number): BN {
     return new BN(balance).mul(new BN(10).pow(new BN(api.registry.chainDecimals[0])));
@@ -23,6 +24,19 @@ describe('token-wrapper', () => {
     });
 
     before (async () => {
+        exec(' ./substrate-contracts-node --dev', (err, stdout, stderr) => {
+            if (err) {
+                console.log(`error occured ${err}`)
+            }
+
+            if (stdout) {
+                console.log(`std out ${stdout}`)
+            }
+
+            if (stderr) {
+                console.log(`std error occured ${stderr}`)
+            }
+        });
         await api.isReady;
     })
 
