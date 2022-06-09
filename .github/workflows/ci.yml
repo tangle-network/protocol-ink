@@ -27,3 +27,10 @@ jobs:
 
       - name: Extract some files
         run: 7z x node/substrate-contracts-node-linux.tar.gz
+
+      - uses: actions/checkout@v2
+      - name: Run script file
+        run: |
+          chmod +x ./scripts/node.sh
+          ./scripts/node.sh
+        shell: bash
