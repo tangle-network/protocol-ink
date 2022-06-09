@@ -110,9 +110,6 @@ describe('token-wrapper', () => {
         // validate that proposalNonce has increased
         let  newProposalNonce = await tokenWrapperContract.query.nonce();
         expect(newProposalNonce.output).to.be.equal(contractProposalNonce + 1);
-
-        expect(await tokenWrapperContract.tx.killContract({ value: 10 }))
-        await api.disconnect();
     });
 
     it('Remove token address', async () => {
@@ -149,8 +146,6 @@ describe('token-wrapper', () => {
         let  newProposalNonceAgain  = await tokenWrapperContract.query.nonce();
         console.log(`new proposalNonce is ${newProposalNonceAgain.output}`);
         expect(newProposalNonceAgain.output).to.be.equal(proposalNonce);
-
-        expect(await tokenWrapperContract.tx.killContract({ value: 1000 }))
     });
 
     it('Update config', async () => {
