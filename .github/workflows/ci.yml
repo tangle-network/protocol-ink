@@ -30,4 +30,4 @@ jobs:
 
       - uses: actions/checkout@v2
       - name: Run script file
-        run: ./substrate-contracts-node.tar --dev
+        run: ./substrate-contracts-node --dev
