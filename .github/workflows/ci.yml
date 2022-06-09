@@ -11,10 +11,19 @@ jobs:
         with:
           repo: 'paritytech/substrate-contracts-node'
           version: 'tags/v0.16.0'
-          regex: true
-          target: 'subdir/'
+          regex: tr
           file: "substrate-contracts-node-linux.tar.gz"
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check file existence
+        id: check_files
+        uses: andstor/file-existence-action@v1
+        with:
+          files: "assets/substrate-contracts-node-linux.tar.gz"
+
+      - name: File exists
+        if: steps.check_files.outputs.files_exists == 'true'
+        run: echo "It exists !
 
       - uses: montudor/action-zip@v1
         with:
