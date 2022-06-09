@@ -22,7 +22,7 @@ jobs:
 
       - name: File exists
         if: steps.check_files.outputs.files_exists == 'true'
-        run: echo "It exists !
+        run: echo "It exists !"
 
       - uses: montudor/action-zip@v1
         with:
