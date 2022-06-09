@@ -30,7 +30,8 @@ Or optionally for each contract:
 - `cargo contract build`
 ## Testing 
 
-- First run `yarn install`.
+- First ensure you have downloaded substrate contract node and follow the instructions [here](https://github.com/paritytech/substrate-contracts-node#download-binary)
+- Then run `yarn install`.
 - Then run `yarn build` to build all the contracts.
 - Then run `yarn test`.
 
