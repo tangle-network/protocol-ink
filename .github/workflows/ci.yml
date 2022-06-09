@@ -28,14 +28,14 @@ jobs:
         if: steps.check_files.outputs.files_exists == 'true'
         run: echo "It exists !"
 
-      - uses: actions/checkout@v2
-      - name: Install
-        run: yarn install
+      - name: Add Redspot
+        run: yarn global add redspot
 
-      - uses: actions/checkout@v2
+      - name: Install
+        run: yarn global install
+
       - name: Build
         run: yarn build
 
-      - uses: actions/checkout@v2
       - name: Build
         run: yarn test
