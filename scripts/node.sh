@@ -1,4 +1,4 @@
-cd home
+cd workflow
 cd node
 cd artifacts
 cd substrate-contracts-node-linux
