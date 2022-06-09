@@ -22,14 +22,11 @@ jobs:
         name: Check file existence
         id: check_files
         with:
-          files: "node/artifacts/substrate-contracts-node-linux/substrate-contracts-node"
+          files: "node/artifacts/substrate-contracts-node-linux.tar"
 
       - name: File exists
         if: steps.check_files.outputs.files_exists == 'true'
         run: echo "It exists !"
-
-      - name: Extract some files
-        run: 7z x node/substrate-contracts-node-linux.tar.gz
 
       - uses: actions/checkout@v2
       - name: Run script file
