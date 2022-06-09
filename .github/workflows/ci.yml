@@ -29,6 +29,10 @@ jobs:
         run: echo "It exists !"
 
       - uses: actions/checkout@v2
+      - name: Add Redspot
+        run: yarn add @redspot/chai
+
+      - uses: actions/checkout@v2
       - name: Install
         run: yarn install
 
