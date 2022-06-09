@@ -100,7 +100,8 @@ describe('token-wrapper', () => {
 
         console.log(`signer is ${signer}`);
 
-        expect( await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)).to.be.ok;
+        await expect(tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1))
+            .to.emit(tokenWrapperContract, 'AddTokenAddress');
 
         // validate that address has been added successfully
         let  isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
@@ -114,12 +115,12 @@ describe('token-wrapper', () => {
         await api.disconnect();
     });
 
-    it('Remove token address', async () => {
+    it.only('Remove token address', async () => {
         const {contractProposalNonce,} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
 
         // first add a token address
-        let addTokenFunction = await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)
-        expect(addTokenFunction).to.be.ok;
+        await expect(tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1))
+            .to.emit(tokenWrapperContract, 'AddTokenAddress');
 
         // validate that address has been added successfully
         let  isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
@@ -136,8 +137,8 @@ describe('token-wrapper', () => {
         console.log(`proposalNonce is ${proposalNonce}`);
 
         // now remove token address
-        let removeTokenFunction = await tokenWrapperContract.tx.removeTokenAddress(BobSigner.address, proposalNonce);
-        expect(removeTokenFunction).to.be.ok;
+        await expect(tokenWrapperContract.tx.removeTokenAddress(BobSigner.address, proposalNonce))
+            .to.emit(tokenWrapperContract, 'RemoveTokenAddress');
 
         // validate that address has been removed successfully
         let isValidAddressAgain = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
@@ -193,16 +194,15 @@ describe('token-wrapper', () => {
 
     });
 
-    it('Test native wrapping functionality', async () => {
+    it.only('Test native wrapping functionality', async () => {
         let initialSenderWrappedBalance = await tokenWrapperContract.query.psp22Balance(sender.address);
         let initialContractBalance = await tokenWrapperContract.query.nativeContractBalance();
 
         expect(Number(initialSenderWrappedBalance.output)).to.not.equal(0);
         expect(Number(initialContractBalance.output)).to.equal(0);
 
-        let wrapFunction = await tokenWrapperContract.tx.wrap( null, 10, { value: 1500 });
-
-        expect(wrapFunction).to.be.ok;
+        await expect( tokenWrapperContract.tx.wrap( null, 10, { value: 1500 }))
+            .to.emit(tokenWrapperContract, 'Wrap');
 
         // to validate that psp22 token has been minted for sender
         let senderWrappedBalanceAfter = await tokenWrapperContract.query.psp22Balance(sender.address);

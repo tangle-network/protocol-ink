@@ -101,11 +101,9 @@ describe('token-wrapper', () => {
         console.log(`signer is ${signer}`);
 
         try {
-            let call = await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, 1).to.not.emit(tokenWrapperContract, 'AddTokenAddress');
-            //expect( call).to.be.ok
-
+            await expect(tokenWrapperContract.tx.addTokenAddress(BobSigner.address, 1))
+                .to.not.emit(tokenWrapperContract, 'AddTokenAddress')
         } catch (err) {
-            //console.log(`call is ${JSON.stringify(call)}`);
             // @ts-ignore
             console.log(`error is ${JSON.stringify(err)}`);
         }
@@ -138,7 +136,8 @@ describe('token-wrapper', () => {
         console.log(`signer is ${signer}`);
 
         try {
-            expect( await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, 2)).to.be.ok
+            await expect(tokenWrapperContract.tx.addTokenAddress(BobSigner.address, 2))
+                .to.not.emit(tokenWrapperContract, 'AddTokenAddress')
         } catch (err) {
             // @ts-ignore
             console.log(`error is ${err.message}`);
@@ -177,8 +176,8 @@ describe('token-wrapper', () => {
 
         try {
             // now remove token address
-            let removeTokenFunction = await tokenWrapperContract.tx.removeTokenAddress(BobSigner.address, 1);
-            expect(removeTokenFunction).to.be.ok;
+            await expect(tokenWrapperContract.tx.removeTokenAddress(BobSigner.address, 1))
+                .to.not.emit(tokenWrapperContract, 'RemoveTokenAddress')
         } catch(err) {
             // @ts-ignore
             console.log(`error is ${err}`);
@@ -219,9 +218,50 @@ describe('token-wrapper', () => {
         console.log(`proposalNonce is ${proposalNonce}`);
 
         try {
-            // now remove token address
-            let removeTokenFunction = await tokenWrapperContract.tx.removeTokenAddress(BobSigner.address, Number(newProposalNonce.output));
-            expect(removeTokenFunction).to.be.ok;
+            await expect(tokenWrapperContract.tx.removeTokenAddress(BobSigner.address, Number(newProposalNonce.output)))
+                .to.not.emit(tokenWrapperContract, 'RemoveTokenAddress')
+        } catch(err) {
+            // @ts-ignore
+            console.log(`error is ${err.message}`);
+        }
+
+
+        // validate that address has not been removed successfully
+        let isValidAddressAgain = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
+        expect(isValidAddressAgain.output).to.equal(true);
+        console.log(`new proposalNonce is ${isValidAddressAgain.output}`);
+
+        // validate that proposalNonce has not increased
+        let  newProposalNonceAgain  = await tokenWrapperContract.query.nonce();
+        console.log(`new proposalNonce is ${newProposalNonceAgain.output}`);
+        expect(newProposalNonceAgain.output).to.not.equal(proposalNonce);
+
+    });
+
+    it.only('Removing a token address with the same nonce that exists should fail', async () => {
+        const {contractProposalNonce,} = tokenWrapperContractInitParams(sender, BobSigner, CharlieSigner)
+
+        // first add a token address
+        let addTokenFunction = await tokenWrapperContract.tx.addTokenAddress(BobSigner.address, contractProposalNonce + 1)
+        expect(addTokenFunction).to.be.ok;
+
+        // validate that address has been added successfully
+        let  isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(BobSigner.address);
+        expect(isValidAddress.output).to.equal(true);
+
+        // validate that proposalNonce has increased
+        let  newProposalNonce = await tokenWrapperContract.query.nonce();
+        expect(newProposalNonce.output).to.be.equal(contractProposalNonce + 1);
+
+        // increase nonce
+        // @ts-ignore
+        let proposalNonce = Number(newProposalNonce.output) + 1;
+
+        console.log(`proposalNonce is ${proposalNonce}`);
+
+        try {
+            await expect(tokenWrapperContract.tx.removeTokenAddress(BobSigner.address, Number(newProposalNonce.output)))
+                .to.not.emit(tokenWrapperContract, 'RemoveTokenAddress')
         } catch(err) {
             // @ts-ignore
             console.log(`error is ${err.message}`);

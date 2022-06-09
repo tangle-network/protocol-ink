@@ -109,6 +109,16 @@ mod governed_token_wrapper {
         sender: Option<AccountId>,
         #[ink(topic)]
         mint_for: Option<AccountId>,
+        cost_to_wrap: Balance,
+        leftover: Balance,
+    }
+
+    #[ink(event)]
+    pub struct Unwrap {
+        #[ink(topic)]
+        sender: Option<AccountId>,
+        #[ink(topic)]
+        burn_for: Option<AccountId>,
         amount: Balance,
     }
 
@@ -118,6 +128,24 @@ mod governed_token_wrapper {
         token_address: Option<AccountId>,
         #[ink(topic)]
         nonce: u64,
+    }
+
+    #[ink(event)]
+    pub struct RemoveTokenAddress {
+        #[ink(topic)]
+        token_address: Option<AccountId>,
+        #[ink(topic)]
+        nonce: u64,
+    }
+
+    #[ink(event)]
+    pub struct UpdateConfig {
+        #[ink(topic)]
+        governor: Option<AccountId>,
+        #[ink(topic)]
+        fee_percentage: Option<Balance>,
+        #[ink(topic)]
+        fee_recipient: Option<AccountId>,
     }
 
     impl GovernedTokenWrapper {
@@ -280,12 +308,6 @@ mod governed_token_wrapper {
                 cost_to_wrap,
                 leftover,
             );
-
-            self.env().emit_event(Wrap {
-                sender: Some(sender),
-                mint_for: Some(sender),
-                amount,
-            });
         }
         /// Used to wrap tokens on behalf of a sender and mint to a potentially different address
         ///
@@ -380,7 +402,7 @@ mod governed_token_wrapper {
 
             self.env().emit_event(AddTokenAddress {
                 token_address: Some(token_address),
-               nonce,
+                nonce,
             });
 
             Ok(())
@@ -413,6 +435,12 @@ mod governed_token_wrapper {
             self.tokens.insert(token_address, &false);
 
             self.proposal_nonce = nonce;
+
+            self.env().emit_event(RemoveTokenAddress {
+                token_address: Some(token_address),
+                nonce,
+            });
+
             Ok(())
         }
 
@@ -456,6 +484,12 @@ mod governed_token_wrapper {
             if fee_recipient.is_some() {
                 self.fee_recipient = fee_recipient.unwrap();
             }
+
+            self.env().emit_event(UpdateConfig {
+                governor,
+                fee_percentage,
+                fee_recipient,
+            });
         }
 
         /// Handles unwrapping by transferring token to the sender and burning for the burn_for address
@@ -479,7 +513,6 @@ mod governed_token_wrapper {
                 ink_env::debug_println!("burning successful");
             }
 
-
             if token_address.is_none() {
                 // transfer native liquidity from the token wrapper to the sender
                 if self.env().transfer(sender, amount).is_err() {
@@ -487,15 +520,20 @@ mod governed_token_wrapper {
                 }
             } else {
                 // transfer PSP22 liquidity from the token wrapper to the sender
-                if self.transfer(sender, amount, Vec::<u8>::new()).is_err()
-                {
+                if self.transfer(sender, amount, Vec::<u8>::new()).is_err() {
                     ink_env::debug_println!("psp22 transfer unwrap failed");
-                   // return Err(Error::TransferError);
+                    // return Err(Error::TransferError);
                     panic!("{}", ERROR_MSG);
                 } else {
                     ink_env::debug_println!("psp22 transfer unwrap successful");
                 }
             }
+
+            self.env().emit_event(Unwrap {
+                sender: Some(sender),
+                burn_for: Some(burn_for),
+                amount
+            });
         }
 
         /// Handles wrapping by transferring token to the sender and minting for the mint_for address
@@ -564,6 +602,13 @@ mod governed_token_wrapper {
                     ink_env::debug_println!("minting successful for psp22");
                 }
             }
+
+            self.env().emit_event(Wrap {
+                sender: Some(sender),
+                mint_for: Some(mint_for),
+                cost_to_wrap,
+                leftover
+            });
 
             Ok(())
         }
@@ -644,7 +689,6 @@ mod governed_token_wrapper {
             let message = ink_prelude::format!("valid address is  {:?}", is_valid);
             ink_env::debug_println!("{}", &message);
             is_valid
-
         }
 
         /// Determines if token address is historically valid
