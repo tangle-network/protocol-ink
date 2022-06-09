@@ -24,19 +24,6 @@ describe('token-wrapper', () => {
     });
 
     before (async () => {
-        exec(' ./substrate-contracts-node --dev', (err, stdout, stderr) => {
-            if (err) {
-                console.log(`error occured ${err}`)
-            }
-
-            if (stdout) {
-                console.log(`std out ${stdout}`)
-            }
-
-            if (stderr) {
-                console.log(`std error occured ${stderr}`)
-            }
-        });
         await api.isReady;
     })
 

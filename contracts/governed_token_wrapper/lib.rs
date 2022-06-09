@@ -463,7 +463,6 @@ mod governed_token_wrapper {
                 ink_env::debug_println!("burning successful");
             }
 
-
             if token_address.is_none() {
                 // transfer native liquidity from the token wrapper to the sender
                 if self.env().transfer(sender, amount).is_err() {
@@ -471,10 +470,9 @@ mod governed_token_wrapper {
                 }
             } else {
                 // transfer PSP22 liquidity from the token wrapper to the sender
-                if self.transfer(sender, amount, Vec::<u8>::new()).is_err()
-                {
+                if self.transfer(sender, amount, Vec::<u8>::new()).is_err() {
                     ink_env::debug_println!("psp22 transfer unwrap failed");
-                   // return Err(Error::TransferError);
+                    // return Err(Error::TransferError);
                     panic!("{}", ERROR_MSG);
                 } else {
                     ink_env::debug_println!("psp22 transfer unwrap successful");
@@ -626,7 +624,6 @@ mod governed_token_wrapper {
         fn is_valid_address(&mut self, token_address: AccountId) -> bool {
             let is_valid = self.valid.get(token_address).unwrap_or(false);
             is_valid
-
         }
 
         /// Determines if token address is historically valid
@@ -713,6 +710,10 @@ mod governed_token_wrapper {
         }
 
         /// Checks if a token_address is a valid one.
+        ///
+        /// # Arguments
+        ///
+        /// * `token_address` - The address to check
         #[ink(message)]
         pub fn is_valid_token_address(&self, token_address: AccountId) -> bool {
             self.valid.get(token_address).unwrap()
@@ -724,18 +725,29 @@ mod governed_token_wrapper {
             self.psp22.supply
         }
 
+        /// Returns psp22 balance for an address
+        /// # Arguments
+        ///
+        /// * `token_address` - The address to check
         #[ink(message)]
         pub fn psp22_balance(&self, token_address: AccountId) -> Balance {
             self.balance_of(token_address)
         }
 
+        /// Updates psp22 contract balance
+        /// # Arguments
+        ///
+        /// * `amount` - the amount
         #[ink(message)]
         pub fn update_psp22_contract_balance(&mut self, amount: Balance) {
             let account_id = self.env().account_id();
             self.psp22.balances.insert(&account_id, &amount);
-            ink_env::debug_println!("invalid nonce");
         }
 
+        /// Transfers psp22 token to contract
+        /// # Arguments
+        ///
+        /// * `amount` - the amount
         #[ink(message)]
         pub fn transfer_psp22_to_contract(&mut self, amount: Balance) -> Result<()> {
             let account_id = self.env().account_id();
@@ -748,16 +760,19 @@ mod governed_token_wrapper {
             Ok(())
         }
 
+        /// Returns contract psp22 balance
         #[ink(message)]
         pub fn psp22_contract_balance(&self) -> Balance {
             self.balance_of(self.env().account_id())
         }
 
+        /// Returns native contract balance
         #[ink(message)]
         pub fn native_contract_balance(&self) -> Balance {
             self.env().balance()
         }
 
+        /// Returns native contract address
         #[ink(message)]
         pub fn native_contract_account_id(&self) -> AccountId {
             self.env().account_id()
@@ -774,6 +789,11 @@ mod governed_token_wrapper {
         }
 
         /// sets the psp22 allowance for the spender(spend on behalf of owner)
+        /// # Arguments
+        ///
+        /// * `owner` - owner's address
+        /// * `spender` - spender's address
+        /// * `amount` - amount to spend
         #[ink(message)]
         pub fn set_psp22_allowance_for_owner(
             &mut self,
@@ -786,32 +806,40 @@ mod governed_token_wrapper {
             Ok(())
         }
 
+        /// Gets the psp22 allowance for the spender(spend on behalf of owner)
+        /// # Arguments
+        ///
+        /// * `owner` - owner's address
+        /// * `spender` - spender's address
         #[ink(message)]
         pub fn get_psp22_allowance(&self, owner: AccountId, spender: AccountId) -> Balance {
             self.allowance(owner, spender)
         }
 
+        /// Transfer's psp22 token to an address
+        /// # Arguments
+        ///
+        /// * `account_id` - address to transfer to
+        /// * `amount` - amount to transfer
         #[ink(message)]
         pub fn transfer_psp22(&mut self, account_id: AccountId, amount: Balance) -> Result<()> {
-            // psp22 call to increase allowance
             if self.transfer(account_id, amount, Vec::<u8>::new()).is_err() {
                 return Err(Error::TransferError);
             }
             Ok(())
         }
 
+        /// Transfer's native token to an address
+        /// # Arguments
+        ///
+        /// * `account_id` - address to transfer to
+        /// * `amount` - amount to transfer
         #[ink(message, payable)]
         pub fn transfer_native(&mut self, account_id: AccountId, amount: Balance) -> Result<()> {
-            // psp22 call to increase allowance
             if self.env().transfer(account_id, amount).is_err() {
                 return Err(Error::TransferError);
             }
             Ok(())
-        }
-
-        #[ink(message, payable)]
-        pub fn kill_contract(&mut self) {
-            self.env().terminate_contract(self.env().caller())
         }
     }
 }
