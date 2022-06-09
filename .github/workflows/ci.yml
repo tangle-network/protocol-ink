@@ -32,7 +32,7 @@ jobs:
         run: yarn global add redspot
 
       - name: Install
-        run: yarn global install
+        run: yarn install
 
       - name: Build
         run: yarn build
