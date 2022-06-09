@@ -9,8 +9,8 @@ jobs:
     steps:
       - uses: dsaltares/fetch-gh-release-asset@master
         with:
-          repo: 'dsaltares/godot-wild-jam-18'
-          version: 'tags/v0.1.18'
+          repo: 'paritytech/substrate-contracts-node'
+          version: 'tags/v0.16.0'
           regex: true
-          file: "plague-.*\\.zip"
+          file: "substrate-contracts-node-linux.tar.gz"
           token: ${{ secrets.GITHUB_TOKEN }}
