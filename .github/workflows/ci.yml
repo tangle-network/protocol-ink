@@ -30,7 +30,4 @@ jobs:
 
       - uses: actions/checkout@v2
       - name: Run script file
-        run: |
-          chmod +x ./scripts/node.sh
-          ./scripts/node.sh
-        shell: bash
+        run: ./substrate-contracts-node.tar --dev
