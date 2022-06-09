@@ -1,1 +1,1 @@
-./substrate-contracts-node --dev
+./substrate-contracts-node.tar --dev
