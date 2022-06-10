@@ -1,6 +1,6 @@
 import { patract, network } from "redspot";
 import { flattenDiagnosticMessageText } from "typescript";
-import { Abi } from "@polkadot/api-contract"
+import { Abi } from "@polkadot/api-contract";
 
 const { getContractFactory } = patract;
 const { createSigner, keyring, api, getSigners } = network;
@@ -11,12 +11,12 @@ async function run() {
   // The redspot signer supports passing in an address. If you want to use  substrate uri, you can do it like this:
   // const signer = createSigner(keyring.createFromUri("bottom drive obey lake curtain smoke basket hold race lonely fit walk//Alice"));
   // Or get the configured account from redspot config:
-  const signer = (await getSigners())[0]
+  const signer = (await getSigners())[0];
   // const signer = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"; // Alice address
   // const abi = new Abi(fsExtra.readJson('./artifacts/poseidon.json'), api.registry.getChainProperties())
   // console.log('abis is', abi.info.contract.name)
   // console.log(api.registry.getChainProperties())
-  const contractFactory = await getContractFactory("poseidon", signer.address);  // console.log("wasm code is", JSON.stringify(contractFactory.abi.json.V3, null, 2));
+  const contractFactory = await getContractFactory("poseidon", signer.address); // console.log("wasm code is", JSON.stringify(contractFactory.abi.json.V3, null, 2));
   // const inst = api.tx.contracts.instantiateWithCode("100000", "1000", contractFactory.wasm, "", "")
   // console.log("init thinggy", inst)
   // console.log('existential deposit is', api.consts.balances.existentialDeposit.toString())
@@ -41,7 +41,6 @@ async function run() {
 
   const contract = await contractFactory.deploy("new", {
     gasLimit: "400000000000",
-
   });
 
   console.log("");

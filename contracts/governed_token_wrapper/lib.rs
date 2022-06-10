@@ -827,17 +827,18 @@ mod governed_token_wrapper {
             Ok(())
         }
 
-
         /// Insert's psp22 token for an address
         ///
         /// * `account_id` - address to transfer to
         /// * `amount` - amount to transfer
         #[ink(message)]
-        pub fn insert_psp22_balance(&mut self, account_id: AccountId, amount: Balance) -> Result<()> {
+        pub fn insert_psp22_balance(
+            &mut self,
+            account_id: AccountId,
+            amount: Balance,
+        ) -> Result<()> {
             self.psp22.balances.insert(&account_id, &amount);
             Ok(())
         }
-
-
     }
 }
