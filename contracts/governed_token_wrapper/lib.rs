@@ -443,18 +443,27 @@ mod governed_token_wrapper {
         ) -> Result<()> {
             // burn wrapped token from sender
             if self.burn(burn_for, amount).is_err() {
+                ink_env::debug_println!("error occured burning token");
                 return Err(Error::TokenBurnError);
+            } else {
+                ink_env::debug_println!("token burn successful");
             }
 
             if token_address.is_none() {
                 // transfer native liquidity from the token wrapper to the sender
                 if self.env().transfer(sender, amount).is_err() {
+                    ink_env::debug_println!("native token transfer to sender failed");
                     return Err(Error::TransferError);
+                } else {
+                    ink_env::debug_println!("native token transfer to sender successful");
                 }
             } else {
                 // transfer PSP22 liquidity from the token wrapper to the sender
                 if self.transfer(sender, amount, Vec::<u8>::new()).is_err() {
+                    ink_env::debug_println!("psp22 token transfer to sender failed");
                     return Err(Error::TransferError);
+                } else {
+                    ink_env::debug_println!("psp22 token transfer to sender successful");
                 }
             }
 
@@ -479,7 +488,10 @@ mod governed_token_wrapper {
             if token_address.is_none() {
                 // mint the native value sent to the contract
                 if self.mint(mint_for, leftover).is_err() {
+                    ink_env::debug_println!("native token mint failed");
                     return Err(Error::TokenMintError);
+                } else {
+                    ink_env::debug_println!("native token mint successful");
                 }
 
                 // transfer costToWrap to the feeRecipient
@@ -488,15 +500,33 @@ mod governed_token_wrapper {
                     .transfer(self.fee_recipient, cost_to_wrap)
                     .is_err()
                 {
+                    ink_env::debug_println!("native token transfer to fee recipient failed");
                     return Err(Error::TransferError);
+                } else {
+                    ink_env::debug_println!("native token transfer to fee recipient successful");
                 }
             } else {
                 // psp22 transfer of liquidity to token wrapper contract
-                if self
-                    .transfer_from(sender, self.env().account_id(), leftover, Vec::<u8>::new())
-                    .is_err()
-                {
-                    return Err(Error::TransferError);
+                if sender == self.env().caller() {
+                    if self
+                        .transfer(self.env().account_id(), leftover, Vec::<u8>::new())
+                        .is_err()
+                    {
+                        ink_env::debug_println!("psp22 token transfer to contract failed");
+                        return Err(Error::TransferError);
+                    } else {
+                        ink_env::debug_println!("psp22 token transfer to contract successful");
+                    }
+                } else {
+                    if self
+                        .transfer_from(sender, self.env().account_id(), leftover, Vec::<u8>::new())
+                        .is_err()
+                    {
+                        ink_env::debug_println!("psp22 token transfer from to contract failed");
+                        return Err(Error::TransferError);
+                    } else {
+                        ink_env::debug_println!("psp22 token transfer from to contract successful");
+                    }
                 }
 
                 // psp22 transfer to fee recipient
@@ -504,12 +534,18 @@ mod governed_token_wrapper {
                     .transfer_from(sender, self.fee_recipient, cost_to_wrap, Vec::<u8>::new())
                     .is_err()
                 {
+                    ink_env::debug_println!("psp22 token transfer to fee recipient failed");
                     return Err(Error::TransferError);
+                } else {
+                    ink_env::debug_println!("psp22 token transfer to fee recipient successful");
                 }
 
                 // mint the wrapped token for the sender
                 if self.mint(mint_for, leftover).is_err() {
+                    ink_env::debug_println!("psp22 token mint failed");
                     return Err(Error::TransferError);
+                } else {
+                    ink_env::debug_println!("psp22 token mint successful");
                 }
             }
 
@@ -790,5 +826,18 @@ mod governed_token_wrapper {
             }
             Ok(())
         }
+
+
+        /// Insert's psp22 token for an address
+        ///
+        /// * `account_id` - address to transfer to
+        /// * `amount` - amount to transfer
+        #[ink(message)]
+        pub fn insert_psp22_balance(&mut self, account_id: AccountId, amount: Balance) -> Result<()> {
+            self.psp22.balances.insert(&account_id, &amount);
+            Ok(())
+        }
+
+
     }
 }
