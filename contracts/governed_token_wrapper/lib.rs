@@ -196,9 +196,23 @@ mod governed_token_wrapper {
             Ok(())
         }
 
+        /// Used to wrap tokens on behalf of a sender.
+        ///
+        /// * `token_address` - The address of PSP22 to transfer to, if token_address is None,
+        /// then it's a Native token address
+        /// * `amount` - The amount of token to transfer
+        #[ink(message, payable)]
+        pub fn wrap_with_token_address(
+            &mut self,
+            token_address: AccountId,
+            amount: Balance,
+        ) -> Result<()> {
+            self.wrap(Some(token_address), amount)
+        }
+
         /// Used to unwrap/burn the wrapper token on behalf of a sender.
         ///
-        /// * `token_address` -  The address of PSP22 to transfer to, if token_address is None,
+        /// * `token_address` -  The optional address of PSP22 to transfer to, if token_address is None,
         /// then it's a Native token address
         /// * `amount` -  The the amount of token to transfer
         #[ink(message, payable)]
@@ -215,7 +229,17 @@ mod governed_token_wrapper {
 
         /// Used to unwrap/burn the wrapper token on behalf of a sender.
         ///
-        /// * `token_address` - is the address of PSP22 to unwrap into,
+        /// * `token_address` -  The address of PSP22 to transfer to, if token_address is None,
+        /// then it's a Native token address
+        /// * `amount` -  The the amount of token to transfer
+        #[ink(message, payable)]
+        pub fn unwrap_with_token_address(&mut self, token_address: AccountId, amount: Balance) {
+            self.unwrap(Some(token_address), amount)
+        }
+
+        /// Used to unwrap/burn the wrapper token on behalf of a sender.
+        ///
+        /// * `token_address` - is the optional address of PSP22 to unwrap into,
         /// * `amount` - is the amount of tokens to burn
         /// * `recipient` is the address to transfer to
         #[ink(message, payable)]
@@ -235,9 +259,24 @@ mod governed_token_wrapper {
             );
         }
 
+        /// Used to unwrap/burn the wrapper token on behalf of a sender.
+        ///
+        /// * `token_address` - is the address of PSP22 to unwrap into,
+        /// * `amount` - is the amount of tokens to burn
+        /// * `recipient` is the address to transfer to
+        #[ink(message, payable)]
+        pub fn unwrap_and_send_to_with_token_address(
+            &mut self,
+            token_address: AccountId,
+            amount: Balance,
+            recipient: AccountId,
+        ) {
+            self.unwrap_and_send_to(Some(token_address), amount, recipient);
+        }
+
         /// Used to wrap tokens on behalf of a sender
         ///
-        /// * `token_address` - is the Account id of PSP22 to unwrap into,
+        /// * `token_address` - is the optional Account id of PSP22 to unwrap into,
         ///
         /// * `amount` - is the amount of tokens to transfer
         ///
@@ -275,9 +314,26 @@ mod governed_token_wrapper {
                 amount,
             });
         }
+
+        /// Used to wrap tokens on behalf of a sender
+        ///
+        /// * `token_address` - is the Account id of PSP22 to unwrap into,
+        ///
+        /// * `amount` - is the amount of tokens to transfer
+        ///
+        /// * `sender` -  is the Account id of sender where assets are sent from.
+        #[ink(message, payable)]
+        pub fn wrap_for_with_token_address(
+            &mut self,
+            token_address: AccountId,
+            sender: AccountId,
+            amount: Balance,
+        ) {
+            self.wrap_for(Some(token_address), sender, amount)
+        }
         /// Used to wrap tokens on behalf of a sender and mint to a potentially different address
         ///
-        /// * `token_address` - is the address of PSP22 to unwrap into,
+        /// * `token_address` - is the optional address of PSP22 to unwrap into,
         /// * `sender` - is Address of sender where assets are sent from.
         /// * `amount` - is the amount of tokens to transfer
         /// * `recipient` - is the recipient of the wrapped tokens.
@@ -311,9 +367,26 @@ mod governed_token_wrapper {
             );
         }
 
+        /// Used to wrap tokens on behalf of a sender and mint to a potentially different address
+        ///
+        /// * `token_address` - is the address of PSP22 to unwrap into,
+        /// * `sender` - is Address of sender where assets are sent from.
+        /// * `amount` - is the amount of tokens to transfer
+        /// * `recipient` - is the recipient of the wrapped tokens.
+        #[ink(message, payable)]
+        pub fn wrap_for_and_send_to_with_token_address(
+            &mut self,
+            token_address: AccountId,
+            sender: AccountId,
+            amount: Balance,
+            recipient: AccountId,
+        ) {
+            self.wrap_for_and_send_to(Some(token_address), sender, amount, recipient)
+        }
+
         /// Used to unwrap/burn the wrapper token on behalf of a sender.
         ///
-        /// * `token_address` - is the address of PSP22 to transfer to, if token_address is None,
+        /// * `token_address` - is the optional address of PSP22 to transfer to, if token_address is None,
         ///  then it's a Native token address
         /// * `amount` - is the amount of token to transfer
         /// * `sender` - is the Address of sender where liquidity is send to.
@@ -326,6 +399,22 @@ mod governed_token_wrapper {
         ) {
             self.is_valid_unwrapping(token_address, amount);
             self.do_unwrap(token_address.clone(), sender, sender, amount);
+        }
+
+        /// Used to unwrap/burn the wrapper token on behalf of a sender.
+        ///
+        /// * `token_address` - is the address of PSP22 to transfer to, if token_address is None,
+        ///  then it's a Native token address
+        /// * `amount` - is the amount of token to transfer
+        /// * `sender` - is the Address of sender where liquidity is send to.
+        #[ink(message, payable)]
+        pub fn unwrap_for_with_token_address(
+            &mut self,
+            token_address: AccountId,
+            amount: Balance,
+            sender: AccountId,
+        ) {
+            self.unwrap_for(Some(token_address), amount, sender)
         }
 
         /// Adds a token at `token_address` to the GovernedTokenWrapper's wrapping list
@@ -763,8 +852,8 @@ mod governed_token_wrapper {
 
         /// Returns native contract address
         #[ink(message)]
-        pub fn native_contract_account_id(&self) -> AccountId {
-            self.env().account_id()
+        pub fn native_contract_account_id(&self) -> Option<AccountId> {
+            Some(self.env().account_id())
         }
 
         /// sets the psp22 allowance for the spender(spend on behalf of owner)
