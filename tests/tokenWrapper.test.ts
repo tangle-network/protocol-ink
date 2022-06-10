@@ -1189,7 +1189,7 @@ describe("token-wrapper", () => {
     );
   });
 
-  it("Test psp22 unwrapping and send to functionality", async () => {
+  it.only("Test psp22 unwrapping and send to functionality", async () => {
     // first add token address
     expect(
       await tokenWrapperContract.tx.addTokenAddress(
@@ -1261,10 +1261,11 @@ describe("token-wrapper", () => {
     // validate that psp22 allowance for contract was set
     expect(Number(allowanceSetForContract.output) === allowedAmountForContract);
 
+    const optionalAddress = api.createType('Option<AccountId>', tokenWrapperContract.address);
     // now do unwrapping
     let unwrapFunction =
-      await tokenWrapperContract.tx.unwrapAndSendToWithTokenAddress(
-        tokenWrapperContract.address,
+      await tokenWrapperContract.tx.unwrapAndSendTo(
+        optionalAddress,
         1,
         FerdieSigner.address,
         { value: 10 }
