@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { artifacts, network, patract } from "redspot";
 import BN from "bn.js";
+import {all} from "@polkadot/api-derive/balances";
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
@@ -631,7 +632,7 @@ describe("token-wrapper", () => {
     let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(
       BobSigner.address
     );
-    expect(isValidAddress.output).to.equal(true);
+    expect(isValidAddress.output === true);
 
     // secondly set psp22 allowance. Make Ferdie the owner, and Alice the spender
     let allowedAmount = 500000;
@@ -662,11 +663,11 @@ describe("token-wrapper", () => {
     // validate that feeRecipient has changed
     let newFeeRecipientFromStorage =
       await tokenWrapperContract.query.feeRecipient();
-    expect(newFeeRecipientFromStorage.output).to.equal(EveSigner.address);
-    expect(newFeeRecipientFromStorage.output).to.not.equal(feeRecipient);
+    expect(newFeeRecipientFromStorage.output === EveSigner.address);
+    expect(newFeeRecipientFromStorage.output != feeRecipient);
 
     // validate that psp22 allowance was set
-    expect(Number(allowanceSet.output)).to.be.equal(allowedAmount);
+    expect(Number(allowanceSet.output) === allowedAmount);
 
     // insert balance for Alice(sender)
     let insertBalanceFunction =
@@ -688,10 +689,8 @@ describe("token-wrapper", () => {
     let initialFeeRecipientBalance =
       await tokenWrapperContract.query.psp22Balance(feeRecipient);
 
-    console.log(`EveSigner balance is ${initialSenderWrappedBalance.output}`);
-
-    expect(Number(initialSenderWrappedBalance.output)).to.equal(0);
-    expect(Number(initialContractBalance.output)).to.equal(0);
+    expect(Number(initialSenderWrappedBalance.output) === 0);
+    expect(Number(initialContractBalance.output) === 0);
 
     // now do wrapping for Ferdie
     let wrapFunction = await tokenWrapperContract.tx.wrapForAndSendTo(
@@ -713,15 +712,11 @@ describe("token-wrapper", () => {
     let feeRecipientBalanceAfter =
       await tokenWrapperContract.query.psp22Balance(feeRecipient);
 
-    expect(Number(senderWrappedBalanceAfter.output)).to.not.equal(0);
-    expect(Number(contractBalanceAfter.output)).to.not.equal(0);
+    expect(Number(senderWrappedBalanceAfter.output) != 0).to.not.equal(0);
+    expect(Number(contractBalanceAfter.output) != 0).to.not.equal(0);
 
-    expect(Number(senderWrappedBalanceAfter.output)).to.not.equal(
-      Number(initialSenderWrappedBalance.output)
-    );
-    expect(Number(contractBalanceAfter.output)).to.be.greaterThan(
-      Number(initialContractBalance.output)
-    );
+    expect(Number(senderWrappedBalanceAfter.output) != Number(initialSenderWrappedBalance.output));
+    expect(Number(contractBalanceAfter.output) > Number(initialContractBalance.output));
   });
 
   it("Test native unwrap functionality", async () => {
@@ -730,8 +725,8 @@ describe("token-wrapper", () => {
     let initialContractBalance =
       await tokenWrapperContract.query.nativeContractBalance();
 
-    expect(Number(initialSenderWrappedBalance.output)).to.equal(0);
-    expect(Number(initialContractBalance.output)).to.equal(0);
+    expect(Number(initialSenderWrappedBalance.output) == 0);
+    expect(Number(initialContractBalance.output) == 0);
 
     // first do wrapping first
     let wrapFunction = await tokenWrapperContract.tx.wrap(null, 0, {
@@ -747,19 +742,11 @@ describe("token-wrapper", () => {
     let contractBalanceAfter =
       await tokenWrapperContract.query.nativeContractBalance();
 
-    expect(Number(senderWrappedBalanceAfter.output)).to.not.equal(0);
-    expect(Number(contractBalanceAfter.output)).to.not.equal(0);
+    expect(Number(senderWrappedBalanceAfter.output) != 0);
+    expect(Number(contractBalanceAfter.output) != 0);
 
-    console.log(
-      `senderWrappedBalanceAfter ${senderWrappedBalanceAfter.output}`
-    );
-
-    expect(Number(senderWrappedBalanceAfter.output)).to.be.greaterThan(
-      Number(initialSenderWrappedBalance.output)
-    );
-    expect(Number(contractBalanceAfter.output)).to.be.greaterThan(
-      Number(initialContractBalance.output)
-    );
+    expect(Number(senderWrappedBalanceAfter.output) > Number(initialSenderWrappedBalance.output));
+    expect(Number(contractBalanceAfter.output) >  Number(initialContractBalance.output));
 
     let unwrapFunction = await tokenWrapperContract.tx.unwrap(null, 8, {
       value: 1000,
@@ -771,14 +758,10 @@ describe("token-wrapper", () => {
       sender.address
     );
 
-    expect(Number(senderBurntBalance.output)).to.not.equal(0);
-
-    console.log(`senderBurntBalance ${senderBurntBalance.output}`);
+    expect(Number(senderBurntBalance.output) != 0);
 
     // validate that balance has reduced for sender
-    expect(Number(senderBurntBalance.output)).to.be.lessThan(
-      Number(senderWrappedBalanceAfter.output)
-    );
+    expect(Number(senderWrappedBalanceAfter.output) > senderBurntBalance);
   });
 
   it("Test native unwrapping for functionality", async () => {
@@ -787,8 +770,8 @@ describe("token-wrapper", () => {
     let initialContractBalance =
       await tokenWrapperContract.query.nativeContractBalance();
 
-    expect(Number(initialSenderWrappedBalance.output)).to.equal(0);
-    expect(Number(initialContractBalance.output)).to.equal(0);
+    expect(Number(initialSenderWrappedBalance.output) === 0);
+    expect(Number(initialContractBalance.output) === 0);
 
     let wrapFunction = await tokenWrapperContract.tx.wrapFor(
       null,
@@ -806,15 +789,11 @@ describe("token-wrapper", () => {
     let contractBalanceAfter =
       await tokenWrapperContract.query.nativeContractBalance();
 
-    expect(Number(senderWrappedBalanceAfter.output)).to.not.equal(0);
-    expect(Number(contractBalanceAfter.output)).to.not.equal(0);
+    expect(Number(senderWrappedBalanceAfter.output) != 0);
+    expect(Number(contractBalanceAfter.output) != 0);
 
-    expect(Number(senderWrappedBalanceAfter.output)).to.be.greaterThan(
-      Number(initialSenderWrappedBalance.output)
-    );
-    expect(Number(contractBalanceAfter.output)).to.be.greaterThan(
-      Number(initialContractBalance.output)
-    );
+    expect(Number(senderWrappedBalanceAfter.output) > Number(initialSenderWrappedBalance.output));
+    expect(Number(contractBalanceAfter.output) > Number(initialContractBalance.output));
 
     let unwrapFunction = await tokenWrapperContract.tx.unwrapFor(
       null,
@@ -830,7 +809,8 @@ describe("token-wrapper", () => {
       FerdieSigner.address
     );
 
-    expect(Number(senderBurntBalance.output)).to.not.equal(0);
+    expect(Number(senderBurntBalance.output) != 0);
+    expect(Number(senderWrappedBalanceAfter.output) > Number(senderBurntBalance.output));
   });
 
   it("Test native wrapping for and send to functionality", async () => {
@@ -839,8 +819,8 @@ describe("token-wrapper", () => {
     let initialContractBalance =
       await tokenWrapperContract.query.nativeContractBalance();
 
-    expect(Number(initialSenderWrappedBalance.output)).to.equal(0);
-    expect(Number(initialContractBalance.output)).to.equal(0);
+    expect(Number(initialSenderWrappedBalance.output) === 0);
+    expect(Number(initialContractBalance.output) === 0);
 
     let wrapFunction = await tokenWrapperContract.tx.wrapForAndSendTo(
       null,
@@ -860,15 +840,11 @@ describe("token-wrapper", () => {
     let contractBalanceAfter =
       await tokenWrapperContract.query.nativeContractBalance();
 
-    expect(Number(eveWrappedBalanceAfter.output)).to.not.equal(0);
-    expect(Number(contractBalanceAfter.output)).to.not.equal(0);
+    expect(Number(eveWrappedBalanceAfter.output) != 0);
+    expect(Number(contractBalanceAfter.output) != 0);
 
-    expect(Number(eveWrappedBalanceAfter.output)).to.be.greaterThan(
-      Number(initialSenderWrappedBalance.output)
-    );
-    expect(Number(contractBalanceAfter.output)).to.be.greaterThan(
-      Number(initialContractBalance.output)
-    );
+    expect(Number(eveWrappedBalanceAfter.output) > Number(initialSenderWrappedBalance.output));
+    expect(Number(contractBalanceAfter.output) > Number(initialContractBalance.output));
 
     // insert balance for Alice(sender)
     let insertBalanceFunction =
@@ -895,12 +871,10 @@ describe("token-wrapper", () => {
       sender.address
     );
 
-    expect(Number(senderBurntBalance.output)).to.not.equal(0);
+    expect(Number(senderBurntBalance.output) != 0);
 
     // validate that balance has reduced for sender
-    expect(Number(senderBurntBalance.output)).to.be.lessThan(
-      Number(senderBalance.output)
-    );
+    expect( Number(senderBalance.output) > Number(senderBurntBalance.output));
   });
 
   it("Test psp22 unwrap functionality", async () => {
@@ -916,7 +890,7 @@ describe("token-wrapper", () => {
     let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(
       BobSigner.address
     );
-    expect(isValidAddress.output).to.equal(true);
+    expect(isValidAddress.output === true);
 
     // secondly set psp22 allowance
     let allowedAmount = 500000;
@@ -933,7 +907,7 @@ describe("token-wrapper", () => {
     );
 
     // validate that psp22 allowance was set
-    expect(Number(allowanceSet.output)).to.be.equal(allowedAmount);
+    expect(Number(allowanceSet.output) === allowedAmount);
 
     // update config with new states
     let newFeeRecipient = EveSigner.address;
@@ -949,7 +923,7 @@ describe("token-wrapper", () => {
     // validate that feeRecipient has changed
     let newFeeRecipientFromStorage =
       await tokenWrapperContract.query.feeRecipient();
-    expect(newFeeRecipientFromStorage.output).to.equal(EveSigner.address);
+    expect(newFeeRecipientFromStorage.output === EveSigner.address);
 
     let initialSenderWrappedBalance =
       await tokenWrapperContract.query.psp22Balance(sender.address);
@@ -958,9 +932,9 @@ describe("token-wrapper", () => {
     let initialFeeRecipientBalance =
       await tokenWrapperContract.query.psp22Balance(newFeeRecipient);
 
-    expect(Number(initialSenderWrappedBalance.output)).to.equal(0);
-    expect(Number(initialContractBalance.output)).to.equal(0);
-    expect(Number(initialFeeRecipientBalance.output)).to.equal(0);
+    expect(Number(initialSenderWrappedBalance.output) === 0);
+    expect(Number(initialContractBalance.output) === 0);
+    expect(Number(initialFeeRecipientBalance.output) === 0);
 
     // insert balance for Alice(sender)
     let insertBalanceFunction =
@@ -988,15 +962,11 @@ describe("token-wrapper", () => {
     let feeRecipientBalanceAfter =
       await tokenWrapperContract.query.psp22Balance(feeRecipient);
 
-    expect(Number(contractBalanceAfter.output)).to.not.equal(0);
-    expect(Number(feeRecipientBalanceAfter.output)).to.not.equal(0);
+    expect(Number(contractBalanceAfter.output) != 0);
+    expect(Number(feeRecipientBalanceAfter.output) != 0);
 
-    expect(Number(contractBalanceAfter.output)).to.be.greaterThan(
-      Number(initialContractBalance.output)
-    );
-    expect(Number(feeRecipientBalanceAfter.output)).to.be.greaterThan(
-      Number(initialFeeRecipientBalance.output)
-    );
+    expect(Number(contractBalanceAfter.output) >  Number(initialContractBalance.output));
+    expect(Number(feeRecipientBalanceAfter.output) > Number(initialFeeRecipientBalance.output));
 
     // secondly set psp22 allowance
     let allowedAmountForContract = 500000;
@@ -1015,12 +985,10 @@ describe("token-wrapper", () => {
       );
 
     // validate that psp22 allowance was set
-    expect(Number(allowanceSetForContract.output)).to.be.equal(
-      allowedAmountForContract
-    );
+    expect(Number(allowanceSetForContract.output) === allowanceSetForContract);
 
     // validate that psp22 allowance was set
-    expect(Number(allowanceSetForContract.output)).to.be.equal(allowedAmount);
+    expect(Number(allowanceSetForContract.output) === allowedAmount);
     // now do unwrapping
     let unwrapFunction = await tokenWrapperContract.tx.unwrap(
       BobSigner.address,
@@ -1036,12 +1004,8 @@ describe("token-wrapper", () => {
     // to validate that psp22 token funds was transferred from the contract
     let contractBalanceAfterUnwrap =
       await tokenWrapperContract.query.psp22ContractBalance();
-    expect(Number(contractBalanceAfterUnwrap.output)).to.not.equal(
-      contractBalanceAfter
-    );
-    expect(Number(senderWrappedBalanceAfter.output)).to.not.equal(
-      senderBurntBalanceAfter
-    );
+    expect(Number(contractBalanceAfterUnwrap.output) != contractBalanceAfter);
+    expect(Number(senderWrappedBalanceAfter.output) != senderBurntBalanceAfter);
   });
 
   it("Test psp22 unwrap for functionality", async () => {
