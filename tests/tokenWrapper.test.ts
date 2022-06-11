@@ -115,8 +115,7 @@ describe("token-wrapper", () => {
       isNativeAllowed,
       wrappingLimit,
       contractProposalNonce,
-      totalSupply,
-      governorBalance
+      totalSupply
     );
 
     // create a psp22 token contract to use as token address
@@ -166,14 +165,14 @@ describe("token-wrapper", () => {
     let tokenName = "Webb";
     let tokenSymbol = "Webb";
     let decimal = 4;
-    let contractGovernor = DaveSigner.address;
+    let contractGovernor = sender.address;
     let feeRecipient = sender.address;
     let feePercentage = 1;
     let isNativeAllowed = true;
-    let wrappingLimit = 10;
+    let wrappingLimit = 1_000_000_000_01;
     let contractProposalNonce = 0;
     let tokenAddress = BobSigner.address;
-    let totalSupply = 1_000_000_000_000_000;
+    let totalSupply = 1_000_000_000;
     let governorBalance = 9_000_000;
 
     return {
@@ -193,12 +192,6 @@ describe("token-wrapper", () => {
   }
 
   it("Add token address", async () => {
-    let governor = await tokenWrapperContract.query.governor();
-    let name = await tokenWrapperContract.query.name();
-
-    expect(governor.output === sender.address);
-    expect(name.output === tokenName);
-
     expect(
       await tokenWrapperContract.tx.addTokenAddress(
         psp22Contract.address,
@@ -219,11 +212,12 @@ describe("token-wrapper", () => {
 
   it("Remove token address", async () => {
     // first add a token address
-    let addTokenFunction = await tokenWrapperContract.tx.addTokenAddress(
-      psp22Contract.address,
-      contractProposalNonce + 1
-    );
-    expect(addTokenFunction).to.be.ok;
+    expect(
+      await tokenWrapperContract.tx.addTokenAddress(
+        psp22Contract.address,
+        contractProposalNonce + 1
+      )
+    ).to.be.ok;
 
     // validate that address has been added successfully
     let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(
@@ -239,11 +233,12 @@ describe("token-wrapper", () => {
     let proposalNonce = Number(newProposalNonce.output) + 1;
 
     // now remove token address
-    let removeTokenFunction = await tokenWrapperContract.tx.removeTokenAddress(
-      psp22Contract.address,
-      proposalNonce
-    );
-    expect(removeTokenFunction).to.be.ok;
+    expect(
+      await tokenWrapperContract.tx.removeTokenAddress(
+        psp22Contract.address,
+        proposalNonce
+      )
+    ).to.be.ok;
 
     // validate that address has been removed successfully
     let isValidAddressAgain =
@@ -265,14 +260,15 @@ describe("token-wrapper", () => {
     let newFeeRecipient = FerdieSigner.address;
 
     // update config with new states
-    let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(
-      newGovernor,
-      newIsNativeAllowed,
-      newWrappingLimit,
-      newFeePercentage,
-      newFeeRecipient
-    );
-    expect(updateConfigFunction).to.be.ok;
+    expect(
+      await tokenWrapperContract.tx.updateConfig(
+        newGovernor,
+        newIsNativeAllowed,
+        newWrappingLimit,
+        newFeePercentage,
+        newFeeRecipient
+      )
+    ).to.be.ok;
 
     // validate that new governor is not same as old governor
     let newGovernorFromStorage = await tokenWrapperContract.query.governor();
@@ -313,7 +309,7 @@ describe("token-wrapper", () => {
     expect(Number(initialSenderWrappedBalance.output) === 0);
     expect(Number(initialContractBalance.output) === 0);
 
-    let wrapFunction = await tokenWrapperContract.tx.wrap(null, 10, {
+    let wrapFunction = await tokenWrapperContract.tx.wrap(null, 0, {
       value: 1500,
     });
 
@@ -374,7 +370,7 @@ describe("token-wrapper", () => {
     let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(
       0,
       0,
-      0,
+      1_000_000_000_01,
       1,
       newFeeRecipient
     );
@@ -404,8 +400,7 @@ describe("token-wrapper", () => {
     // now do wrapping
     let wrapFunction = await tokenWrapperContract.tx.wrapWithTokenAddress(
       psp22Contract.address,
-      10,
-      { value: 10 }
+      1
     );
     expect(wrapFunction).to.be.ok;
 
@@ -503,7 +498,7 @@ describe("token-wrapper", () => {
     let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(
       0,
       0,
-      0,
+      9_000_000_000,
       1,
       newFeeRecipient
     );
@@ -537,10 +532,9 @@ describe("token-wrapper", () => {
 
     // now do wrapping for Ferdie
     let wrapFunction = await tokenWrapperContract.tx.wrapForWithTokenAddress(
-      tokenWrapperContract.address,
+      psp22Contract.address,
       FerdieSigner.address,
-      10,
-      { value: 10 }
+      10
     );
     expect(wrapFunction).to.be.ok;
 
@@ -632,7 +626,7 @@ describe("token-wrapper", () => {
     let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(
       0,
       0,
-      0,
+      9_000_000_000,
       1,
       newFeeRecipient
     );
@@ -673,8 +667,7 @@ describe("token-wrapper", () => {
         psp22Contract.address,
         FerdieSigner.address,
         1000,
-        EveSigner.address,
-        { value: 10 }
+        EveSigner.address
       );
     expect(wrapFunction).to.be.ok;
 
@@ -897,7 +890,7 @@ describe("token-wrapper", () => {
     let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(
       0,
       0,
-      0,
+      9_000_000_000,
       1,
       newFeeRecipient
     );
@@ -925,9 +918,8 @@ describe("token-wrapper", () => {
 
     // now do wrapping
     let wrapFunction = await tokenWrapperContract.tx.wrapWithTokenAddress(
-      tokenWrapperContract.address,
-      10000,
-      { value: 10 }
+      psp22Contract.address,
+      10000
     );
     expect(wrapFunction).to.be.ok;
 
@@ -973,8 +965,7 @@ describe("token-wrapper", () => {
     // now do unwrapping
     let unwrapFunction = await tokenWrapperContract.tx.unwrapWithTokenAddress(
       psp22Contract.address,
-      1000,
-      { value: 10 }
+      1000
     );
     expect(unwrapFunction).to.be.ok;
 
@@ -1053,7 +1044,7 @@ describe("token-wrapper", () => {
     let updateConfigFunction = await tokenWrapperContract.tx.updateConfig(
       0,
       0,
-      0,
+      9_000_000_000,
       1,
       newFeeRecipient
     );
@@ -1068,8 +1059,7 @@ describe("token-wrapper", () => {
     let wrapFunction = await tokenWrapperContract.tx.wrapForWithTokenAddress(
       psp22Contract.address,
       FerdieSigner.address,
-      10,
-      { value: 10 }
+      10
     );
     expect(wrapFunction).to.be.ok;
 
@@ -1116,8 +1106,7 @@ describe("token-wrapper", () => {
       await tokenWrapperContract.tx.unwrapForWithTokenAddress(
         psp22Contract.address,
         5,
-        FerdieSigner.address,
-        { value: 10 }
+        FerdieSigner.address
       );
     expect(unwrapFunction).to.be.ok;
 
@@ -1146,7 +1135,6 @@ describe("token-wrapper", () => {
         contractProposalNonce + 1
       )
     ).to.be.ok;
-
     // validate that address has been added successfully
     let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(
       psp22Contract.address
@@ -1219,14 +1207,12 @@ describe("token-wrapper", () => {
     // validate that psp22 allowance for contract was set
     expect(Number(allowanceSetForContract.output) === allowedAmountForContract);
 
-    const optionalAddress = api.createType('Option<AccountId>', tokenWrapperContract.address);
     // now do unwrapping
     let unwrapFunction =
       await tokenWrapperContract.tx.unwrapAndSendToWithTokenAddress(
-        optionalAddress,
+        psp22Contract.address,
         1000,
-        FerdieSigner.address,
-        { value: 10 }
+        FerdieSigner.address
       );
     expect(unwrapFunction).to.be.ok;
 
