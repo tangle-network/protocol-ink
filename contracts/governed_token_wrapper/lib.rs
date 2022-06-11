@@ -173,7 +173,7 @@ mod governed_token_wrapper {
         /// * `amount` - The amount of token to transfer
         #[ink(message, payable)]
         pub fn wrap(&mut self, token_address: Option<AccountId>, amount: Balance) -> Result<()> {
-            self.is_valid_wrapping(token_address, amount);
+            self.is_valid_wrapping(token_address, amount)?;
 
             // determine amount to use
             let amount_to_use = if token_address.is_none() {
@@ -191,7 +191,7 @@ mod governed_token_wrapper {
                 self.env().caller(),
                 cost_to_wrap,
                 leftover,
-            );
+            )?;
 
             Ok(())
         }
@@ -212,28 +212,34 @@ mod governed_token_wrapper {
 
         /// Used to unwrap/burn the wrapper token on behalf of a sender.
         ///
-        /// * `token_address` -  The optional address of PSP22 to transfer to, if token_address is None,
+        /// * `token_address` -  The optional address of PSP22 to unwrap into, if token_address is None,
         /// then it's a Native token address
         /// * `amount` -  The the amount of token to transfer
         #[ink(message, payable)]
-        pub fn unwrap(&mut self, token_address: Option<AccountId>, amount: Balance) {
-            self.is_valid_unwrapping(token_address, amount);
+        pub fn unwrap(&mut self, token_address: Option<AccountId>, amount: Balance) -> Result<()> {
+            self.is_valid_unwrapping(token_address, amount)?;
 
             self.do_unwrap(
                 token_address.clone(),
                 self.env().caller(),
                 self.env().caller(),
                 amount,
-            );
+            )?;
+
+            Ok(())
         }
 
         /// Used to unwrap/burn the wrapper token on behalf of a sender.
         ///
-        /// * `token_address` -  The address of PSP22 to transfer to, if token_address is None,
+        /// * `token_address` -  The address of PSP22 to unwrap into, if token_address is None,
         /// then it's a Native token address
         /// * `amount` -  The the amount of token to transfer
         #[ink(message, payable)]
-        pub fn unwrap_with_token_address(&mut self, token_address: AccountId, amount: Balance) {
+        pub fn unwrap_with_token_address(
+            &mut self,
+            token_address: AccountId,
+            amount: Balance,
+        ) -> Result<()> {
             self.unwrap(Some(token_address), amount)
         }
 
@@ -248,15 +254,17 @@ mod governed_token_wrapper {
             token_address: Option<AccountId>,
             amount: Balance,
             recipient: AccountId,
-        ) {
-            self.is_valid_unwrapping(token_address, amount);
+        ) -> Result<()> {
+            self.is_valid_unwrapping(token_address, amount)?;
 
             self.do_unwrap(
                 token_address.clone(),
                 recipient,
                 self.env().caller(),
                 amount,
-            );
+            )?;
+
+            Ok(())
         }
 
         /// Used to unwrap/burn the wrapper token on behalf of a sender.
@@ -270,8 +278,9 @@ mod governed_token_wrapper {
             token_address: AccountId,
             amount: Balance,
             recipient: AccountId,
-        ) {
-            self.unwrap_and_send_to(Some(token_address), amount, recipient);
+        ) -> Result<()> {
+            self.unwrap_and_send_to(Some(token_address), amount, recipient)?;
+            Ok(())
         }
 
         /// Used to wrap tokens on behalf of a sender
@@ -287,8 +296,8 @@ mod governed_token_wrapper {
             token_address: Option<AccountId>,
             sender: AccountId,
             amount: Balance,
-        ) {
-            self.is_valid_wrapping(token_address, amount);
+        ) -> Result<()> {
+            self.is_valid_wrapping(token_address, amount)?;
 
             // determine amount to use
             let amount_to_use = if token_address.is_none() {
@@ -306,13 +315,15 @@ mod governed_token_wrapper {
                 sender,
                 cost_to_wrap,
                 leftover,
-            );
+            )?;
 
             self.env().emit_event(Wrap {
                 sender: Some(sender),
                 mint_for: Some(sender),
                 amount,
             });
+
+            Ok(())
         }
 
         /// Used to wrap tokens on behalf of a sender
@@ -328,8 +339,10 @@ mod governed_token_wrapper {
             token_address: AccountId,
             sender: AccountId,
             amount: Balance,
-        ) {
-            self.wrap_for(Some(token_address), sender, amount)
+        ) -> Result<()> {
+            self.wrap_for(Some(token_address), sender, amount)?;
+
+            Ok(())
         }
         /// Used to wrap tokens on behalf of a sender and mint to a potentially different address
         ///
@@ -344,8 +357,8 @@ mod governed_token_wrapper {
             sender: AccountId,
             amount: Balance,
             recipient: AccountId,
-        ) {
-            self.is_valid_wrapping(token_address, amount);
+        ) -> Result<()> {
+            self.is_valid_wrapping(token_address, amount)?;
 
             // determine amount to use
             let amount_to_use = if token_address.is_none() {
@@ -364,7 +377,9 @@ mod governed_token_wrapper {
                 recipient,
                 cost_to_wrap,
                 leftover,
-            );
+            )?;
+
+            Ok(())
         }
 
         /// Used to wrap tokens on behalf of a sender and mint to a potentially different address
@@ -380,8 +395,10 @@ mod governed_token_wrapper {
             sender: AccountId,
             amount: Balance,
             recipient: AccountId,
-        ) {
-            self.wrap_for_and_send_to(Some(token_address), sender, amount, recipient)
+        ) -> Result<()> {
+            self.wrap_for_and_send_to(Some(token_address), sender, amount, recipient)?;
+
+            Ok(())
         }
 
         /// Used to unwrap/burn the wrapper token on behalf of a sender.
@@ -396,9 +413,11 @@ mod governed_token_wrapper {
             token_address: Option<AccountId>,
             amount: Balance,
             sender: AccountId,
-        ) {
-            self.is_valid_unwrapping(token_address, amount);
-            self.do_unwrap(token_address.clone(), sender, sender, amount);
+        ) -> Result<()> {
+            self.is_valid_unwrapping(token_address, amount)?;
+            self.do_unwrap(token_address.clone(), sender, sender, amount)?;
+
+            Ok(())
         }
 
         /// Used to unwrap/burn the wrapper token on behalf of a sender.
@@ -413,8 +432,9 @@ mod governed_token_wrapper {
             token_address: AccountId,
             amount: Balance,
             sender: AccountId,
-        ) {
-            self.unwrap_for(Some(token_address), amount, sender)
+        ) -> Result<()> {
+            self.unwrap_for(Some(token_address), amount, sender)?;
+            Ok(())
         }
 
         /// Adds a token at `token_address` to the GovernedTokenWrapper's wrapping list
@@ -424,7 +444,7 @@ mod governed_token_wrapper {
         #[ink(message)]
         pub fn add_token_address(&mut self, token_address: AccountId, nonce: u64) -> Result<()> {
             // only contract governor can execute this function
-            self.is_governor(self.env().caller());
+            self.is_governor(self.env().caller())?;
 
             // check if token address already exists
             if self.is_valid_address(token_address) {
@@ -455,7 +475,7 @@ mod governed_token_wrapper {
         /// * `nonce`: The nonce tracking updates to this contract
         #[ink(message)]
         pub fn remove_token_address(&mut self, token_address: AccountId, nonce: u64) -> Result<()> {
-            self.is_governor(self.env().caller());
+            self.is_governor(self.env().caller())?;
 
             // check if token address already exists
             if !self.is_valid_address(token_address) {
@@ -492,9 +512,9 @@ mod governed_token_wrapper {
             wrapping_limit: Option<u128>,
             fee_percentage: Option<Balance>,
             fee_recipient: Option<AccountId>,
-        ) {
+        ) -> Result<()> {
             // only contract governor can execute this function
-            self.is_governor(self.env().caller());
+            self.is_governor(self.env().caller())?;
 
             if governor.is_some() {
                 self.governor = governor.unwrap();
@@ -515,6 +535,8 @@ mod governed_token_wrapper {
             if fee_recipient.is_some() {
                 self.fee_recipient = fee_recipient.unwrap();
             }
+
+            Ok(())
         }
 
         /// Handles unwrapping by transferring token to the sender and burning for the burn_for address

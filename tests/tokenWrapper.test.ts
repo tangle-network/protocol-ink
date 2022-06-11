@@ -326,16 +326,6 @@ describe("token-wrapper", () => {
     let contractBalanceAfter =
       await tokenWrapperContract.query.nativeContractBalance();
 
-    console.log(
-      `senderWrappedBalanceAfter ${senderWrappedBalanceAfter.output}`
-    );
-    console.log(
-      `initialSenderWrappedBalance ${initialSenderWrappedBalance.output}`
-    );
-
-    console.log(`contractBalanceAfter ${contractBalanceAfter.output}`);
-    console.log(`initialContractBalance ${initialContractBalance.output}`);
-
     expect(
       Number(senderWrappedBalanceAfter.output) >
         Number(initialSenderWrappedBalance.output)
@@ -1229,10 +1219,11 @@ describe("token-wrapper", () => {
     // validate that psp22 allowance for contract was set
     expect(Number(allowanceSetForContract.output) === allowedAmountForContract);
 
+    const optionalAddress = api.createType('Option<AccountId>', tokenWrapperContract.address);
     // now do unwrapping
     let unwrapFunction =
       await tokenWrapperContract.tx.unwrapAndSendToWithTokenAddress(
-        psp22Contract.address,
+        optionalAddress,
         1000,
         FerdieSigner.address,
         { value: 10 }
