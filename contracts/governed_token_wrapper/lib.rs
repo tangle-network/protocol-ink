@@ -548,7 +548,7 @@ mod governed_token_wrapper {
                 }
             } else {
                 // transfer PSP22 liquidity from the token wrapper to the sender
-                if self.transfer(sender, amount, Vec::<u8>::new()).is_err() {
+                if self.transfer_from(self.env().account_id(), sender, amount, Vec::<u8>::new()).is_err() {
                     ink_env::debug_println!("psp22 token transfer to sender failed");
                     return Err(Error::TransferError);
                 } else {
