@@ -35,8 +35,9 @@ jobs:
         run: yarn install
 
       - name: Build
-        working-directory: ./
+        uses: actions/checkout@v2.3.4
         run: yarn build
 
       - name: Format
+        uses: actions/checkout@v2.3.4
         run: yarn prettier -w **/*.ts
