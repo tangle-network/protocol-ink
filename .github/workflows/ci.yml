@@ -28,11 +28,15 @@ jobs:
         if: steps.check_files.outputs.files_exists == 'true'
         run: echo "It exists !"
 
+      - name: Set up Node.js ⚙️
+        uses: actions/setup-node@v2
+        with:
+          node-version: '17.x'
+
       - uses: actions/checkout@v2.3.4
       - name: Add Redspot
         run: yarn global add redspot
 
-      - uses: actions/checkout@v2.3.4
       - name: Install
         run: yarn install
 
@@ -40,7 +44,6 @@ jobs:
       #- name: Format
        # run: yarn format
 
-      - uses: actions/checkout@v2.3.4
       - name: Build
         run: yarn build
 
