@@ -733,7 +733,7 @@
   resolved "https://registry.yarnpkg.com/@polymathnetwork/polymesh-types/-/polymesh-types-0.0.2.tgz#a9f07bc9e1e659e59afa7a5409b2d91301b5fef9"
   integrity sha512-wGexzpZ4IdrwReQGSH7ViCN+kyoKMQcQC5exATgeG+1cZxOtcbxp+1LWP9xTrnw7R5+PYWPzIl+f71gMkSDD5A==
 
-"@redspot/chai@0.13.6":
+"@redspot/chai@^0.13.5":
   version "0.13.6"
   resolved "https://registry.yarnpkg.com/@redspot/chai/-/chai-0.13.6.tgz#ae55a5bd4f6800d051858b4eed9f23d32f2227b2"
   integrity sha512-FMW4tv2nac8uNydpbSGZUBnfGPP9+WHxDtnm7HYPpfMI8yB1wFWi3cvJIkp3WldCyeYOtoSW9E/QccpcwEWzSw==
@@ -742,7 +742,7 @@
     "@polkadot/api-contract" "^7.10.1"
     chai-as-promised "^7.1.1"
 
-"@redspot/decimals@0.13.6":
+"@redspot/decimals@^0.13.5":
   version "0.13.6"
   resolved "https://registry.yarnpkg.com/@redspot/decimals/-/decimals-0.13.6.tgz#e0f487190b7c0e2a314eaa5a62deca7697f99951"
   integrity sha512-MyjXSiWNmdW35rwIeSNt6VNZGOiBHPXbegr3bWYaH4s2pIMmDnmXtcfFZ3Q86ukVNukqNqIKAS5PdmBSk4uvhQ==
@@ -750,7 +750,7 @@
     "@polkadot/api" "^7.10.1"
     "@polkadot/api-contract" "^7.10.1"
 
-"@redspot/explorer@0.13.6":
+"@redspot/explorer@^0.13.5":
   version "0.13.6"
   resolved "https://registry.yarnpkg.com/@redspot/explorer/-/explorer-0.13.6.tgz#74f0119ad5c95240585a627a9c23bf0084cac872"
   integrity sha512-2K480xXFb05M8DfuXvmhSkdRLbOUUE3KqDXbnnK0SpoxS40jfT/ImwQZPrP2MgIvJUTJoNq4ZXOLVdvhsvFMTA==
@@ -760,7 +760,7 @@
     socket.io "^4.0.1"
     socket.io-client "^4.0.1"
 
-"@redspot/gas-reporter@0.13.6":
+"@redspot/gas-reporter@^0.13.5":
   version "0.13.6"
   resolved "https://registry.yarnpkg.com/@redspot/gas-reporter/-/gas-reporter-0.13.6.tgz#8d95038952f14252ef4b0a09fe6e47b8741a88ab"
   integrity sha512-KhJnEqjR44PFCkugacArSyAy4z1VdCNsAUn4fOsC5Bsl5iuHO409p5KKyYyHCkVIiejq6/1kylCyOZreAR1j6A==
@@ -771,7 +771,7 @@
     lodash "^4.17.20"
     sync-request "^6.1.0"
 
-"@redspot/known-types@0.13.6":
+"@redspot/known-types@^0.13.5":
   version "0.13.6"
   resolved "https://registry.yarnpkg.com/@redspot/known-types/-/known-types-0.13.6.tgz#622f0db6ebc2293ac071c1a46ddc943ba6dca9d3"
   integrity sha512-PNKq5umNE6rx3hIKxmd02YqH5xMVVdG/WuNT7MIazW6w7QSKH2+h2hcbOTIpWPQkuQEKtYkpg1e/PMVxIxb/ew==
@@ -779,7 +779,7 @@
     "@polkadot/api" "^7.10.1"
     "@polkadot/apps-config" "^0.103.1"
 
-"@redspot/patract@0.13.6":
+"@redspot/patract@^0.13.5":
   version "0.13.6"
   resolved "https://registry.yarnpkg.com/@redspot/patract/-/patract-0.13.6.tgz#3a57f0695d35e8b6f9bf3bef57b48a83b8ce5ded"
   integrity sha512-G8uSp/GGZRfBbTxKZBI7RDDEKDmRCK7ex45qtztqujtei7SLESwkbeogVdCP+9mNvRZvQ0B/tQv4RIxfkddTrg==
@@ -787,7 +787,7 @@
     "@polkadot/api" "^7.10.1"
     "@polkadot/api-contract" "^7.10.1"
 
-"@redspot/watcher@0.13.6":
+"@redspot/watcher@^0.13.5":
   version "0.13.6"
   resolved "https://registry.yarnpkg.com/@redspot/watcher/-/watcher-0.13.6.tgz#1f606aea21324884d7c34a9cdaab099cb0524fb4"
   integrity sha512-cxi4X3+IfdTAZZhDoSHYif12YPdrlNsD6j+Vipzi54gXD5Bpjyqm9IjM5IiI4eJK/D51qlp7fTM2vjUeYEv6bg==
@@ -2845,6 +2845,11 @@ pontem-types-bundle@1.0.15:
     "@polkadot/types" "^6.0.5"
     typescript "^4.4.3"
 
+prettier@^2.6.2:
+  version "2.6.2"
+  resolved "https://registry.yarnpkg.com/prettier/-/prettier-2.6.2.tgz#e26d71a18a74c3d0f0597f55f01fb6c06c206032"
+  integrity sha512-PkUpF+qoXTqhOeWL9fu7As8LXsIUZ1WYaJiY/a7McAQzxjk82OF0tibkFXVCDImZtWxbvojFjerkiLb0/q8mew==
+
 process-nextick-args@~2.0.0:
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/process-nextick-args/-/process-nextick-args-2.0.1.tgz#7820d9b16120cc55ca9ae7792680ae7dba6d7fe2"
@@ -2938,7 +2943,7 @@ readdirp@~3.5.0:
   dependencies:
     picomatch "^2.2.1"
 
-redspot@0.13.6:
+redspot@^0.13.5:
   version "0.13.6"
   resolved "https://registry.yarnpkg.com/redspot/-/redspot-0.13.6.tgz#ab80a53b49fceaa011e2abf74e87673dc28b9c09"
   integrity sha512-0bAdSGYUFloHJA7bMR/8Xl91a5JWYQcpuYLHfn1ioJ0BpXRnYgSTPMzGwBG8YXKTF4EVJHIFy8F8mRAZe62qRw==
