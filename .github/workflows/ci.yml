@@ -34,7 +34,7 @@ jobs:
         with:
           cache: "yarn"
           cache-dependency-path: "./yarn.lock"
-        run: yarn global add redspot
+      - run: yarn global add redspot
 
       - uses: actions/checkout@v2.3.4
       - name: Install
