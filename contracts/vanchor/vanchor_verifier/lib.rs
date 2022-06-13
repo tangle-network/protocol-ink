@@ -1,7 +1,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use ink_env::call::FromAccountId;
 use ink_lang as ink;
 use ink_storage::traits::SpreadAllocate;
+
+pub use self::vanchor_verifier::{VAnchorVerifier, VAnchorVerifierRef};
+
+impl SpreadAllocate for VAnchorVerifierRef {
+    fn allocate_spread(_ptr: &mut ink_primitives::KeyPtr) -> Self {
+        FromAccountId::from_account_id([0; 32].into())
+    }
+}
 
 mod verifier {
     use ark_crypto_primitives::{Error, SNARK};
