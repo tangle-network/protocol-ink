@@ -34,8 +34,9 @@ jobs:
       - name: Install
         run: yarn install
 
+      - name: Build
+        working-directory: ./
+        run: yarn build
+
       - name: Format
         run: yarn prettier -w **/*.ts
-
-      - name: Build
-        run: yarn test
