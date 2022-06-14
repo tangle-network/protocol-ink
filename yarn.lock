@@ -1006,10 +1006,10 @@
   resolved "https://registry.yarnpkg.com/@unique-nft/types/-/types-0.2.0.tgz#6fb273b185894a7eb53527feef9664f5a9541a7c"
   integrity sha512-L2VmCW/yZQxKQ1THJlR+H+GpFp7orofracrydN61u49Ql6e7WG1mt1s0wCA+bOtlFPfw68VhFG39q7x6j5dhRw==
 
-"@webb-tools/wasm-utils@0.1.4-32":
-  version "0.1.4-32"
-  resolved "https://registry.yarnpkg.com/@webb-tools/wasm-utils/-/wasm-utils-0.1.4-32.tgz#f4dc02a6246c9b7c5aecad8fd02ce3e608d0aa11"
-  integrity sha512-r8bgiaZNSwPT0uRjCPmIEz+ERN73M7J7Tfb+UwO0EC76lULYt3HJMN9K7cF/BPVZTKBeloGMN1M7Vx2vD1M65w==
+"@webb-tools/wasm-utils@0.1.4-58":
+  version "0.1.4-58"
+  resolved "https://registry.yarnpkg.com/@webb-tools/wasm-utils/-/wasm-utils-0.1.4-58.tgz#810f10a23c5b7ccaa6598b1189570964f65ef5d0"
+  integrity sha512-dhGCusHQE+518yzXDejKbnWwcu2JdTiBT0SoZN3G5GTLXldKiGqIe7+4hzK9zfTnL3+KckT7kPZa1sAK/phL5Q==
 
 "@zeitgeistpm/type-defs@0.3.10":
   version "0.3.10"
