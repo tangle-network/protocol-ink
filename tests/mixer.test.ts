@@ -7,6 +7,7 @@ import {
   JsNoteBuilder,
   ProofInputBuilder,
 } from '@webb-tools/wasm-utils/njs';
+import BN from "bn.js";
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
@@ -42,24 +43,34 @@ describe('mixer', () => {
   });
 
   async function setup() {
+    console.log("trying setup")
     await api.isReady;
+    const one = new BN(10).pow(new BN(api.registry.chainDecimals[0]));
     const signerAddresses = await getAddresses();
     const Alice = signerAddresses[0];
-    const sender = await getRandomSigner(Alice, '20000 UNIT');
+    const sender = await getRandomSigner(Alice, one.muln(10));
 
+
+    console.log("finished trying set up")
     return { sender, Alice };
   }
 
   it.only('Creates a new instance of the mixer', async () => {
     const { sender } = await setup();
 
+    console.log("creating poseidon contract");
     // Poseidon instantiation
     const poseidonContractFactory = await getContractFactory('poseidon', sender.address);
     const poseidonContract = await poseidonContractFactory.deploy('new');
 
+    console.log("poseidon deployed");
+
     // Mixer verifier instantiation
     const mixerVerifierContractFactory = await getContractFactory('mixer_verifier', sender.address);
     const mixerVerifierContract = await mixerVerifierContractFactory.deploy('new');
+
+    console.log("mixer verifier deployed");
+
     console.log(poseidonContract.abi.info.source.wasmHash);
     console.log(mixerVerifierContract.abi.info.source.wasmHash);
 

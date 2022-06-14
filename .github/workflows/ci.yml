@@ -32,6 +32,9 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v1.3.0
 
+      - name: Install Binaryen
+        run: apt-get install binaryen
+
       - name: Install cargo-nextest
         uses: baptiste0928/cargo-install@v1
         with:
