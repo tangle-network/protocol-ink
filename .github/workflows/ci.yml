@@ -41,7 +41,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Binaryen
-        run: 7z x node/substrate-contracts-node-linux.tar.gz
+        run: 7z x binaryen/substrate-contracts-node-linux.tar.gz
 
       - name: Binaryen Command 1
         run: sudo cp -r binaryen/binaryen-version_101-x86_64-linux/binaryen-version_101/bin/* /bin
