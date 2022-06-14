@@ -108,6 +108,9 @@ pub mod mixer {
                 contract.merkle_tree.current_root_index = 0;
                 contract.merkle_tree.next_index = 0;
 
+                let message = ink_prelude::format!("Instantiating contract");
+                ink_env::debug_println!("{}", &message);
+
                 for i in 0..levels {
                     contract
                         .merkle_tree

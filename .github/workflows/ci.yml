@@ -15,7 +15,7 @@ jobs:
           target: "node/substrate-contracts-node-linux.tar.gz"
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract some files
+      - name: Extract Substrate Contract Node
         run: 7z x node/substrate-contracts-node-linux.tar.gz
 
       - uses: andstor/file-existence-action@v1
@@ -32,8 +32,28 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v1.3.0
 
-      - name: Install Binaryen
-        run: sudo apt-get install binaryen
+      - uses: dsaltares/fetch-gh-release-asset@master
+        with:
+          repo: 'WebAssembly/binaryen/releases'
+          version: 'tags/version_108'
+          file: "binaryen-version_108-x86_64-linux.tar.gz"
+          target: "binaryen/substrate-contracts-node-linux.tar.gz"
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Binaryen
+        run: 7z x node/substrate-contracts-node-linux.tar.gz
+
+      - name: Binaryen Command 1
+        run: sudo cp -r binaryen/binaryen-version_101-x86_64-linux/binaryen-version_101/bin/* /bin
+
+      - name: Binaryen Command 2
+        run: sudo cp -r binaryen/binaryen-version_101-x86_64-linux/binaryen-version_101/include/* /usr/include
+
+      - name: Binaryen Command 3
+        run: sudo cp -r binaryen/binaryen-version_101-x86_64-linux/binaryen-version_101/lib64/* /lib64
+
+      #- name: Install Binaryen
+       # run: sudo apt-get install binaryen
 
       - name: Install cargo-nextest
         uses: baptiste0928/cargo-install@v1

@@ -71,8 +71,8 @@ describe('mixer', () => {
 
     console.log("mixer verifier deployed");
 
-    console.log(poseidonContract.abi.info.source.wasmHash);
-    console.log(mixerVerifierContract.abi.info.source.wasmHash);
+   // console.log(poseidonContract.abi.info.source.wasmHash);
+   // console.log(mixerVerifierContract.abi.info.source.wasmHash);
 
     // Mixer instantiation
     const randomVersion = Math.floor(Math.random() * 10000);
@@ -86,7 +86,7 @@ describe('mixer', () => {
       poseidonContract.abi.info.source.wasmHash,
       mixerVerifierContract.abi.info.source.wasmHash,
     );
-    console.log("finished deploying mixer");
+
     await mixerContract.query.levels();
     await mixerContract.query.depositSize();
 
@@ -94,6 +94,7 @@ describe('mixer', () => {
     let note = generateDeposit(depositSize);
     let commitment = note.getLeafCommitment();
 
+    console.log("sending deposit");
     const resp = await mixerContract.tx.deposit(commitment, { value: depositSize });
     console.log(resp);
   });
