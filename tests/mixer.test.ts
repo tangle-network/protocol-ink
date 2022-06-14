@@ -5,12 +5,13 @@ import {
   generate_proof_js,
   JsNote,
   JsNoteBuilder,
-  ProofInputBuilder,
 } from '@webb-tools/wasm-utils/njs';
 import BN from "bn.js";
+import {MerkleTree} from "@webb-tools/sdk-core"
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
+import { u8aToHex, hexToU8a } from '@polkadot/util';
 
 export function generateDeposit(amount: number) {
   let noteBuilder = new JsNoteBuilder();
@@ -95,7 +96,10 @@ describe('mixer', () => {
     let commitment = note.getLeafCommitment();
 
     console.log("sending deposit");
-    const resp = await mixerContract.tx.deposit(commitment, { value: depositSize });
-    console.log(resp);
+    const depositFunction = await mixerContract.tx.deposit(commitment, { value: depositSize });
+
+    const merkleTree = new MerkleTree(levels, [u8aToHex(commitment)]);
+
+    expect(depositFunction).to.be.ok
   });
 })
