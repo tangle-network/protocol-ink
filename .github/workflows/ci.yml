@@ -48,6 +48,10 @@ jobs:
           override: true
 
       - uses: actions/checkout@v2.3.4
+      - name: Install Toolchain Nightly
+        run: rustup toolchain install nightly
+
+      - uses: actions/checkout@v2.3.4
       - name: Install Dylint
         run: cargo install dylint-link
 
