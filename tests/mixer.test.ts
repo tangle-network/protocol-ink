@@ -109,8 +109,8 @@ describe("mixer", () => {
     await mixerContract.query.depositSize();
 
     // Mixer deposit
-    //let note = generateDeposit(depositSize);
-    //let commitment = note.getLeafCommitment();
+    let note = generateDeposit(depositSize);
+    let commitment = note.getLeafCommitment();
 
     const noteGenInput: NoteGenInput = {
       protocol: 'mixer',
@@ -130,11 +130,11 @@ describe("mixer", () => {
     };
 
     // Generate deposit note, and the secrets associated with the deposit.
-    const note = await Note.generateNote(noteGenInput);
+    //const note = await Note.generateNote(noteGenInput);
 
     // The leaf is the value inserted on-chain. Users can prove knowledge of
     // the secrets which were used in generating a leaf, without revealing the secrets.
-    const commitment = note.getLeaf();
+    //const commitment = note.getLeaf();
 
     console.log("sending deposit");
     const depositFunction = await mixerContract.tx.deposit(commitment, {
