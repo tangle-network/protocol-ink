@@ -37,7 +37,7 @@ jobs:
           repo: 'WebAssembly/binaryen/releases'
           version: 'tags/version_108'
           file: "binaryen-version_108-x86_64-linux.tar.gz"
-          target: "binaryen/substrate-contracts-node-linux.tar.gz"
+          target: "binaryen/binaryen-version_108-x86_64-linux.tar.gz"
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Binaryen
