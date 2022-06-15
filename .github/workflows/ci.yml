@@ -12,11 +12,14 @@ jobs:
           repo: 'paritytech/substrate-contracts-node'
           version: 'tags/v0.16.0'
           file: "substrate-contracts-node-linux.tar.gz"
-          target: "node/substrate-contracts-node-linux.tar.gz"
+          target: "substrate-contracts-node-linux.tar.gz"
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Substrate Contract Node
-        run: 7z x node/substrate-contracts-node-linux.tar.gz
+      - name: Extract Binaryen
+        run: sudo tar -zxvf node/substrate-contracts-node-linux.tar.gz
+
+      - name: Run Substrate Contract Node
+        run: sud0 ./substrate-contracts-node --dev --tmp -lruntime=debug
 
       - uses: andstor/file-existence-action@v1
         name: Check file existence
