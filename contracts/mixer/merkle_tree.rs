@@ -42,9 +42,6 @@ impl MerkleTree {
         let mut right: [u8; 32];
 
         for i in 0..self.levels {
-            let message = ink_prelude::format!("loop index in merkle tree insertion is {:?}", i);
-            ink_env::debug_println!("{}", &message);
-
             if current_index % 2 == 0 {
                 left = current_level_hash;
                 right = zeroes::zeroes(i);
@@ -66,6 +63,9 @@ impl MerkleTree {
     }
 
     pub fn is_known_root(&self, root: [u8; 32]) -> bool {
+        let message = ink_prelude::format!("root is {:?}", root);
+        ink_env::debug_println!("{}", &message);
+
         if root == [0u8; 32] {
             return false;
         }
@@ -73,6 +73,10 @@ impl MerkleTree {
         let mut i = self.current_root_index;
         for _ in 0..ROOT_HISTORY_SIZE {
             if let Some(r) = self.roots.get(&i) {
+
+                let message = ink_prelude::format!("root in history is {:?}", r);
+                ink_env::debug_println!("{}", &message);
+
                 if r == root {
                     return true;
                 }

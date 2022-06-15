@@ -27,6 +27,8 @@ mod verifier {
         proof: &Proof<E>,
     ) -> Result<bool, Error> {
         let res = Groth16::<E>::verify(vk, public_inputs, proof)?;
+        let message = ink_prelude::format!("finished verifying groth16");
+        ink_env::debug_println!("{}", &message);
         Ok(res)
     }
 
@@ -36,9 +38,19 @@ mod verifier {
             proof_bytes: &[u8],
             vk_bytes: &[u8],
         ) -> Result<bool, Error> {
+            let message = ink_prelude::format!("inside verifier");
+            ink_env::debug_println!("{}", &message);
             let public_input_field_elts = to_field_elements::<E::Fr>(public_inp_bytes)?;
+            let message = ink_prelude::format!("public_input_field_elts {:?}", public_input_field_elts);
+            ink_env::debug_println!("{}", &message);
             let vk = VerifyingKey::<E>::deserialize(vk_bytes)?;
+            let message = ink_prelude::format!("vk {:?}", vk);
+            ink_env::debug_println!("{}", &message);
             let proof = Proof::<E>::deserialize(proof_bytes)?;
+            let message = ink_prelude::format!("proof {:?}", vk);
+            ink_env::debug_println!("{}", &message);
+            let message = ink_prelude::format!("verifying groth16");
+            ink_env::debug_println!("{}", &message);
             let res = verify_groth16::<E>(&vk, &public_input_field_elts, &proof)?;
             Ok(res)
         }
