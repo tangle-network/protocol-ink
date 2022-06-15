@@ -44,7 +44,7 @@ jobs:
         run: 7z x  binaryen/binaryen-version_108-x86_64-linux.tar.gz
 
       - name: Binaryen Command 1
-        run: sudo cp -r ${GITHUB_WORKSPACE}/binaryen/binaryen-version_101-x86_64-linux/binaryen-version_101/bin/* /bin
+        run: sudo cp -r binaryen/binaryen-version_101-x86_64-linux/binaryen-version_101/bin/* /bin
 
       - name: Binaryen Command 2
         run: sudo cp -r ${GITHUB_WORKSPACE}/binaryen/binaryen-version_101-x86_64-linux/binaryen-version_101/include/* /usr/include
