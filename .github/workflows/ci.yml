@@ -44,7 +44,7 @@ jobs:
         run: sudo tar -zxvf binaryen/binaryen-version_108-x86_64-linux.tar.gz
 
       - name: Get Path
-        run: readlink -f binaryen/binaryen-version_108/lib/libbinaryen.a
+        run: readlink -f binaryen/binaryen-version_108-x86_64-linux/binaryen-version_108/lib/libbinaryen.a
 
       - name: Binaryen Command 1
         run: sudo cp -r /home/runner/work/protocol-ink/protocol-ink/binaryen/binaryen-version_108-x86_64-linux/binaryen-version_108/bin/* /bin
