@@ -195,7 +195,19 @@ describe('mixer', () => {
     let fee = 0;
     let refund = 0;
 
-    // const isValidProof = verify_js_proof(proof, publicInputs, u8aToHex(keys.vk).replace('0x', ''), 'Bn254');
+    const publicInputsFunction = await mixerContract.query.formulatePublicInput(root, nullifier_hash, recipient, relayer, fee, refund);
+    expect(publicInputsFunction).to.be.ok;
+
+    // @ts-ignore
+    const publicInputs = [publicInputsFunction.output.toString('hex').replace('0x', '')];
+
+    console.log(`public input is ${publicInputsFunction.output}`)
+    console.log(`public input mod is ${publicInputs}`)
+
+
+
+    const isValidProof = verify_js_proof(proof_bytes, publicInputs, u8aToHex(hexToU8a(provingKey.toString('hex'))).replace('0x', ''), 'Bn254');
+    //console.log(`isValidProof is ${isValidProof}`)
 
     console.log('sending withdrawal');
     const withdrawFunction = await mixerContract.tx.withdraw(proof_bytes, root, nullifier_hash, recipient, relayer, fee, refund);

@@ -242,6 +242,38 @@ pub mod mixer {
             Ok(())
         }
 
+        #[ink(message)]
+        pub fn formulate_public_input(
+            &mut self,
+            root: [u8; 32],
+            nullifier_hash: [u8; 32],
+            recipient: AccountId,
+            relayer: AccountId,
+            fee: Balance,
+            refund: Balance,
+        ) -> Vec<u8> {
+            let element_encoder = |v: &[u8]| {
+                let mut output = [0u8; 32];
+                output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
+                output
+            };
+            // Format the public input bytes
+            let recipient_bytes = truncate_and_pad(recipient.as_ref());
+            let relayer_bytes = truncate_and_pad(relayer.as_ref());
+            let fee_bytes = element_encoder(&fee.to_be_bytes());
+            let refund_bytes = element_encoder(&refund.to_be_bytes());
+
+            let mut bytes = Vec::new();
+            bytes.extend_from_slice(&nullifier_hash);
+            bytes.extend_from_slice(&root);
+            bytes.extend_from_slice(&recipient_bytes);
+            bytes.extend_from_slice(&relayer_bytes);
+            bytes.extend_from_slice(&fee_bytes);
+            bytes.extend_from_slice(&refund_bytes);
+
+            bytes
+        }
+
         fn verify(&self, public_input: Vec<u8>, proof_bytes: Vec<u8>) -> Result<bool> {
             let message = ink_prelude::format!("verifier is {:?}", self.verifier);
             ink_env::debug_println!("{}", &message);
