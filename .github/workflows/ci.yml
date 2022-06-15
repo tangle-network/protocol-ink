@@ -19,7 +19,7 @@ jobs:
         run: sudo tar -zxvf node/substrate-contracts-node-linux.tar.gz
 
       - name: Run Substrate Contract Node
-        run: sud0 ./substrate-contracts-node --dev --tmp -lruntime=debug
+        run: sudo ./substrate-contracts-node --dev --tmp -lruntime=debug
 
       - uses: andstor/file-existence-action@v1
         name: Check file existence
