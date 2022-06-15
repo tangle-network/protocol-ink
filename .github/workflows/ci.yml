@@ -52,8 +52,11 @@ jobs:
       #- name: Binaryen Command 3
       #  run: sudo cp -r ${GITHUB_WORKSPACE}/binaryen/binaryen-version_101-x86_64-linux/binaryen-version_101/lib64/* /lib64
 
+      - name: Update
+        run: sudo apt update
+
       - name: Install Binaryen
-        run: sudo apt-get install binaryen=binaryen-version_101
+        run: sudo apt-get install binaryen
 
       - name: Install cargo-nextest
         uses: baptiste0928/cargo-install@v1
