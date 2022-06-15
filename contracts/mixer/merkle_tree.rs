@@ -73,7 +73,6 @@ impl MerkleTree {
         let mut i = self.current_root_index;
         for _ in 0..ROOT_HISTORY_SIZE {
             if let Some(r) = self.roots.get(&i) {
-
                 let message = ink_prelude::format!("root in history is {:?}", r);
                 ink_env::debug_println!("{}", &message);
 

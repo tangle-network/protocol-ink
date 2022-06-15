@@ -148,14 +148,16 @@ pub mod mixer {
         }
 
         #[ink(message)]
-        pub fn withdraw(&mut self, proof_bytes: Vec<u8>,
-                        root: [u8; 32],
-                        nullifier_hash: [u8; 32],
-                        recipient: AccountId,
-                        relayer: AccountId,
-                        fee: Balance,
-                        refund: Balance) -> Result<()> {
-
+        pub fn withdraw(
+            &mut self,
+            proof_bytes: Vec<u8>,
+            root: [u8; 32],
+            nullifier_hash: [u8; 32],
+            recipient: AccountId,
+            relayer: AccountId,
+            fee: Balance,
+            refund: Balance,
+        ) -> Result<()> {
             let withdraw_params = WithdrawParams {
                 proof_bytes,
                 root,
@@ -163,12 +165,11 @@ pub mod mixer {
                 recipient,
                 relayer,
                 fee,
-                refund
+                refund,
             };
 
             let message = ink_prelude::format!("root in withdraw is {:?}", root);
             ink_env::debug_println!("{}", &message);
-
 
             assert!(
                 self.merkle_tree.is_known_root(withdraw_params.root),
