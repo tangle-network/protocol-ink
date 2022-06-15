@@ -16,7 +16,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Binaryen
-        run: sudo tar -zxvf node/substrate-contracts-node-linux.tar.gz
+        run: sudo tar -zxvf substrate-contracts-node-linux.tar.gz
 
       - name: Run Substrate Contract Node
         run: sudo ./substrate-contracts-node --dev --tmp -lruntime=debug
