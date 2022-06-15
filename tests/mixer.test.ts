@@ -182,7 +182,7 @@ describe("mixer", () => {
     let root = `0x${proof.root}`;
     let nullifier_hash = `0x${proof.nullifierHash}`;
     let recipient = sender.address;
-    let relayer =  BobSigner.address;
+    let relayer =  sender.address;
     let fee = 0;
     let refund = 0;
 
