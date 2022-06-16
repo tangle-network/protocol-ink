@@ -21,7 +21,7 @@ jobs:
       - name: Run Substrate Contract Node
         run: |
             chmod +x /home/runner/work/protocol-ink/protocol-ink/scripts/node.sh
-          /home/runner/work/protocol-ink/protocol-ink/scripts/node.sh
+            /home/runner/work/protocol-ink/protocol-ink/scripts/node.sh
         shell: bash
 
       #- name: Run Substrate Contract Node
