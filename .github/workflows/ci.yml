@@ -18,11 +18,10 @@ jobs:
       - name: Extract Substrate Contract Node
         run: sudo tar -zxvf substrate-contracts-node-linux.tar.gz
 
-      - uses: actions/checkout@v2.3.4
       - name: Run Substrate Contract Node
         run: |
-            chmod +x ./scripts/node.sh
-            ./scripts/node.sh
+            chmod +x /home/runner/work/protocol-ink/protocol-ink/scripts/node.sh
+          /home/runner/work/protocol-ink/protocol-ink/scripts/node.sh
         shell: bash
 
       #- name: Run Substrate Contract Node
