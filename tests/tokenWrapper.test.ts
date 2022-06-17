@@ -3,6 +3,7 @@ import { artifacts, network, patract } from "redspot";
 import BN from "bn.js";
 import { all } from "@polkadot/api-derive/balances";
 import { hexToU8a } from "@polkadot/util";
+import { spawn } from 'child_process';
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
@@ -35,7 +36,33 @@ describe("token-wrapper", () => {
     return api.disconnect();
   });
 
+
   before(async () => {
+    const ls = spawn( './artifacts/substrate-contracts-node-linux/substrate-contracts-node',
+        []);
+
+    ls.stdout.on('data', (data) => {
+      console.log(`stdout: ${data}`);
+    });
+
+    ls.stderr.on('data', (data) => {
+      console.error(`stderr: ${data}`);
+    });
+
+    /*exec('php main.php', function (error, stdOut, stdErr) {
+      console.log(`stdout: ${stdOut}`);
+      console.log(`stdout: ${stdErr}`);
+      console.log(`stdout: ${error}`);
+    });*/
+
+    /*await exec('/Users/Damilare/Documents/self-paced/Substrate/contract_node/substrate-contracts-node/target/release/substrate-contracts-node',function (err,stdout,stderr) {
+      if (err) {
+        console.log("\n"+stderr);
+      } else {
+        console.log(stdout);
+      }
+    });*/
+
     await api.isReady;
   });
 
@@ -191,7 +218,7 @@ describe("token-wrapper", () => {
     };
   }
 
-  it("Add token address", async () => {
+  it.only("Add token address", async () => {
     expect(
       await tokenWrapperContract.tx.addTokenAddress(
         psp22Contract.address,

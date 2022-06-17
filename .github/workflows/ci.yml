@@ -19,11 +19,11 @@ jobs:
       - name: Extract Substrate Contract Node
         run: sudo tar -zxvf substrate-contracts-node-linux.tar.gz
 
-      - name: Run Substrate Contract Node
-        run: |
-            chmod +x ./scripts/node.sh
-            ./scripts/node.sh
-        shell: bash
+      #- name: Run Substrate Contract Node
+      #  run: |
+      #      chmod +x ./scripts/node.sh
+      #      ./scripts/node.sh
+      #  shell: bash
 
       #- name: Run Substrate Contract Node
       #  run: sudo ./artifacts/substrate-contracts-node-linux/substrate-contracts-node --dev --tmp -lruntime=debug
@@ -64,40 +64,34 @@ jobs:
 
       - name: Binaryen Command 3
         run: sudo cp -r /home/runner/work/protocol-ink/protocol-ink/binaryen-version_101/lib64/* /lib64
+      # TO REMOVE
+      #- name: Install cargo-nextest
+      #  uses: baptiste0928/cargo-install@v1
+      #  with:
+      #    crate: cargo-nextest
+      #    version: latest
 
-      #- name: Update
-      #  run: sudo apt update
+      #- name: Install Toolchain
+      #  uses: actions-rs/toolchain@v1
+      #  with:
+      #    toolchain: stable
+      #    target: wasm32-unknown-unknown
+      #    override: true
 
-      #- name: Install Binaryen
-      #  run: sudo apt-get install binaryen
+      #- name: Install Toolchain Nightly
+      #  run: rustup toolchain install nightly
 
-      - name: Install cargo-nextest
-        uses: baptiste0928/cargo-install@v1
-        with:
-          crate: cargo-nextest
-          version: latest
+      #- name: Install Dylint
+      #  run: cargo install dylint-link
 
-      - name: Install Toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: wasm32-unknown-unknown
-          override: true
+      #- name: Install Cargo Dylint
+      #  run: cargo install cargo-dylint
 
-      - name: Install Toolchain Nightly
-        run: rustup toolchain install nightly
+      #- name: Install Cargo contract
+      #  run: cargo install cargo-contract --force --locked
 
-      - name: Install Dylint
-        run: cargo install dylint-link
-
-      - name: Install Cargo Dylint
-        run: cargo install cargo-dylint
-
-      - name: Install Cargo contract
-        run: cargo install cargo-contract --force --locked
-
-      - name: Rustup component
-        run: rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+      #- name: Rustup component
+      #  run: rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
 
       - name: Set up Node.js ⚙️
         uses: actions/setup-node@v2
@@ -114,6 +108,9 @@ jobs:
       #- name: Format
        # run: yarn format
 
+      #- name: Build
+      #  run: yarn build
+
       - name: Build
-        run: yarn build
+        run: yarn test
 
