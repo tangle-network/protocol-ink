@@ -42,7 +42,7 @@ describe("token-wrapper", () => {
     console.log("SPAWNING");
     const startArgs: string[] = [];
     startArgs.push("--tmp -lruntime=debug -linfo")
-    const ls = spawn( './artifacts/substrate-contracts-node-linux/substrate-contracts-node',
+    const ls = spawn( '/Users/Damilare/Documents/self-paced/Substrate/contract_node/substrate-contracts-node/target/release/substrate-contracts-node',
     []);
 
     ls.stdout.on('data', (data) => {
@@ -229,7 +229,7 @@ describe("token-wrapper", () => {
     };
   }
 
-  it.only("Add token address", async () => {
+  it("Add token address", async () => {
     expect(
       await tokenWrapperContract.tx.addTokenAddress(
         psp22Contract.address,
