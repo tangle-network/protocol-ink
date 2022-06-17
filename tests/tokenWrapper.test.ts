@@ -32,7 +32,6 @@ describe("token-wrapper", () => {
   let feeRecipient: any;
   let feePercentage: any;
   let psp22Contract: any;
-  let ls;
   after(() => {
     //if (ls) ls.kill('SIGINT');
     return api.disconnect();
@@ -43,7 +42,7 @@ describe("token-wrapper", () => {
     console.log("SPAWNING");
     const startArgs: string[] = [];
     startArgs.push("--tmp -lruntime=debug -linfo")
-    ls = spawn( './artifacts/substrate-contracts-node-linux/substrate-contracts-node',
+    const ls = spawn( './artifacts/substrate-contracts-node-linux/substrate-contracts-node',
     []);
 
     ls.stdout.on('data', (data) => {
