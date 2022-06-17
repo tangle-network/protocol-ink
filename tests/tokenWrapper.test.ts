@@ -3,7 +3,7 @@ import { artifacts, network, patract } from "redspot";
 import BN from "bn.js";
 import { all } from "@polkadot/api-derive/balances";
 import { hexToU8a } from "@polkadot/util";
-import { spawn } from 'child_process';
+import {ChildProcess, spawn} from 'child_process';
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
@@ -32,7 +32,9 @@ describe("token-wrapper", () => {
   let feeRecipient: any;
   let feePercentage: any;
   let psp22Contract: any;
+  let ls;
   after(() => {
+    //if (ls) ls.kill('SIGINT');
     return api.disconnect();
   });
 
@@ -40,8 +42,8 @@ describe("token-wrapper", () => {
   before(async () => {
     console.log("SPAWNING");
     const startArgs: string[] = [];
-    startArgs.push("--tmp -lruntime=debug")
-    const ls = spawn( './artifacts/substrate-contracts-node-linux/substrate-contracts-node',
+    startArgs.push("--tmp -lruntime=debug -linfo")
+    ls = spawn( './artifacts/substrate-contracts-node-linux/substrate-contracts-node',
     []);
 
     ls.stdout.on('data', (data) => {
