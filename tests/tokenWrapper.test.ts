@@ -39,7 +39,7 @@ describe("token-wrapper", () => {
 
   before(async () => {
     console.log("SPAWNING");
-    const ls = spawn( './home/runner/work/protocol-ink/protocol-ink/artifacts/substrate-contracts-node-linux/substrate-contracts-node --dev --tmp -lruntime=debug',
+    const ls = spawn( './artifacts/substrate-contracts-node-linux/substrate-contracts-node --dev --tmp -lruntime=debug',
         []);
 
     ls.stdout.on('data', (data) => {
