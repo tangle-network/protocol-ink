@@ -39,8 +39,10 @@ describe("token-wrapper", () => {
 
   before(async () => {
     console.log("SPAWNING");
-    const ls = spawn( './artifacts/substrate-contracts-node-linux/substrate-contracts-node --dev --tmp -lruntime=debug',
-        []);
+    const startArgs: string[] = [];
+    startArgs.push("--tmp -lruntime=debug")
+    const ls = spawn( './artifacts/substrate-contracts-node-linux/substrate-contracts-node',
+    startArgs);
 
     ls.stdout.on('data', (data) => {
       console.log(`stdout: ${data}`);
