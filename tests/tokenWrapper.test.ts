@@ -38,6 +38,7 @@ describe("token-wrapper", () => {
 
 
   before(async () => {
+    console.log("SPAWNING");
     const ls = spawn( './artifacts/substrate-contracts-node-linux/substrate-contracts-node',
         []);
 

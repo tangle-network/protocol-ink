@@ -17,6 +17,7 @@ import path from 'path';
 import fs from "fs";
 import { decodeAddress } from "@polkadot/util-crypto";
 import child from 'child_process';
+import exp from "constants";
 
 async function fetchSubstrateMixerProvingKey() {
   const IPFSUrl = 'https://ipfs.io/ipfs/QmfQUgqRXCdUiogiRU8ZdLFZD2vqVb9fHpLkL6DsGHwoLH';
@@ -71,7 +72,7 @@ describe('mixer', () => {
     return { sender, Alice, BobSigner };
   }
 
-  it.only('Creates a new instance of the mixer', async () => {
+  it.skip('Creates a new instance of the mixer', async () => {
     const { sender, BobSigner } = await setup();
 
     console.log('creating poseidon contract');
@@ -95,8 +96,8 @@ describe('mixer', () => {
 
     console.log('mixer verifier deployed');
 
-    // console.log(poseidonContract.abi.info.source.wasmHash);
-    // console.log(mixerVerifierContract.abi.info.source.wasmHash);
+     console.log(poseidonContract.abi.info.source.wasmHash.toHex());
+    console.log(mixerVerifierContract.abi.info.source.wasmHash.toHex());
 
     // Mixer instantiation
     const randomVersion = Math.floor(Math.random() * 10000);
@@ -104,7 +105,7 @@ describe('mixer', () => {
     const depositSize = 100;
     const mixerContractFactory = await getContractFactory(
       'mixer',
-      sender.address
+      sender.address,
     );
     const mixerContract = await mixerContractFactory.deploy(
       'new',
@@ -112,7 +113,7 @@ describe('mixer', () => {
       depositSize,
       randomVersion,
       poseidonContract.abi.info.source.wasmHash,
-      mixerVerifierContract.abi.info.source.wasmHash
+      mixerVerifierContract.abi.info.source.wasmHash,
     );
 
     await mixerContract.query.levels();
@@ -145,6 +146,10 @@ describe('mixer', () => {
     // The leaf is the value inserted on-chain. Users can prove knowledge of
     // the secrets which were used in generating a leaf, without revealing the secrets.
     //const commitment = note.getLeaf();
+
+    const contractId = await mixerContract.query.nativeContractAccountId();
+    console.log(`contractId is ${contractId.output}`)
+
 
     console.log('sending deposit');
     const depositFunction = await mixerContract.tx.deposit(commitment, {
@@ -184,7 +189,8 @@ describe('mixer', () => {
       relayer: addressHex.replace('0x', ''),
     };
 
-    console.log(`provingInput is ${provingInput}`);
+
+    //console.log(`provingInput is ${provingInput}`);
 
     let proof = await pm.prove('mixer', provingInput);
     let proof_bytes = `0x${proof.proof}` as any;
@@ -198,19 +204,28 @@ describe('mixer', () => {
     const publicInputsFunction = await mixerContract.query.formulatePublicInput(root, nullifier_hash, recipient, relayer, fee, refund);
     expect(publicInputsFunction).to.be.ok;
 
+    const publicInputsFunctionKeccak = await mixerContract.query.formulatePublicInputWithKeccak(root, nullifier_hash, recipient, relayer, fee, refund);
+
     // @ts-ignore
-    const publicInputs = [publicInputsFunction.output.toString('hex').replace('0x', '')];
-
+    //const publicInputs = [publicInputsFunction.output.toString('hex').replace('0x', '')];
+    // @ts-ignore
+    //const publicInputsKeccak = [publicInputsFunctionKeccak.output.toString('hex').replace('0x', '')];
+    let pub = "";
+    proof.publicInputs.forEach(function (val) {
+      pub += val;
+    });
+    console.log(`proof input is ${proof.publicInputs}`)
+    console.log(`proof input mode ${pub}`)
     console.log(`public input is ${publicInputsFunction.output}`)
-    console.log(`public input mod is ${publicInputs}`)
+    console.log(`public input keccak is ${publicInputsFunctionKeccak.output}`)
+    //console.log(`proving key is ${provingKey.toString('hex').replace('0x', '')}`)
 
-
-
-    const isValidProof = verify_js_proof(proof_bytes, publicInputs, u8aToHex(hexToU8a(provingKey.toString('hex'))).replace('0x', ''), 'Bn254');
-    //console.log(`isValidProof is ${isValidProof}`)
+    //const isValidProof = verify_js_proof(proof.proof, proof.publicInputs, provingKey.toString('hex').replace('0x', ''), 'Bn254');
+    //expect(isValidProof).to.be.true;
+    //console.log(`isValidProof is ${isValidProof.valueOf()}`)
 
     console.log('sending withdrawal');
-    const withdrawFunction = await mixerContract.tx.withdraw(proof_bytes, root, nullifier_hash, recipient, relayer, fee, refund);
+    const withdrawFunction = await mixerContract.tx.withdraw(proof_bytes, `0x${pub}`, root, nullifier_hash, recipient, relayer, fee, refund);
     expect(withdrawFunction).to.be.ok;
   });
 });
