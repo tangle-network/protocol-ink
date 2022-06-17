@@ -50,6 +50,8 @@ describe("token-wrapper", () => {
       console.error(`stderr: ${data}`);
     });
 
+    console.log(`Is spawn connected ${ls.connected}`)
+
     /*exec('php main.php', function (error, stdOut, stdErr) {
       console.log(`stdout: ${stdOut}`);
       console.log(`stdout: ${stdErr}`);
