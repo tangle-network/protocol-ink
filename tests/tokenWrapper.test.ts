@@ -42,7 +42,7 @@ describe("token-wrapper", () => {
     console.log("SPAWNING");
     const startArgs: string[] = [];
     startArgs.push("--tmp -lruntime=debug -linfo")
-    const ls = spawn( './artifacts/substrate-contracts-node-linux/substrate-contracts-node',
+    const ls = spawn( '/Users/Damilare/Documents/self-paced/Substrate/contract_node/substrate-contracts-node/target/release/substrate-contracts-node',
     []);
 
     ls.stdout.on('data', (data) => {
@@ -53,6 +53,11 @@ describe("token-wrapper", () => {
     ls.stderr.on('data', (data) => {
       console.log(`printing out error`);
       console.error(`stderr: ${data}`);
+    });
+
+    const sleep = (waitTimeInMs) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
+    await sleep(5000).then(() => {
+      console.log("sleeping");
     });
 
     /*exec('php main.php', function (error, stdOut, stdErr) {

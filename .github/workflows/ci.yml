@@ -112,10 +112,9 @@ jobs:
       #  run: yarn build
 
       - name: Test 1
-        if: always()
         run: yarn test
 
-      - name: Test 2
-        if: always()
-        run: yarn test
+      #- name: Test 2
+      #  if: always()
+      #  run: yarn test
 
