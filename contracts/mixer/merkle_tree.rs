@@ -32,7 +32,7 @@ impl MerkleTree {
     pub fn insert(&mut self, hasher: PoseidonRef, leaf: [u8; 32]) -> Result<u32> {
         let next_index = self.next_index;
         assert!(
-            next_index != 2u32.pow(self.levels as u32),
+            !next_index == u32::from(2u32.pow(self.levels as u32)),
             "Merkle tree is full"
         );
 
@@ -63,9 +63,6 @@ impl MerkleTree {
     }
 
     pub fn is_known_root(&self, root: [u8; 32]) -> bool {
-        let message = ink_prelude::format!("root is {:?}", root);
-        ink_env::debug_println!("{}", &message);
-
         if root == [0u8; 32] {
             return false;
         }
@@ -73,9 +70,6 @@ impl MerkleTree {
         let mut i = self.current_root_index;
         for _ in 0..ROOT_HISTORY_SIZE {
             if let Some(r) = self.roots.get(&i) {
-                let message = ink_prelude::format!("root in history is {:?}", r);
-                ink_env::debug_println!("{}", &message);
-
                 if r == root {
                     return true;
                 }
