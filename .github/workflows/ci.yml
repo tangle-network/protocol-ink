@@ -3,7 +3,7 @@ name: CI
 on: [push, pull_request]
 
 jobs:
-  # This job downloads substrate contract node from parity and runs it with the IT
+  # This job builds and runs tests for the contracts
   linux:
     runs-on: ubuntu-latest
     steps:
@@ -18,15 +18,6 @@ jobs:
 
       - name: Extract Substrate Contract Node
         run: sudo tar -zxvf substrate-contracts-node-linux.tar.gz
-
-      #- name: Run Substrate Contract Node
-      #  run: |
-      #      chmod +x ./scripts/node.sh
-      #      ./scripts/node.sh
-      #  shell: bash
-
-      #- name: Run Substrate Contract Node
-      #  run: sudo ./artifacts/substrate-contracts-node-linux/substrate-contracts-node --dev --tmp -lruntime=debug
 
       - uses: andstor/file-existence-action@v1
         name: Check file existence
@@ -51,12 +42,6 @@ jobs:
 
       - name: Extract Binaryen
         run: sudo tar -zxvf binaryen/binaryen-version_101-x86_64-linux.tar.gz
-
-      - name: Move Psp22 Contract to artifacts
-        run: sudo cp  /home/runner/work/protocol-ink/protocol-ink/tests/psp22_artifact/* /home/runner/work/protocol-ink/protocol-ink/artifacts
-
-      - name: Get Path Of Contract
-        run: readlink -f my_psp22.contract
 
       - name: Get Path
         run: readlink -f libbinaryen.a
@@ -109,17 +94,14 @@ jobs:
       - name: Install
         run: yarn install
 
-      #- uses: actions/checkout@v2.3.4
-      #- name: Format
-       # run: yarn format
-
       - name: Build
         run: yarn build
 
+      - name: Move Psp22 Contract to artifacts
+        run: sudo cp  /home/runner/work/protocol-ink/protocol-ink/tests/psp22_artifact/* /home/runner/work/protocol-ink/protocol-ink/artifacts
+
+      - name: Get Path Of Contract
+        run: readlink -f my_psp22.contract
+
       - name: Test
         run: yarn test
-
-      #- name: Test 2
-      #  if: always()
-      #  run: yarn test
-
