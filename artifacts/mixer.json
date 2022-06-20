@@ -1,0 +1,746 @@
+{
+  "source": {
+    "hash": "0x587083f29ffe5251ded7aa6d8c7e55b0403f9120160e3d65ab9f2c570f5f0609",
+    "language": "ink! 3.0.1",
+    "compiler": "rustc 1.62.0-nightly"
+  },
+  "contract": {
+    "name": "mixer",
+    "version": "0.1.0",
+    "authors": [
+      "Drew Stone <drew@webb.tools>"
+    ]
+  },
+  "V3": {
+    "spec": {
+      "constructors": [
+        {
+          "args": [
+            {
+              "label": "levels",
+              "type": {
+                "displayName": [
+                  "u32"
+                ],
+                "type": 1
+              }
+            },
+            {
+              "label": "deposit_size",
+              "type": {
+                "displayName": [
+                  "Balance"
+                ],
+                "type": 0
+              }
+            },
+            {
+              "label": "version",
+              "type": {
+                "displayName": [
+                  "u32"
+                ],
+                "type": 1
+              }
+            },
+            {
+              "label": "poseidon_contract_hash",
+              "type": {
+                "displayName": [
+                  "Hash"
+                ],
+                "type": 9
+              }
+            },
+            {
+              "label": "verifier_contract_hash",
+              "type": {
+                "displayName": [
+                  "Hash"
+                ],
+                "type": 9
+              }
+            }
+          ],
+          "docs": [],
+          "label": "new",
+          "payable": false,
+          "selector": "0x9bae9d5e"
+        }
+      ],
+      "docs": [],
+      "events": [
+        {
+          "args": [
+            {
+              "docs": [],
+              "indexed": true,
+              "label": "from",
+              "type": {
+                "displayName": [
+                  "Option"
+                ],
+                "type": 16
+              }
+            },
+            {
+              "docs": [],
+              "indexed": true,
+              "label": "commitment",
+              "type": {
+                "displayName": [
+                  "Option"
+                ],
+                "type": 17
+              }
+            },
+            {
+              "docs": [],
+              "indexed": false,
+              "label": "value",
+              "type": {
+                "displayName": [
+                  "Balance"
+                ],
+                "type": 0
+              }
+            }
+          ],
+          "docs": [],
+          "label": "Deposit"
+        }
+      ],
+      "messages": [
+        {
+          "args": [],
+          "docs": [
+            " Returns the `levels` value."
+          ],
+          "label": "levels",
+          "mutates": false,
+          "payable": false,
+          "returnType": {
+            "displayName": [
+              "u32"
+            ],
+            "type": 1
+          },
+          "selector": "0xf8c35ffc"
+        },
+        {
+          "args": [],
+          "docs": [
+            " Returns the `deposit_size` value."
+          ],
+          "label": "deposit_size",
+          "mutates": false,
+          "payable": false,
+          "returnType": {
+            "displayName": [
+              "Balance"
+            ],
+            "type": 0
+          },
+          "selector": "0x79da70b4"
+        },
+        {
+          "args": [
+            {
+              "label": "commitment",
+              "type": {
+                "displayName": [],
+                "type": 3
+              }
+            }
+          ],
+          "docs": [],
+          "label": "deposit",
+          "mutates": true,
+          "payable": true,
+          "returnType": {
+            "displayName": [
+              "Result"
+            ],
+            "type": 10
+          },
+          "selector": "0x2d10c9bd"
+        },
+        {
+          "args": [
+            {
+              "label": "withdraw_params",
+              "type": {
+                "displayName": [
+                  "WithdrawParams"
+                ],
+                "type": 12
+              }
+            }
+          ],
+          "docs": [],
+          "label": "withdraw",
+          "mutates": true,
+          "payable": false,
+          "returnType": {
+            "displayName": [
+              "Result"
+            ],
+            "type": 14
+          },
+          "selector": "0x410fcc9d"
+        }
+      ]
+    },
+    "storage": {
+      "struct": {
+        "fields": [
+          {
+            "layout": {
+              "cell": {
+                "key": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "ty": 0
+              }
+            },
+            "name": "deposit_size"
+          },
+          {
+            "layout": {
+              "struct": {
+                "fields": [
+                  {
+                    "layout": {
+                      "cell": {
+                        "key": "0x0100000000000000000000000000000000000000000000000000000000000000",
+                        "ty": 1
+                      }
+                    },
+                    "name": "levels"
+                  },
+                  {
+                    "layout": {
+                      "cell": {
+                        "key": "0x0200000000000000000000000000000000000000000000000000000000000000",
+                        "ty": 1
+                      }
+                    },
+                    "name": "current_root_index"
+                  },
+                  {
+                    "layout": {
+                      "cell": {
+                        "key": "0x0300000000000000000000000000000000000000000000000000000000000000",
+                        "ty": 1
+                      }
+                    },
+                    "name": "next_index"
+                  },
+                  {
+                    "layout": {
+                      "cell": {
+                        "key": "0x0400000000000000000000000000000000000000000000000000000000000000",
+                        "ty": 2
+                      }
+                    },
+                    "name": "filled_subtrees"
+                  },
+                  {
+                    "layout": {
+                      "cell": {
+                        "key": "0x0500000000000000000000000000000000000000000000000000000000000000",
+                        "ty": 2
+                      }
+                    },
+                    "name": "roots"
+                  }
+                ]
+              }
+            },
+            "name": "merkle_tree"
+          },
+          {
+            "layout": {
+              "cell": {
+                "key": "0x0600000000000000000000000000000000000000000000000000000000000000",
+                "ty": 6
+              }
+            },
+            "name": "used_nullifiers"
+          },
+          {
+            "layout": {
+              "struct": {
+                "fields": [
+                  {
+                    "layout": {
+                      "struct": {
+                        "fields": [
+                          {
+                            "layout": {
+                              "cell": {
+                                "key": "0x0700000000000000000000000000000000000000000000000000000000000000",
+                                "ty": 8
+                              }
+                            },
+                            "name": "account_id"
+                          }
+                        ]
+                      }
+                    },
+                    "name": "inner"
+                  }
+                ]
+              }
+            },
+            "name": "poseidon"
+          },
+          {
+            "layout": {
+              "struct": {
+                "fields": [
+                  {
+                    "layout": {
+                      "struct": {
+                        "fields": [
+                          {
+                            "layout": {
+                              "cell": {
+                                "key": "0x0800000000000000000000000000000000000000000000000000000000000000",
+                                "ty": 8
+                              }
+                            },
+                            "name": "account_id"
+                          }
+                        ]
+                      }
+                    },
+                    "name": "inner"
+                  }
+                ]
+              }
+            },
+            "name": "verifier"
+          }
+        ]
+      }
+    },
+    "types": [
+      {
+        "id": 0,
+        "type": {
+          "def": {
+            "primitive": "u128"
+          }
+        }
+      },
+      {
+        "id": 1,
+        "type": {
+          "def": {
+            "primitive": "u32"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "type": {
+          "def": {
+            "composite": {
+              "fields": [
+                {
+                  "name": "offset_key",
+                  "type": 5,
+                  "typeName": "Key"
+                }
+              ]
+            }
+          },
+          "params": [
+            {
+              "name": "K",
+              "type": 1
+            },
+            {
+              "name": "V",
+              "type": 3
+            }
+          ],
+          "path": [
+            "ink_storage",
+            "lazy",
+            "mapping",
+            "Mapping"
+          ]
+        }
+      },
+      {
+        "id": 3,
+        "type": {
+          "def": {
+            "array": {
+              "len": 32,
+              "type": 4
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "type": {
+          "def": {
+            "primitive": "u8"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "type": {
+          "def": {
+            "composite": {
+              "fields": [
+                {
+                  "type": 3,
+                  "typeName": "[u8; 32]"
+                }
+              ]
+            }
+          },
+          "path": [
+            "ink_primitives",
+            "Key"
+          ]
+        }
+      },
+      {
+        "id": 6,
+        "type": {
+          "def": {
+            "composite": {
+              "fields": [
+                {
+                  "name": "offset_key",
+                  "type": 5,
+                  "typeName": "Key"
+                }
+              ]
+            }
+          },
+          "params": [
+            {
+              "name": "K",
+              "type": 3
+            },
+            {
+              "name": "V",
+              "type": 7
+            }
+          ],
+          "path": [
+            "ink_storage",
+            "lazy",
+            "mapping",
+            "Mapping"
+          ]
+        }
+      },
+      {
+        "id": 7,
+        "type": {
+          "def": {
+            "primitive": "bool"
+          }
+        }
+      },
+      {
+        "id": 8,
+        "type": {
+          "def": {
+            "composite": {
+              "fields": [
+                {
+                  "type": 3,
+                  "typeName": "[u8; 32]"
+                }
+              ]
+            }
+          },
+          "path": [
+            "ink_env",
+            "types",
+            "AccountId"
+          ]
+        }
+      },
+      {
+        "id": 9,
+        "type": {
+          "def": {
+            "composite": {
+              "fields": [
+                {
+                  "type": 3,
+                  "typeName": "[u8; 32]"
+                }
+              ]
+            }
+          },
+          "path": [
+            "ink_env",
+            "types",
+            "Hash"
+          ]
+        }
+      },
+      {
+        "id": 10,
+        "type": {
+          "def": {
+            "variant": {
+              "variants": [
+                {
+                  "fields": [
+                    {
+                      "type": 1
+                    }
+                  ],
+                  "index": 0,
+                  "name": "Ok"
+                },
+                {
+                  "fields": [
+                    {
+                      "type": 11
+                    }
+                  ],
+                  "index": 1,
+                  "name": "Err"
+                }
+              ]
+            }
+          },
+          "params": [
+            {
+              "name": "T",
+              "type": 1
+            },
+            {
+              "name": "E",
+              "type": 11
+            }
+          ],
+          "path": [
+            "Result"
+          ]
+        }
+      },
+      {
+        "id": 11,
+        "type": {
+          "def": {
+            "variant": {
+              "variants": [
+                {
+                  "index": 0,
+                  "name": "ItemNotFound"
+                },
+                {
+                  "index": 1,
+                  "name": "MerkleTreeIsFull"
+                },
+                {
+                  "index": 2,
+                  "name": "HashError"
+                },
+                {
+                  "index": 3,
+                  "name": "VerifyError"
+                }
+              ]
+            }
+          },
+          "path": [
+            "mixer",
+            "mixer",
+            "Error"
+          ]
+        }
+      },
+      {
+        "id": 12,
+        "type": {
+          "def": {
+            "composite": {
+              "fields": [
+                {
+                  "name": "proof_bytes",
+                  "type": 13,
+                  "typeName": "Vec<u8>"
+                },
+                {
+                  "name": "root",
+                  "type": 3,
+                  "typeName": "[u8; 32]"
+                },
+                {
+                  "name": "nullifier_hash",
+                  "type": 3,
+                  "typeName": "[u8; 32]"
+                },
+                {
+                  "name": "recipient",
+                  "type": 8,
+                  "typeName": "AccountId"
+                },
+                {
+                  "name": "relayer",
+                  "type": 8,
+                  "typeName": "AccountId"
+                },
+                {
+                  "name": "fee",
+                  "type": 0,
+                  "typeName": "Balance"
+                },
+                {
+                  "name": "refund",
+                  "type": 0,
+                  "typeName": "Balance"
+                }
+              ]
+            }
+          },
+          "path": [
+            "mixer",
+            "mixer",
+            "WithdrawParams"
+          ]
+        }
+      },
+      {
+        "id": 13,
+        "type": {
+          "def": {
+            "sequence": {
+              "type": 4
+            }
+          }
+        }
+      },
+      {
+        "id": 14,
+        "type": {
+          "def": {
+            "variant": {
+              "variants": [
+                {
+                  "fields": [
+                    {
+                      "type": 15
+                    }
+                  ],
+                  "index": 0,
+                  "name": "Ok"
+                },
+                {
+                  "fields": [
+                    {
+                      "type": 11
+                    }
+                  ],
+                  "index": 1,
+                  "name": "Err"
+                }
+              ]
+            }
+          },
+          "params": [
+            {
+              "name": "T",
+              "type": 15
+            },
+            {
+              "name": "E",
+              "type": 11
+            }
+          ],
+          "path": [
+            "Result"
+          ]
+        }
+      },
+      {
+        "id": 15,
+        "type": {
+          "def": {
+            "tuple": []
+          }
+        }
+      },
+      {
+        "id": 16,
+        "type": {
+          "def": {
+            "variant": {
+              "variants": [
+                {
+                  "index": 0,
+                  "name": "None"
+                },
+                {
+                  "fields": [
+                    {
+                      "type": 8
+                    }
+                  ],
+                  "index": 1,
+                  "name": "Some"
+                }
+              ]
+            }
+          },
+          "params": [
+            {
+              "name": "T",
+              "type": 8
+            }
+          ],
+          "path": [
+            "Option"
+          ]
+        }
+      },
+      {
+        "id": 17,
+        "type": {
+          "def": {
+            "variant": {
+              "variants": [
+                {
+                  "index": 0,
+                  "name": "None"
+                },
+                {
+                  "fields": [
+                    {
+                      "type": 3
+                    }
+                  ],
+                  "index": 1,
+                  "name": "Some"
+                }
+              ]
+            }
+          },
+          "params": [
+            {
+              "name": "T",
+              "type": 3
+            }
+          ],
+          "path": [
+            "Option"
+          ]
+        }
+      }
+    ]
+  }
+}
