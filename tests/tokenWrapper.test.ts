@@ -4,6 +4,7 @@ import BN from "bn.js";
 import { all } from "@polkadot/api-derive/balances";
 import { hexToU8a } from "@polkadot/util";
 import {ChildProcess, spawn} from 'child_process';
+import {startContractNode} from "./util";
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
@@ -33,47 +34,12 @@ describe("token-wrapper", () => {
   let feePercentage: any;
   let psp22Contract: any;
   after(() => {
-    //if (ls) ls.kill('SIGINT');
     return api.disconnect();
   });
 
 
   before(async () => {
-    console.log("SPAWNING");
-    const startArgs: string[] = [];
-    startArgs.push("--tmp -lruntime=debug -linfo")
-    const ls = spawn( './artifacts/substrate-contracts-node-linux/substrate-contracts-node',
-    []);
-
-    ls.stdout.on('data', (data) => {
-      console.log(`printing out data`);
-      console.log(`stdout: ${data}`);
-    });
-
-    ls.stderr.on('data', (data) => {
-      console.log(`printing out error`);
-      console.error(`stderr: ${data}`);
-    });
-
-    const sleep = (waitTimeInMs) => new Promise(resolve => setTimeout(resolve, waitTimeInMs));
-    await sleep(5000).then(() => {
-      console.log("sleeping");
-    });
-
-    /*exec('php main.php', function (error, stdOut, stdErr) {
-      console.log(`stdout: ${stdOut}`);
-      console.log(`stdout: ${stdErr}`);
-      console.log(`stdout: ${error}`);
-    });*/
-
-    /*await exec('/Users/Damilare/Documents/self-paced/Substrate/contract_node/substrate-contracts-node/target/release/substrate-contracts-node',function (err,stdout,stderr) {
-      if (err) {
-        console.log("\n"+stderr);
-      } else {
-        console.log(stdout);
-      }
-    });*/
-
+   await startContractNode();
     await api.isReady;
   });
 
