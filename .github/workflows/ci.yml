@@ -97,6 +97,9 @@ jobs:
       - name: Build
         run: yarn build
 
+      - name: Get Path Of Token Wrapper Contract
+        run: readlink -f governed_token_wrapper.contract
+
       - name: Move Psp22 Contract to artifacts
         run: sudo cp  /home/runner/work/protocol-ink/protocol-ink/tests/psp22_artifact/* /home/runner/work/protocol-ink/protocol-ink/artifacts
 
