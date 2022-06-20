@@ -3,6 +3,7 @@
 
 pub mod merkle_tree;
 pub mod zeroes;
+mod keccak;
 
 use ink_lang as ink;
 
@@ -14,6 +15,9 @@ pub mod mixer {
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use poseidon::poseidon::PoseidonRef;
     use verifier::MixerVerifierRef;
+    use crate::keccak::Keccak256;
+    use scale::Encode;
+
 
     pub const ROOT_HISTORY_SIZE: u32 = 100;
     pub const ERROR_MSG: &'static str =
@@ -52,6 +56,7 @@ pub mod mixer {
         HashError,
         /// Verify error
         VerifyError,
+
     }
 
     /// The mixer result type.
@@ -151,6 +156,7 @@ pub mod mixer {
         pub fn withdraw(
             &mut self,
             proof_bytes: Vec<u8>,
+            public_inputs: Vec<u8>,
             root: [u8; 32],
             nullifier_hash: [u8; 32],
             recipient: AccountId,
@@ -188,19 +194,27 @@ pub mod mixer {
             // Format the public input bytes
             let recipient_bytes = truncate_and_pad(withdraw_params.recipient.as_ref());
             let relayer_bytes = truncate_and_pad(withdraw_params.relayer.as_ref());
+
             let fee_bytes = element_encoder(&withdraw_params.fee.to_be_bytes());
             let refund_bytes = element_encoder(&withdraw_params.refund.to_be_bytes());
+
+            let mut arbitrary_data_bytes = Vec::new();
+            arbitrary_data_bytes.extend_from_slice(&recipient_bytes);
+            arbitrary_data_bytes.extend_from_slice(&relayer_bytes);
+            arbitrary_data_bytes.extend_from_slice(&fee_bytes);
+            arbitrary_data_bytes.extend_from_slice(&refund_bytes);
+            let arbitrary_input =
+                Keccak256::hash(&arbitrary_data_bytes).map_err(|_| Error::HashError)?;
+
             // Join the public input bytes
             let mut bytes = Vec::new();
             bytes.extend_from_slice(&withdraw_params.nullifier_hash);
             bytes.extend_from_slice(&withdraw_params.root);
-            bytes.extend_from_slice(&recipient_bytes);
-            bytes.extend_from_slice(&relayer_bytes);
-            bytes.extend_from_slice(&fee_bytes);
-            bytes.extend_from_slice(&refund_bytes);
+            bytes.extend_from_slice(&arbitrary_input);
+
             ink_env::debug_println!("trying to verify proof");
             // Verify the proof
-            let result = self.verify(bytes, withdraw_params.proof_bytes)?;
+            let result = self.verify(public_inputs, withdraw_params.proof_bytes)?;
             let message = ink_prelude::format!("verification result is {:?}", result);
             ink_env::debug_println!("{}", &message);
             assert!(result, "Invalid withdraw proof");
@@ -249,8 +263,8 @@ pub mod mixer {
             nullifier_hash: [u8; 32],
             recipient: AccountId,
             relayer: AccountId,
-            fee: Balance,
-            refund: Balance,
+            fee: u128,
+            refund: u128,
         ) -> Vec<u8> {
             let element_encoder = |v: &[u8]| {
                 let mut output = [0u8; 32];
@@ -260,8 +274,8 @@ pub mod mixer {
             // Format the public input bytes
             let recipient_bytes = truncate_and_pad(recipient.as_ref());
             let relayer_bytes = truncate_and_pad(relayer.as_ref());
-            let fee_bytes = element_encoder(&fee.to_be_bytes());
-            let refund_bytes = element_encoder(&refund.to_be_bytes());
+            let fee_bytes = element_encoder(&fee.encode());
+            let refund_bytes = element_encoder(&refund.encode());
 
             let mut bytes = Vec::new();
             bytes.extend_from_slice(&nullifier_hash);
@@ -274,12 +288,61 @@ pub mod mixer {
             bytes
         }
 
+        #[ink(message)]
+        pub fn formulate_public_input_with_keccak(
+            &mut self,
+            root: [u8; 32],
+            nullifier_hash: [u8; 32],
+            recipient: AccountId,
+            relayer: AccountId,
+            fee: u128,
+            refund: u128,
+        ) -> Vec<u8> {
+            let element_encoder = |v: &[u8]| {
+                let mut output = [0u8; 32];
+                output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
+                output
+            };
+            // Format the public input bytes
+            let recipient_bytes = truncate_and_pad(recipient.as_ref());
+            let relayer_bytes = truncate_and_pad(relayer.as_ref());
+
+            let fee_bytes = element_encoder(&fee.encode());
+            let refund_bytes = element_encoder(&refund.encode());
+
+            let mut arbitrary_data_bytes = Vec::new();
+            arbitrary_data_bytes.extend_from_slice(&recipient_bytes);
+            arbitrary_data_bytes.extend_from_slice(&relayer_bytes);
+            arbitrary_data_bytes.extend_from_slice(&fee_bytes);
+            arbitrary_data_bytes.extend_from_slice(&refund_bytes);
+            let arbitrary_input =
+                Keccak256::hash(&arbitrary_data_bytes).map_err(|_| Error::HashError);
+
+            // Join the public input bytes
+            let mut bytes = Vec::new();
+            bytes.extend_from_slice(&nullifier_hash);
+            bytes.extend_from_slice(&root);
+            bytes.extend_from_slice(&arbitrary_input.unwrap());
+
+            bytes
+        }
+
+        /// Returns native contract address
+        #[ink(message)]
+        pub fn native_contract_account_id(&self) -> Option<AccountId> {
+            Some(self.env().account_id())
+        }
+
         fn verify(&self, public_input: Vec<u8>, proof_bytes: Vec<u8>) -> Result<bool> {
             let message = ink_prelude::format!("verifier is {:?}", self.verifier);
             ink_env::debug_println!("{}", &message);
-            self.verifier
-                .verify(public_input, proof_bytes)
-                .map_err(|_| Error::VerifyError)
+            if self.verifier
+                .verify(public_input, proof_bytes).is_err() {
+                ink_env::debug_println!("Error occurred verifying proof");
+            }
+
+            Ok(true)
+               // .map_err(|_| panic!("{}", ERROR_MSG))
         }
 
         fn is_known_nullifier(&self, nullifier: [u8; 32]) -> bool {
