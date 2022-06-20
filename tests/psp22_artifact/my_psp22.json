@@ -1,14 +1,14 @@
 {
   "source": {
-    "hash": "0x17419afa36e2048163410ec43d662f6562c8665d5a82274501e9a98e35b2b8d8",
-    "language": "ink! 3.0.1",
+    "hash": "0x7b716b4932e27c3207448ed6b16b03c7a4bce935bdc47812a2523356aa4ae1eb",
+    "language": "ink! 3.2.0",
     "compiler": "rustc 1.62.0-nightly"
   },
   "contract": {
-    "name": "psp22_token",
-    "version": "1.6.1",
+    "name": "my_psp22",
+    "version": "2.0.0",
     "authors": [
-      "[your_name] <[your_email]>"
+      "Supercolony <green.baneling@supercolony.net>"
     ]
   },
   "V3": {
@@ -24,33 +24,6 @@
                 ],
                 "type": 0
               }
-            },
-            {
-              "label": "name",
-              "type": {
-                "displayName": [
-                  "Option"
-                ],
-                "type": 10
-              }
-            },
-            {
-              "label": "symbol",
-              "type": {
-                "displayName": [
-                  "Option"
-                ],
-                "type": 10
-              }
-            },
-            {
-              "label": "decimal",
-              "type": {
-                "displayName": [
-                  "u8"
-                ],
-                "type": 4
-              }
             }
           ],
           "docs": [],
@@ -65,11 +38,44 @@
         {
           "args": [
             {
-              "label": "to",
+              "label": "hated",
+              "type": {
+                "displayName": [
+                  "AccountId"
+                ],
+                "type": 2
+              }
+            }
+          ],
+          "docs": [],
+          "label": "set_hated_account",
+          "mutates": true,
+          "payable": false,
+          "returnType": null,
+          "selector": "0x19398962"
+        },
+        {
+          "args": [],
+          "docs": [],
+          "label": "get_hated_account",
+          "mutates": false,
+          "payable": false,
+          "returnType": {
+            "displayName": [
+              "AccountId"
+            ],
+            "type": 2
+          },
+          "selector": "0x9e5e363f"
+        },
+        {
+          "args": [
+            {
+              "label": "spender",
               "type": {
                 "displayName": [
                   "psp22_external",
-                  "TransferInput1"
+                  "ApproveInput1"
                 ],
                 "type": 2
               }
@@ -79,34 +85,84 @@
               "type": {
                 "displayName": [
                   "psp22_external",
-                  "TransferInput2"
+                  "ApproveInput2"
                 ],
                 "type": 0
               }
-            },
-            {
-              "label": "data",
-              "type": {
-                "displayName": [
-                  "psp22_external",
-                  "TransferInput3"
-                ],
-                "type": 11
-              }
             }
           ],
-          "docs": [],
-          "label": "PSP22::transfer",
+          "docs": [
+            " Allows `spender` to withdraw from the caller's account multiple times, up to",
+            " the `value` amount.",
+            "",
+            " If this function is called again it overwrites the current allowance with `value`.",
+            "",
+            " An `Approval` event is emitted.",
+            "",
+            " # Errors",
+            "",
+            " Returns `ZeroSenderAddress` error if sender's address is zero.",
+            "",
+            " Returns `ZeroRecipientAddress` error if recipient's address is zero."
+          ],
+          "label": "PSP22::approve",
           "mutates": true,
           "payable": false,
           "returnType": {
             "displayName": [
               "psp22_external",
-              "TransferOutput"
+              "ApproveOutput"
             ],
-            "type": 12
+            "type": 9
           },
-          "selector": "0xdb20f9f5"
+          "selector": "0xb20f1bbd"
+        },
+        {
+          "args": [
+            {
+              "label": "owner",
+              "type": {
+                "displayName": [
+                  "psp22_external",
+                  "BalanceOfInput1"
+                ],
+                "type": 2
+              }
+            }
+          ],
+          "docs": [
+            " Returns the account Balance for the specified `owner`.",
+            "",
+            " Returns `0` if the account is non-existent."
+          ],
+          "label": "PSP22::balance_of",
+          "mutates": false,
+          "payable": false,
+          "returnType": {
+            "displayName": [
+              "psp22_external",
+              "BalanceOfOutput"
+            ],
+            "type": 0
+          },
+          "selector": "0x6568382f"
+        },
+        {
+          "args": [],
+          "docs": [
+            " Returns the total token supply."
+          ],
+          "label": "PSP22::total_supply",
+          "mutates": false,
+          "payable": false,
+          "returnType": {
+            "displayName": [
+              "psp22_external",
+              "TotalSupplyOutput"
+            ],
+            "type": 0
+          },
+          "selector": "0x162df8c2"
         },
         {
           "args": [
@@ -147,11 +203,31 @@
                   "psp22_external",
                   "TransferFromInput4"
                 ],
-                "type": 11
+                "type": 12
               }
             }
           ],
-          "docs": [],
+          "docs": [
+            " Transfers `value` tokens on the behalf of `from` to the account `to`",
+            " with additional `data` in unspecified format.",
+            "",
+            " This can be used to allow a contract to transfer tokens on ones behalf and/or",
+            " to charge fees in sub-currencies, for example.",
+            "",
+            " On success a `Transfer` and `Approval` events are emitted.",
+            "",
+            " # Errors",
+            "",
+            " Returns `InsufficientAllowance` error if there are not enough tokens allowed",
+            " for the caller to withdraw from `from`.",
+            "",
+            " Returns `InsufficientBalance` error if there are not enough tokens on",
+            " the the account Balance of `from`.",
+            "",
+            " Returns `ZeroSenderAddress` error if sender's address is zero.",
+            "",
+            " Returns `ZeroRecipientAddress` error if recipient's address is zero."
+          ],
           "label": "PSP22::transfer_from",
           "mutates": true,
           "payable": false,
@@ -160,158 +236,9 @@
               "psp22_external",
               "TransferFromOutput"
             ],
-            "type": 12
+            "type": 9
           },
           "selector": "0x54b3c76e"
-        },
-        {
-          "args": [],
-          "docs": [],
-          "label": "PSP22::total_supply",
-          "mutates": false,
-          "payable": false,
-          "returnType": {
-            "displayName": [
-              "psp22_external",
-              "TotalSupplyOutput"
-            ],
-            "type": 0
-          },
-          "selector": "0x162df8c2"
-        },
-        {
-          "args": [
-            {
-              "label": "owner",
-              "type": {
-                "displayName": [
-                  "psp22_external",
-                  "BalanceOfInput1"
-                ],
-                "type": 2
-              }
-            }
-          ],
-          "docs": [],
-          "label": "PSP22::balance_of",
-          "mutates": false,
-          "payable": false,
-          "returnType": {
-            "displayName": [
-              "psp22_external",
-              "BalanceOfOutput"
-            ],
-            "type": 0
-          },
-          "selector": "0x6568382f"
-        },
-        {
-          "args": [
-            {
-              "label": "owner",
-              "type": {
-                "displayName": [
-                  "psp22_external",
-                  "AllowanceInput1"
-                ],
-                "type": 2
-              }
-            },
-            {
-              "label": "spender",
-              "type": {
-                "displayName": [
-                  "psp22_external",
-                  "AllowanceInput2"
-                ],
-                "type": 2
-              }
-            }
-          ],
-          "docs": [],
-          "label": "PSP22::allowance",
-          "mutates": false,
-          "payable": false,
-          "returnType": {
-            "displayName": [
-              "psp22_external",
-              "AllowanceOutput"
-            ],
-            "type": 0
-          },
-          "selector": "0x4d47d921"
-        },
-        {
-          "args": [
-            {
-              "label": "spender",
-              "type": {
-                "displayName": [
-                  "psp22_external",
-                  "ApproveInput1"
-                ],
-                "type": 2
-              }
-            },
-            {
-              "label": "value",
-              "type": {
-                "displayName": [
-                  "psp22_external",
-                  "ApproveInput2"
-                ],
-                "type": 0
-              }
-            }
-          ],
-          "docs": [],
-          "label": "PSP22::approve",
-          "mutates": true,
-          "payable": false,
-          "returnType": {
-            "displayName": [
-              "psp22_external",
-              "ApproveOutput"
-            ],
-            "type": 12
-          },
-          "selector": "0xb20f1bbd"
-        },
-        {
-          "args": [
-            {
-              "label": "spender",
-              "type": {
-                "displayName": [
-                  "psp22_external",
-                  "DecreaseAllowanceInput1"
-                ],
-                "type": 2
-              }
-            },
-            {
-              "label": "delta_value",
-              "type": {
-                "displayName": [
-                  "psp22_external",
-                  "DecreaseAllowanceInput2"
-                ],
-                "type": 0
-              }
-            }
-          ],
-          "docs": [],
-          "label": "PSP22::decrease_allowance",
-          "mutates": true,
-          "payable": false,
-          "returnType": {
-            "displayName": [
-              "psp22_external",
-              "DecreaseAllowanceOutput"
-            ],
-            "type": 12
-          },
-          "selector": "0xfecb57d5"
         },
         {
           "args": [
@@ -336,7 +263,17 @@
               }
             }
           ],
-          "docs": [],
+          "docs": [
+            " Atomically increases the allowance granted to `spender` by the caller.",
+            "",
+            " An `Approval` event is emitted.",
+            "",
+            " # Errors",
+            "",
+            " Returns `ZeroSenderAddress` error if sender's address is zero.",
+            "",
+            " Returns `ZeroRecipientAddress` error if recipient's address is zero."
+          ],
           "label": "PSP22::increase_allowance",
           "mutates": true,
           "payable": false,
@@ -345,54 +282,158 @@
               "psp22_external",
               "IncreaseAllowanceOutput"
             ],
-            "type": 12
+            "type": 9
           },
           "selector": "0x96d6b57a"
         },
         {
-          "args": [],
-          "docs": [],
-          "label": "PSP22Metadata::token_symbol",
-          "mutates": false,
+          "args": [
+            {
+              "label": "spender",
+              "type": {
+                "displayName": [
+                  "psp22_external",
+                  "DecreaseAllowanceInput1"
+                ],
+                "type": 2
+              }
+            },
+            {
+              "label": "delta_value",
+              "type": {
+                "displayName": [
+                  "psp22_external",
+                  "DecreaseAllowanceInput2"
+                ],
+                "type": 0
+              }
+            }
+          ],
+          "docs": [
+            " Atomically decreases the allowance granted to `spender` by the caller.",
+            "",
+            " An `Approval` event is emitted.",
+            "",
+            " # Errors",
+            "",
+            " Returns `InsufficientAllowance` error if there are not enough tokens allowed",
+            " by owner for `spender`.",
+            "",
+            " Returns `ZeroSenderAddress` error if sender's address is zero.",
+            "",
+            " Returns `ZeroRecipientAddress` error if recipient's address is zero."
+          ],
+          "label": "PSP22::decrease_allowance",
+          "mutates": true,
           "payable": false,
           "returnType": {
             "displayName": [
-              "psp22metadata_external",
-              "TokenSymbolOutput"
+              "psp22_external",
+              "DecreaseAllowanceOutput"
             ],
-            "type": 10
+            "type": 9
           },
-          "selector": "0x34205be5"
+          "selector": "0xfecb57d5"
         },
         {
-          "args": [],
-          "docs": [],
-          "label": "PSP22Metadata::token_decimals",
-          "mutates": false,
+          "args": [
+            {
+              "label": "to",
+              "type": {
+                "displayName": [
+                  "psp22_external",
+                  "TransferInput1"
+                ],
+                "type": 2
+              }
+            },
+            {
+              "label": "value",
+              "type": {
+                "displayName": [
+                  "psp22_external",
+                  "TransferInput2"
+                ],
+                "type": 0
+              }
+            },
+            {
+              "label": "data",
+              "type": {
+                "displayName": [
+                  "psp22_external",
+                  "TransferInput3"
+                ],
+                "type": 12
+              }
+            }
+          ],
+          "docs": [
+            " Transfers `value` amount of tokens from the caller's account to account `to`",
+            " with additional `data` in unspecified format.",
+            "",
+            " On success a `Transfer` event is emitted.",
+            "",
+            " # Errors",
+            "",
+            " Returns `InsufficientBalance` error if there are not enough tokens on",
+            " the caller's account Balance.",
+            "",
+            " Returns `ZeroSenderAddress` error if sender's address is zero.",
+            "",
+            " Returns `ZeroRecipientAddress` error if recipient's address is zero."
+          ],
+          "label": "PSP22::transfer",
+          "mutates": true,
           "payable": false,
           "returnType": {
             "displayName": [
-              "psp22metadata_external",
-              "TokenDecimalsOutput"
+              "psp22_external",
+              "TransferOutput"
             ],
-            "type": 4
+            "type": 9
           },
-          "selector": "0x7271b782"
+          "selector": "0xdb20f9f5"
         },
         {
-          "args": [],
-          "docs": [],
-          "label": "PSP22Metadata::token_name",
+          "args": [
+            {
+              "label": "owner",
+              "type": {
+                "displayName": [
+                  "psp22_external",
+                  "AllowanceInput1"
+                ],
+                "type": 2
+              }
+            },
+            {
+              "label": "spender",
+              "type": {
+                "displayName": [
+                  "psp22_external",
+                  "AllowanceInput2"
+                ],
+                "type": 2
+              }
+            }
+          ],
+          "docs": [
+            " Returns the amount which `spender` is still allowed to withdraw from `owner`.",
+            "",
+            " Returns `0` if no allowance has been set `0`."
+          ],
+          "label": "PSP22::allowance",
           "mutates": false,
           "payable": false,
           "returnType": {
             "displayName": [
-              "psp22metadata_external",
-              "TokenNameOutput"
+              "psp22_external",
+              "AllowanceOutput"
             ],
-            "type": 10
+            "type": 0
           },
-          "selector": "0x3d261bd4"
+          "selector": "0x4d47d921"
         }
       ]
     },
@@ -406,7 +447,7 @@
                   {
                     "layout": {
                       "cell": {
-                        "key": "0x56d8879b05a90b526146e14a5a336f2bf7780a87cf24a56cb99e23848733ecb5",
+                        "key": "0xb35c9a7cdda1f825a6ed889040b074ca5a2f83461f5e7ecf5794400920e6bf3c",
                         "ty": 0
                       }
                     },
@@ -415,7 +456,7 @@
                   {
                     "layout": {
                       "cell": {
-                        "key": "0x57d8879b05a90b526146e14a5a336f2bf7780a87cf24a56cb99e23848733ecb5",
+                        "key": "0xb45c9a7cdda1f825a6ed889040b074ca5a2f83461f5e7ecf5794400920e6bf3c",
                         "ty": 1
                       }
                     },
@@ -424,7 +465,7 @@
                   {
                     "layout": {
                       "cell": {
-                        "key": "0x58d8879b05a90b526146e14a5a336f2bf7780a87cf24a56cb99e23848733ecb5",
+                        "key": "0xb55c9a7cdda1f825a6ed889040b074ca5a2f83461f5e7ecf5794400920e6bf3c",
                         "ty": 6
                       }
                     },
@@ -433,14 +474,14 @@
                   {
                     "layout": {
                       "enum": {
-                        "dispatchKey": "0x59d8879b05a90b526146e14a5a336f2bf7780a87cf24a56cb99e23848733ecb5",
+                        "dispatchKey": "0xb65c9a7cdda1f825a6ed889040b074ca5a2f83461f5e7ecf5794400920e6bf3c",
                         "variants": {
                           "0": {
                             "fields": [
                               {
                                 "layout": {
                                   "cell": {
-                                    "key": "0x5ad8879b05a90b526146e14a5a336f2bf7780a87cf24a56cb99e23848733ecb5",
+                                    "key": "0xb75c9a7cdda1f825a6ed889040b074ca5a2f83461f5e7ecf5794400920e6bf3c",
                                     "ty": 8
                                   }
                                 },
@@ -463,99 +504,12 @@
           },
           {
             "layout": {
-              "struct": {
-                "fields": [
-                  {
-                    "layout": {
-                      "enum": {
-                        "dispatchKey": "0x29723d2f4a57a73dce57e08bc088aefda372122c141995bd51f4d8c879646c86",
-                        "variants": {
-                          "0": {
-                            "fields": [
-                              {
-                                "layout": {
-                                  "cell": {
-                                    "key": "0x2a723d2f4a57a73dce57e08bc088aefda372122c141995bd51f4d8c879646c86",
-                                    "ty": 9
-                                  }
-                                },
-                                "name": null
-                              }
-                            ]
-                          },
-                          "1": {
-                            "fields": []
-                          }
-                        }
-                      }
-                    },
-                    "name": "name"
-                  },
-                  {
-                    "layout": {
-                      "enum": {
-                        "dispatchKey": "0x2a723d2f4a57a73dce57e08bc088aefda372122c141995bd51f4d8c879646c86",
-                        "variants": {
-                          "0": {
-                            "fields": [
-                              {
-                                "layout": {
-                                  "cell": {
-                                    "key": "0x2b723d2f4a57a73dce57e08bc088aefda372122c141995bd51f4d8c879646c86",
-                                    "ty": 9
-                                  }
-                                },
-                                "name": null
-                              }
-                            ]
-                          },
-                          "1": {
-                            "fields": []
-                          }
-                        }
-                      }
-                    },
-                    "name": "symbol"
-                  },
-                  {
-                    "layout": {
-                      "cell": {
-                        "key": "0x2b723d2f4a57a73dce57e08bc088aefda372122c141995bd51f4d8c879646c86",
-                        "ty": 4
-                      }
-                    },
-                    "name": "decimals"
-                  },
-                  {
-                    "layout": {
-                      "enum": {
-                        "dispatchKey": "0x2c723d2f4a57a73dce57e08bc088aefda372122c141995bd51f4d8c879646c86",
-                        "variants": {
-                          "0": {
-                            "fields": [
-                              {
-                                "layout": {
-                                  "cell": {
-                                    "key": "0x2d723d2f4a57a73dce57e08bc088aefda372122c141995bd51f4d8c879646c86",
-                                    "ty": 8
-                                  }
-                                },
-                                "name": null
-                              }
-                            ]
-                          },
-                          "1": {
-                            "fields": []
-                          }
-                        }
-                      }
-                    },
-                    "name": "_reserved"
-                  }
-                ]
+              "cell": {
+                "key": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "ty": 2
               }
             },
-            "name": "metadata"
+            "name": "hated_account"
           }
         ]
       }
@@ -714,57 +668,6 @@
         "id": 9,
         "type": {
           "def": {
-            "primitive": "str"
-          }
-        }
-      },
-      {
-        "id": 10,
-        "type": {
-          "def": {
-            "variant": {
-              "variants": [
-                {
-                  "index": 0,
-                  "name": "None"
-                },
-                {
-                  "fields": [
-                    {
-                      "type": 9
-                    }
-                  ],
-                  "index": 1,
-                  "name": "Some"
-                }
-              ]
-            }
-          },
-          "params": [
-            {
-              "name": "T",
-              "type": 9
-            }
-          ],
-          "path": [
-            "Option"
-          ]
-        }
-      },
-      {
-        "id": 11,
-        "type": {
-          "def": {
-            "sequence": {
-              "type": 4
-            }
-          }
-        }
-      },
-      {
-        "id": 12,
-        "type": {
-          "def": {
             "variant": {
               "variants": [
                 {
@@ -779,7 +682,7 @@
                 {
                   "fields": [
                     {
-                      "type": 13
+                      "type": 10
                     }
                   ],
                   "index": 1,
@@ -795,7 +698,7 @@
             },
             {
               "name": "E",
-              "type": 13
+              "type": 10
             }
           ],
           "path": [
@@ -804,7 +707,7 @@
         }
       },
       {
-        "id": 13,
+        "id": 10,
         "type": {
           "def": {
             "variant": {
@@ -812,7 +715,7 @@
                 {
                   "fields": [
                     {
-                      "type": 9,
+                      "type": 11,
                       "typeName": "String"
                     }
                   ],
@@ -838,7 +741,7 @@
                 {
                   "fields": [
                     {
-                      "type": 9,
+                      "type": 11,
                       "typeName": "String"
                     }
                   ],
@@ -849,12 +752,30 @@
             }
           },
           "path": [
-            "contracts",
+            "openbrush_contracts",
             "traits",
             "errors",
             "psp22",
             "PSP22Error"
           ]
+        }
+      },
+      {
+        "id": 11,
+        "type": {
+          "def": {
+            "primitive": "str"
+          }
+        }
+      },
+      {
+        "id": 12,
+        "type": {
+          "def": {
+            "sequence": {
+              "type": 4
+            }
+          }
         }
       }
     ]
