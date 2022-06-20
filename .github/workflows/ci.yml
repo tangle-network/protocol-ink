@@ -53,7 +53,7 @@ jobs:
         run: sudo tar -zxvf binaryen/binaryen-version_101-x86_64-linux.tar.gz
 
       - name: Move Psp22 Contract to artifacts
-        run: sudo cp  /home/runner/work/protocol-ink/protocol-ink/tests/* /artifacts
+        run: sudo cp  /home/runner/work/protocol-ink/protocol-ink/tests/* /home/runner/work/protocol-ink/protocol-ink/artifacts
 
       - name: Get Path Of Contract
         run: readlink -f my_psp22.contract
