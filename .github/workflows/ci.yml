@@ -40,9 +40,6 @@ jobs:
           target: "binaryen/binaryen-version_101-x86_64-linux.tar.gz"
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get Path Of Contract
-        run: readlink -f my_psp22.contract
-
       - name: Extract Binaryen
         run: sudo tar -zxvf binaryen/binaryen-version_101-x86_64-linux.tar.gz
 
