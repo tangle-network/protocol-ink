@@ -32,10 +32,10 @@
   },
   "module": "true",
   "scripts": {
-    "build": "yarn redspot compile",
-    "test": "yarn redspot test --no-compile",
-    "test:compile": "yarn redspot test",
-    "explorer": "yarn redspot explorer",
+    "build": "redspot compile",
+    "test": "redspot test --no-compile",
+    "test:compile": "redspot test",
+    "explorer": "redspot explorer",
     "format": "prettier -w **/*.ts"
   }
 }
