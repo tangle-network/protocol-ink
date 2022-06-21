@@ -159,7 +159,7 @@ describe("token-wrapper-negative-tests", () => {
     };
   }
 
-  it.only("Add token address with smaller nonce than what exists should fail", async () => {
+  it("Add token address with smaller nonce than what exists should fail", async () => {
     const { tokenName, contractProposalNonce } = tokenWrapperContractInitParams(
       sender,
       BobSigner,
@@ -187,7 +187,7 @@ describe("token-wrapper-negative-tests", () => {
     expect(newProposalNonce.output).to.not.equal(contractProposalNonce + 1);
   });
 
-  it.only("Add token address with same nonce as what exists should fail", async () => {
+  it("Add token address with same nonce as what exists should fail", async () => {
     const { tokenName, contractProposalNonce } = tokenWrapperContractInitParams(
       sender,
       BobSigner,
@@ -218,7 +218,7 @@ describe("token-wrapper-negative-tests", () => {
     expect(newProposalNonce.output).to.not.equal(contractProposalNonce + 1);
   });
 
-  it.only("Removing token address with a smaller nonce than what exists should fail", async () => {
+  it("Removing token address with a smaller nonce than what exists should fail", async () => {
     const { contractProposalNonce } = tokenWrapperContractInitParams(
       sender,
       BobSigner,
@@ -267,7 +267,7 @@ describe("token-wrapper-negative-tests", () => {
     ).to.be.true;
   });
 
-  it.only("Removing a token address with the same nonce that exists should fail", async () => {
+  it("Removing a token address with the same nonce that exists should fail", async () => {
     const { contractProposalNonce } = tokenWrapperContractInitParams(
       sender,
       BobSigner,
