@@ -693,7 +693,7 @@ mod governed_token_wrapper {
         /// * `token_address` - The address to check
         #[ink(message)]
         pub fn is_valid_token_address(&self, token_address: AccountId) -> bool {
-            self.valid.get(token_address).unwrap()
+            self.valid.get(token_address).unwrap_or(false)
         }
 
         /// Returns total psp22 token supply
