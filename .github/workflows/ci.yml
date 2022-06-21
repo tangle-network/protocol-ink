@@ -40,12 +40,6 @@ jobs:
           target: "binaryen/binaryen-version_101-x86_64-linux.tar.gz"
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Eexcute Test Prep
-        run: |
-            chmod +x ./scripts/test_prep.sh
-            ./scripts/test_prep.sh
-        shell: bash
-
       - name: Get Path Of Contract
         run: readlink -f my_psp22.contract
 
