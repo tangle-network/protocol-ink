@@ -12,6 +12,9 @@ Cargo.lock
 
 # Dependency directory
 node_modules
+artifacts/*
+!artifacts/psp22_token.contract
+!artifacts/psp22_token.json
 
 # macOS
 .DS_Store
