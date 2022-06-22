@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { artifacts, network, patract } from "redspot";
 import BN from "bn.js";
+import { startContractNode } from "./util";
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
@@ -26,6 +27,7 @@ describe("token-wrapper-negative-tests", () => {
   });
 
   before(async () => {
+    //await startContractNode();
     await api.isReady;
   });
 
@@ -159,22 +161,40 @@ describe("token-wrapper-negative-tests", () => {
     };
   }
 
-  it.only("Add token address with smaller nonce than what exists should fail", async () => {
-    const { tokenName, contractProposalNonce } = tokenWrapperContractInitParams(
+  it("Add token address with smaller nonce than what exists should fail", async () => {
+    const { contractProposalNonce } = tokenWrapperContractInitParams(
       sender,
       BobSigner,
       CharlieSigner
     );
 
-    try {
-      await expect(
-        tokenWrapperContract.tx.addTokenAddress(psp22Contract.address, 1)
-      ).to.be.ok;
-    } catch (err) {
-      // An error which indicates Module error will occur
-      // @ts-ignore
-      expect(err.toString().contains("Module")).to.be.true;
-    }
+    await expect(
+      tokenWrapperContract.tx.addTokenAddress(psp22Contract.address, 1)
+    ).to.not.be.fulfilled;
+
+    let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(
+      psp22Contract.address
+    );
+    expect(isValidAddress.output).to.equal(false);
+
+    // validate that proposalNonce has increased
+    let newProposalNonce = await tokenWrapperContract.query.nonce();
+    expect(newProposalNonce.output).to.not.equal(contractProposalNonce + 1);
+  });
+
+  it("Add token address with same nonce as what exists should fail", async () => {
+    const { contractProposalNonce } = tokenWrapperContractInitParams(
+      sender,
+      BobSigner,
+      CharlieSigner
+    );
+
+    await expect(
+      tokenWrapperContract.tx.addTokenAddress(
+        psp22Contract.address,
+        contractProposalNonce
+      )
+    ).to.not.be.fulfilled;
 
     // validate that address has not been added since an error occured
     let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(
@@ -187,38 +207,7 @@ describe("token-wrapper-negative-tests", () => {
     expect(newProposalNonce.output).to.not.equal(contractProposalNonce + 1);
   });
 
-  it.only("Add token address with same nonce as what exists should fail", async () => {
-    const { tokenName, contractProposalNonce } = tokenWrapperContractInitParams(
-      sender,
-      BobSigner,
-      CharlieSigner
-    );
-
-    try {
-      await expect(
-        tokenWrapperContract.tx.addTokenAddress(
-          psp22Contract.address,
-          contractProposalNonce
-        )
-      ).to.be.ok;
-    } catch (err) {
-      // @ts-ignore
-      // An error which indicates Module error will occur
-      expect(err.toString().contains("Module")).to.be.true;
-    }
-
-    // validate that address has not been added since an error occured
-    let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(
-      psp22Contract.address
-    );
-    expect(isValidAddress.output).to.equal(false);
-
-    // validate that proposalNonce has increased
-    let newProposalNonce = await tokenWrapperContract.query.nonce();
-    expect(newProposalNonce.output).to.not.equal(contractProposalNonce + 1);
-  });
-
-  it.only("Removing token address with a smaller nonce than what exists should fail", async () => {
+  it("Removing token address with a smaller nonce than what exists should fail", async () => {
     const { contractProposalNonce } = tokenWrapperContractInitParams(
       sender,
       BobSigner,
@@ -242,16 +231,10 @@ describe("token-wrapper-negative-tests", () => {
     let newProposalNonce = await tokenWrapperContract.query.nonce();
     expect(newProposalNonce.output).to.be.equal(contractProposalNonce + 1);
 
-    try {
-      // now remove token address
-      await expect(
-        tokenWrapperContract.tx.removeTokenAddress(psp22Contract.address, 1)
-      ).to.be.ok;
-    } catch (err) {
-      // @ts-ignore
-      // An error which indicates Module error will occur
-      expect(err.toString().contains("Module")).to.be.true;
-    }
+    // now remove token address
+    await expect(
+      tokenWrapperContract.tx.removeTokenAddress(psp22Contract.address, 1)
+    ).to.not.be.fulfilled;
 
     // validate that address has not been removed successfully, so address will still be valid
     let isValidAddressAgain =
@@ -267,7 +250,7 @@ describe("token-wrapper-negative-tests", () => {
     ).to.be.true;
   });
 
-  it.only("Removing a token address with the same nonce that exists should fail", async () => {
+  it("Removing a token address with the same nonce that exists should fail", async () => {
     const { contractProposalNonce } = tokenWrapperContractInitParams(
       sender,
       BobSigner,
@@ -291,24 +274,12 @@ describe("token-wrapper-negative-tests", () => {
     let newProposalNonce = await tokenWrapperContract.query.nonce();
     expect(newProposalNonce.output).to.be.equal(contractProposalNonce + 1);
 
-    // increase nonce
-    // @ts-ignore
-    let proposalNonce = Number(newProposalNonce.output) + 1;
-
-    console.log(`proposalNonce is ${proposalNonce}`);
-
-    try {
-      await expect(
-        tokenWrapperContract.tx.removeTokenAddress(
-          psp22Contract.address,
-          Number(newProposalNonce.output)
-        )
-      ).to.be.ok;
-    } catch (err) {
-      // @ts-ignore
-      // An error which indicates Module error will occur
-      expect(err.toString().contains("Module")).to.be.true;
-    }
+    await expect(
+      tokenWrapperContract.tx.removeTokenAddress(
+        psp22Contract.address,
+        Number(newProposalNonce.output)
+      )
+    ).to.not.be.fulfilled;
 
     // validate that address has not been removed successfully, so address will still be valid
     let isValidAddressAgain =
@@ -316,7 +287,6 @@ describe("token-wrapper-negative-tests", () => {
         psp22Contract.address
       );
     expect(isValidAddressAgain.output).to.equal(true);
-    console.log(`new proposalNonce is ${isValidAddressAgain.output}`);
 
     // validate that proposalNonce has not increased
     let newProposalNonceAgain = await tokenWrapperContract.query.nonce();

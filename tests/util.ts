@@ -1,7 +1,7 @@
 import { ChildProcess, spawn } from "child_process";
 
 const substrateContractNodePath =
-  "./artifacts/substrate-contracts-node-linux/substrate-contracts-node";
+  "/Users/Damilare/Documents/self-paced/Substrate/substrate-contracts-node";
 export async function startContractNode() {
   const startArgs: string[] = [];
   const ls = spawn(substrateContractNodePath, startArgs);
