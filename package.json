@@ -23,6 +23,7 @@
     "@redspot/patract": "^0.13.5",
     "@redspot/watcher": "^0.13.5",
     "@types/chai": "^4.2.14",
+    "@types/chai-as-promised": "^7.1.5",
     "@types/mocha": "^8.0.3",
     "@webb-tools/wasm-utils": "0.1.4-32",
     "chai": "^4.2.0",

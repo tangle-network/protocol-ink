@@ -166,15 +166,9 @@ describe("token-wrapper-negative-tests", () => {
       CharlieSigner
     );
 
-    try {
       await expect(
         tokenWrapperContract.tx.addTokenAddress(psp22Contract.address, 1)
-      ).to.be.ok;
-    } catch (err) {
-      // An error which indicates Module error will occur
-      // @ts-ignore
-      expect(err.toString().contains("Module")).to.be.true;
-    }
+      ).to.not.be.fulfilled;
 
     // validate that address has not been added since an error occured
     let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(
@@ -194,18 +188,13 @@ describe("token-wrapper-negative-tests", () => {
       CharlieSigner
     );
 
-    try {
       await expect(
         tokenWrapperContract.tx.addTokenAddress(
           psp22Contract.address,
           contractProposalNonce
         )
-      ).to.be.ok;
-    } catch (err) {
-      // @ts-ignore
-      // An error which indicates Module error will occur
-      expect(err.toString().contains("Module")).to.be.true;
-    }
+      ).to.not.be.fulfilled;
+
 
     // validate that address has not been added since an error occured
     let isValidAddress = await tokenWrapperContract.query.isValidTokenAddress(
@@ -242,16 +231,10 @@ describe("token-wrapper-negative-tests", () => {
     let newProposalNonce = await tokenWrapperContract.query.nonce();
     expect(newProposalNonce.output).to.be.equal(contractProposalNonce + 1);
 
-    try {
-      // now remove token address
+
       await expect(
         tokenWrapperContract.tx.removeTokenAddress(psp22Contract.address, 1)
-      ).to.be.ok;
-    } catch (err) {
-      // @ts-ignore
-      // An error which indicates Module error will occur
-      expect(err.toString().contains("Module")).to.be.true;
-    }
+      ).to.to.not.be.fulfilled;
 
     // validate that address has not been removed successfully, so address will still be valid
     let isValidAddressAgain =
@@ -297,18 +280,13 @@ describe("token-wrapper-negative-tests", () => {
 
     console.log(`proposalNonce is ${proposalNonce}`);
 
-    try {
+
       await expect(
         tokenWrapperContract.tx.removeTokenAddress(
           psp22Contract.address,
           Number(newProposalNonce.output)
         )
-      ).to.be.ok;
-    } catch (err) {
-      // @ts-ignore
-      // An error which indicates Module error will occur
-      expect(err.toString().contains("Module")).to.be.true;
-    }
+      ).to.not.be.fulfilled;
 
     // validate that address has not been removed successfully, so address will still be valid
     let isValidAddressAgain =
