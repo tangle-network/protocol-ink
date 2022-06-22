@@ -3,7 +3,7 @@ import { artifacts, network, patract } from "redspot";
 import BN from "bn.js";
 import { all } from "@polkadot/api-derive/balances";
 import { hexToU8a } from "@polkadot/util";
-import { startContractNode } from "./util";
+import {startContractNode} from "../util";
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
