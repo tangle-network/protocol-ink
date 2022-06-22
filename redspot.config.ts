@@ -25,7 +25,7 @@ export default {
     },
     jupiter: {
       endpoint: "wss://jupiter-poa.elara.patract.io",
-      gasLimit: "400000000000",
+      gasLimit: "8000000000000",
       accounts: ["//Alice"],
       types: {},
     },
