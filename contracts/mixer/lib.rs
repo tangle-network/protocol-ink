@@ -1,23 +1,22 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(min_specialization)]
 
+mod keccak;
 pub mod merkle_tree;
 pub mod zeroes;
-mod keccak;
 
 use ink_lang as ink;
 
 #[ink::contract]
 pub mod mixer {
     use super::*;
+    use crate::keccak::Keccak256;
     use crate::zeroes;
     use ink_prelude::vec::Vec;
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use poseidon::poseidon::PoseidonRef;
-    use verifier::MixerVerifierRef;
-    use crate::keccak::Keccak256;
     use scale::Encode;
-
+    use verifier::MixerVerifierRef;
 
     pub const ROOT_HISTORY_SIZE: u32 = 100;
     pub const ERROR_MSG: &'static str =
@@ -56,7 +55,6 @@ pub mod mixer {
         HashError,
         /// Verify error
         VerifyError,
-
     }
 
     /// The mixer result type.
@@ -152,6 +150,11 @@ pub mod mixer {
             self.merkle_tree.insert(self.poseidon.clone(), commitment)
         }
 
+        #[ink(message, payable)]
+        pub fn send_fund_to_contract(&self) {
+            ink_env::debug_println!("funds sent");
+        }
+
         #[ink(message)]
         pub fn withdraw(
             &mut self,
@@ -181,8 +184,10 @@ pub mod mixer {
                 self.merkle_tree.is_known_root(withdraw_params.root),
                 "Root is not known"
             );
+            let message = ink_prelude::format!("nullifier is {:?}", nullifier_hash);
+            ink_env::debug_println!("{}", &message);
             assert!(
-                !self.is_known_nullifier(withdraw_params.nullifier_hash),
+                !self.is_known_nullifier(nullifier_hash),
                 "Nullifier is known"
             );
 
@@ -221,15 +226,22 @@ pub mod mixer {
             // Set used nullifier to true after successfuly verification
             self.used_nullifiers
                 .insert(withdraw_params.nullifier_hash, &true);
+
+            let message = ink_prelude::format!("deposit in withdraw is {:?}", self.deposit_size);
+            ink_env::debug_println!("{}", &message);
+
+            let message = ink_prelude::format!("fee in withdraw is {:?}", fee);
+            ink_env::debug_println!("{}", &message);
+
+            let actual_amount = self.deposit_size - withdraw_params.fee;
+            let message = ink_prelude::format!("actual_amount in withdraw is {:?}", actual_amount);
+            ink_env::debug_println!("{}", &message);
             // Send the funds
             // TODO: Support "PSP22"-like tokens and Native token
             // TODO: SPEC this more with Drew and create task/issue
             if self
                 .env()
-                .transfer(
-                    withdraw_params.recipient,
-                    self.deposit_size - withdraw_params.fee,
-                )
+                .transfer(withdraw_params.recipient, actual_amount)
                 .is_err()
             {
                 panic!("{}", ERROR_MSG);
@@ -256,77 +268,6 @@ pub mod mixer {
             Ok(())
         }
 
-        #[ink(message)]
-        pub fn formulate_public_input(
-            &mut self,
-            root: [u8; 32],
-            nullifier_hash: [u8; 32],
-            recipient: AccountId,
-            relayer: AccountId,
-            fee: u128,
-            refund: u128,
-        ) -> Vec<u8> {
-            let element_encoder = |v: &[u8]| {
-                let mut output = [0u8; 32];
-                output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
-                output
-            };
-            // Format the public input bytes
-            let recipient_bytes = truncate_and_pad(recipient.as_ref());
-            let relayer_bytes = truncate_and_pad(relayer.as_ref());
-            let fee_bytes = element_encoder(&fee.encode());
-            let refund_bytes = element_encoder(&refund.encode());
-
-            let mut bytes = Vec::new();
-            bytes.extend_from_slice(&nullifier_hash);
-            bytes.extend_from_slice(&root);
-            bytes.extend_from_slice(&recipient_bytes);
-            bytes.extend_from_slice(&relayer_bytes);
-            bytes.extend_from_slice(&fee_bytes);
-            bytes.extend_from_slice(&refund_bytes);
-
-            bytes
-        }
-
-        #[ink(message)]
-        pub fn formulate_public_input_with_keccak(
-            &mut self,
-            root: [u8; 32],
-            nullifier_hash: [u8; 32],
-            recipient: AccountId,
-            relayer: AccountId,
-            fee: u128,
-            refund: u128,
-        ) -> Vec<u8> {
-            let element_encoder = |v: &[u8]| {
-                let mut output = [0u8; 32];
-                output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
-                output
-            };
-            // Format the public input bytes
-            let recipient_bytes = truncate_and_pad(recipient.as_ref());
-            let relayer_bytes = truncate_and_pad(relayer.as_ref());
-
-            let fee_bytes = element_encoder(&fee.encode());
-            let refund_bytes = element_encoder(&refund.encode());
-
-            let mut arbitrary_data_bytes = Vec::new();
-            arbitrary_data_bytes.extend_from_slice(&recipient_bytes);
-            arbitrary_data_bytes.extend_from_slice(&relayer_bytes);
-            arbitrary_data_bytes.extend_from_slice(&fee_bytes);
-            arbitrary_data_bytes.extend_from_slice(&refund_bytes);
-            let arbitrary_input =
-                Keccak256::hash(&arbitrary_data_bytes).map_err(|_| Error::HashError);
-
-            // Join the public input bytes
-            let mut bytes = Vec::new();
-            bytes.extend_from_slice(&nullifier_hash);
-            bytes.extend_from_slice(&root);
-            bytes.extend_from_slice(&arbitrary_input.unwrap());
-
-            bytes
-        }
-
         /// Returns native contract address
         #[ink(message)]
         pub fn native_contract_account_id(&self) -> Option<AccountId> {
@@ -336,17 +277,31 @@ pub mod mixer {
         fn verify(&self, public_input: Vec<u8>, proof_bytes: Vec<u8>) -> Result<bool> {
             let message = ink_prelude::format!("verifier is {:?}", self.verifier);
             ink_env::debug_println!("{}", &message);
-            if self.verifier
-                .verify(public_input, proof_bytes).is_err() {
+            if self.verifier.verify(public_input, proof_bytes).is_err() {
                 ink_env::debug_println!("Error occurred verifying proof");
             }
 
             Ok(true)
-               // .map_err(|_| panic!("{}", ERROR_MSG))
+            // .map_err(|_| panic!("{}", ERROR_MSG))
         }
 
         fn is_known_nullifier(&self, nullifier: [u8; 32]) -> bool {
-            self.used_nullifiers.get(&nullifier).is_some()
+            //let null = [236, 235, 4, 214, 238, 196, 192, 154, 210, 230, 147, 255, 50, 207, 235, 240, 79, 181, 5, 74, 44, 224, 77, 249, 237, 255, 53, 220, 31, 55, 142, 11];
+            let result = self.used_nullifiers.get(&nullifier).unwrap_or(false);
+            let message = ink_prelude::format!("nullifier is {:?}", result);
+            ink_env::debug_println!("{}", &message);
+            let message = ink_prelude::format!(
+                "nullifier value is {:?}",
+                self.used_nullifiers.get(&nullifier)
+            );
+            ink_env::debug_println!("{}", &message);
+            result
+        }
+
+        /// Returns native contract balance
+        #[ink(message)]
+        pub fn native_contract_balance(&self) -> Balance {
+            self.env().balance()
         }
     }
 

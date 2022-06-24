@@ -1,7 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use ink_env::call::FromAccountId;
+use ink_env::Environment;
 use ink_lang as ink;
+use ink_prelude::vec::Vec;
 use ink_storage::traits::SpreadAllocate;
 
 pub use self::mixer_verifier::{MixerVerifier, MixerVerifierRef};
@@ -10,6 +12,46 @@ impl SpreadAllocate for MixerVerifierRef {
     fn allocate_spread(_ptr: &mut ink_primitives::KeyPtr) -> Self {
         FromAccountId::from_account_id([0; 32].into())
     }
+}
+
+#[ink::chain_extension]
+pub trait VerifyProof {
+    type ErrorCode = VerifyProofErr;
+
+    #[ink(extension = 1102, returns_result = false)]
+    fn verify_proof(public_inp_bytes: (Vec<u8>, Vec<u8>)) -> bool;
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+pub enum VerifyProofErr {
+    FailGetVerifyProof,
+}
+
+impl ink_env::chain_extension::FromStatusCode for VerifyProofErr {
+    fn from_status_code(status_code: u32) -> Result<(), Self> {
+        match status_code {
+            0 => Ok(()),
+            1 => Err(Self::FailGetVerifyProof),
+            _ => panic!("encountered unknown status code"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+pub enum CustomEnvironment {}
+
+impl Environment for CustomEnvironment {
+    const MAX_EVENT_TOPICS: usize = <ink_env::DefaultEnvironment as Environment>::MAX_EVENT_TOPICS;
+
+    type AccountId = <ink_env::DefaultEnvironment as Environment>::AccountId;
+    type Balance = <ink_env::DefaultEnvironment as Environment>::Balance;
+    type Hash = <ink_env::DefaultEnvironment as Environment>::Hash;
+    type BlockNumber = <ink_env::DefaultEnvironment as Environment>::BlockNumber;
+    type Timestamp = <ink_env::DefaultEnvironment as Environment>::Timestamp;
+
+    type ChainExtension = VerifyProof;
 }
 
 mod verifier {
@@ -60,8 +102,9 @@ mod verifier {
     pub type ArkworksVerifierBn254 = ArkworksVerifierGroth16<Bn254>;
 }
 
-#[ink::contract]
+#[ink::contract(env = crate::CustomEnvironment)]
 pub mod mixer_verifier {
+    use super::VerifyProofErr;
     use crate::verifier::ArkworksVerifierBn254;
     use ink_prelude::vec::Vec;
     use ink_storage::traits::SpreadAllocate;
@@ -121,8 +164,16 @@ pub mod mixer_verifier {
         /// to `false` and vice versa.
         #[ink(message)]
         pub fn verify(&self, public_inp_bytes: Vec<u8>, proof_bytes: Vec<u8>) -> Result<bool> {
-            ArkworksVerifierBn254::verify(&public_inp_bytes, &proof_bytes, &self.vk_bytes)
-                .map_err(|_| Error::VerifierError)
+            ink_env::debug_println!("sending chain extension verification");
+            let tuple: (Vec<u8>, Vec<u8>) = (public_inp_bytes.clone(), proof_bytes.clone());
+            // Get the on-chain proof verification result
+            let proof_result = self.env().extension().verify_proof(tuple).unwrap();
+            let message = ink_prelude::format!("result is {:?}", proof_result);
+            ink_env::debug_println!("{}", &message);
+
+            Ok(proof_result)
+            /*ArkworksVerifierBn254::verify(&public_inp_bytes, &proof_bytes, &self.vk_bytes)
+            .map_err(|_| Error::VerifierError)*/
         }
     }
 }

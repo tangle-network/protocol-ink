@@ -1,0 +1,4 @@
+[submodule "tests/protocol-substrate-fixtures"]
+	path = tests/protocol-substrate-fixtures
+	url = https://github.com/web-tools/protocol-substrate-fixtures.git
+	shallow = true
