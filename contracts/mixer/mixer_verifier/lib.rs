@@ -18,7 +18,7 @@ impl SpreadAllocate for MixerVerifierRef {
 pub trait VerifyProof {
     type ErrorCode = VerifyProofErr;
 
-    #[ink(extension = 1102, returns_result = false)]
+    #[ink(extension = 1101, returns_result = false)]
     fn verify_proof(public_inp_bytes: (Vec<u8>, Vec<u8>)) -> bool;
 }
 
