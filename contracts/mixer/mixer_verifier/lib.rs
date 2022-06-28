@@ -81,19 +81,9 @@ mod verifier {
             vk_bytes: &[u8],
         ) -> Result<bool, Error> {
             let public_input_field_elts = to_field_elements::<E::Fr>(public_inp_bytes)?;
-            let proof = Proof::<E>::deserialize(proof_bytes)?;
-
-            let message = ink_prelude::format!("vk_bytes {:?}", vk_bytes);
-            ink_env::debug_println!("{}", &message);
-
             let vk = VerifyingKey::<E>::deserialize(vk_bytes)?;
-
-            ink_env::debug_println!("{}", &message);
-            let message = ink_prelude::format!("verifying groth16");
-            ink_env::debug_println!("{}", &message);
-            let res = verify_groth16::<E>(&vk, &public_input_field_elts, &proof).unwrap();
-            let message = ink_prelude::format!("res is {:?}", res);
-            ink_env::debug_println!("{}", &message);
+            let proof = Proof::<E>::deserialize(proof_bytes)?;
+            let res = verify_groth16::<E>(&vk, &public_input_field_elts, &proof)?;
             Ok(res)
         }
     }
@@ -164,16 +154,11 @@ pub mod mixer_verifier {
         /// to `false` and vice versa.
         #[ink(message)]
         pub fn verify(&self, public_inp_bytes: Vec<u8>, proof_bytes: Vec<u8>) -> Result<bool> {
-            ink_env::debug_println!("sending chain extension verification");
             let tuple: (Vec<u8>, Vec<u8>) = (public_inp_bytes.clone(), proof_bytes.clone());
             // Get the on-chain proof verification result
             let proof_result = self.env().extension().verify_proof(tuple).unwrap_or(false);
-            let message = ink_prelude::format!("result is {:?}", proof_result);
-            ink_env::debug_println!("{}", &message);
 
             Ok(proof_result)
-            /*ArkworksVerifierBn254::verify(&public_inp_bytes, &proof_bytes, &self.vk_bytes)
-            .map_err(|_| Error::VerifierError)*/
         }
     }
 }

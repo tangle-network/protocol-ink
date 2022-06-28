@@ -56,7 +56,9 @@ pub mod mixer {
         /// Verify error
         VerifyError,
         /// Nullifier is known
-        NullifierKnown
+        NullifierKnown,
+        /// Invalid Withdraw Proof
+        InvalidWithdrawProof,
     }
 
     /// The mixer result type.
@@ -158,19 +160,12 @@ pub mod mixer {
         }
 
         #[ink(message)]
-        pub fn withdraw(
-            &mut self,
-            withdraw_params: WithdrawParams,
-        ) -> Result<()> {
-            let message = ink_prelude::format!("root in withdraw is {:?}", withdraw_params.root);
-            ink_env::debug_println!("{}", &message);
-
+        pub fn withdraw(&mut self, withdraw_params: WithdrawParams) -> Result<()> {
             assert!(
                 self.merkle_tree.is_known_root(withdraw_params.root),
                 "Root is not known"
             );
-            let message = ink_prelude::format!("nullifier is {:?}", withdraw_params.nullifier_hash);
-            ink_env::debug_println!("{}", &message);
+
             if self.is_known_nullifier(withdraw_params.nullifier_hash) {
                 return Err(Error::NullifierKnown);
             }
@@ -201,25 +196,16 @@ pub mod mixer {
             bytes.extend_from_slice(&withdraw_params.root);
             bytes.extend_from_slice(&arbitrary_input);
 
-            ink_env::debug_println!("trying to verify proof");
             // Verify the proof
             let result = self.verify(bytes, withdraw_params.proof_bytes)?;
-            let message = ink_prelude::format!("verification result is {:?}", result);
-            ink_env::debug_println!("{}", &message);
-            assert!(result, "Invalid withdraw proof");
+            if !result {
+                return Err(Error::InvalidWithdrawProof);
+            }
             // Set used nullifier to true after successfuly verification
             self.used_nullifiers
                 .insert(withdraw_params.nullifier_hash, &true);
 
-            let message = ink_prelude::format!("deposit in withdraw is {:?}", self.deposit_size);
-            ink_env::debug_println!("{}", &message);
-
-            let message = ink_prelude::format!("fee in withdraw is {:?}", withdraw_params.fee);
-            ink_env::debug_println!("{}", &message);
-
             let actual_amount = self.deposit_size - withdraw_params.fee;
-            let message = ink_prelude::format!("actual_amount in withdraw is {:?}", actual_amount);
-            ink_env::debug_println!("{}", &message);
             // Send the funds
             // TODO: Support "PSP22"-like tokens and Native token
             // TODO: SPEC this more with Drew and create task/issue
@@ -253,9 +239,8 @@ pub mod mixer {
         }
 
         #[ink(message)]
-        pub fn insert_nullifier(&mut self, nullifier:[u8; 32])  {
-            self.used_nullifiers
-                .insert(&nullifier, &true);
+        pub fn insert_nullifier(&mut self, nullifier: [u8; 32]) {
+            self.used_nullifiers.insert(&nullifier, &true);
         }
 
         /// Returns native contract address
@@ -265,51 +250,15 @@ pub mod mixer {
         }
 
         fn verify(&self, public_input: Vec<u8>, proof_bytes: Vec<u8>) -> Result<bool> {
-            let message = ink_prelude::format!("verifier is {:?}", self.verifier);
-            ink_env::debug_println!("{}", &message);
-            if self.verifier.verify(public_input, proof_bytes).is_err() {
-                ink_env::debug_println!("Error occurred verifying proof");
-            }
-
-            Ok(true)
-            // .map_err(|_| panic!("{}", ERROR_MSG))
+            self.verifier
+                .verify(public_input, proof_bytes)
+                .map_err(|_| Error::VerifyError)
         }
 
         #[ink(message)]
         pub fn is_known_nullifier(&self, nullifier: [u8; 32]) -> bool {
-            let nullifier_exists = self.used_nullifiers.contains(&nullifier);
-            let message = ink_prelude::format!("nullifier exists {:?}", nullifier_exists);
-            ink_env::debug_println!("{}", &message);
-            let null = [236, 235, 4, 214, 238, 196, 192, 154, 210, 230, 147, 255, 50, 207, 235, 240, 79, 181, 5, 74, 44, 224, 77, 249, 237, 255, 53, 220, 31, 55, 142, 11].to_vec();
-            let result = self.used_nullifiers.get(&nullifier).unwrap_or(false);
-            let message = ink_prelude::format!("nullifier is {:?}", result);
-            ink_env::debug_println!("{}", &message);
-            let message = ink_prelude::format!(
-                "nullifier value is {:?}",
-                self.used_nullifiers.get(&nullifier)
-            );
-            ink_env::debug_println!("{}", &message);
-            result
+            self.used_nullifiers.get(&nullifier).unwrap_or(false)
         }
-
-        #[ink(message, payable)]
-        pub fn is_known_nullifier_payable(&self, nullifier: [u8; 32]) -> bool {
-            let nullifier_exists = self.used_nullifiers.contains(&nullifier.clone());
-            let message = ink_prelude::format!("nullifier exists {:?}", nullifier_exists);
-            ink_env::debug_println!("{}", &message);
-            let null = [236, 235, 4, 214, 238, 196, 192, 154, 210, 230, 147, 255, 50, 207, 235, 240, 79, 181, 5, 74, 44, 224, 77, 249, 237, 255, 53, 220, 31, 55, 142, 11].to_vec();
-            let result = self.used_nullifiers.get(&nullifier).unwrap_or(false);
-            let message = ink_prelude::format!("nullifier is {:?}", result);
-            ink_env::debug_println!("{}", &message);
-            let message = ink_prelude::format!(
-                "nullifier value is {:?}",
-                self.used_nullifiers.get(&nullifier)
-            );
-            ink_env::debug_println!("{}", &message);
-            result
-        }
-
-
 
         /// Returns native contract balance
         #[ink(message)]
