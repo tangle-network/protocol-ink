@@ -55,6 +55,8 @@ pub mod mixer {
         HashError,
         /// Verify error
         VerifyError,
+        /// Nullifier is known
+        NullifierKnown
     }
 
     /// The mixer result type.
@@ -158,38 +160,20 @@ pub mod mixer {
         #[ink(message)]
         pub fn withdraw(
             &mut self,
-            proof_bytes: Vec<u8>,
-            public_inputs: Vec<u8>,
-            root: [u8; 32],
-            nullifier_hash: [u8; 32],
-            recipient: AccountId,
-            relayer: AccountId,
-            fee: Balance,
-            refund: Balance,
+            withdraw_params: WithdrawParams,
         ) -> Result<()> {
-            let withdraw_params = WithdrawParams {
-                proof_bytes,
-                root,
-                nullifier_hash,
-                recipient,
-                relayer,
-                fee,
-                refund,
-            };
-
-            let message = ink_prelude::format!("root in withdraw is {:?}", root);
+            let message = ink_prelude::format!("root in withdraw is {:?}", withdraw_params.root);
             ink_env::debug_println!("{}", &message);
 
             assert!(
                 self.merkle_tree.is_known_root(withdraw_params.root),
                 "Root is not known"
             );
-            let message = ink_prelude::format!("nullifier is {:?}", nullifier_hash);
+            let message = ink_prelude::format!("nullifier is {:?}", withdraw_params.nullifier_hash);
             ink_env::debug_println!("{}", &message);
-            assert!(
-                !self.is_known_nullifier(nullifier_hash),
-                "Nullifier is known"
-            );
+            if self.is_known_nullifier(withdraw_params.nullifier_hash) {
+                return Err(Error::NullifierKnown);
+            }
 
             let element_encoder = |v: &[u8]| {
                 let mut output = [0u8; 32];
@@ -200,8 +184,8 @@ pub mod mixer {
             let recipient_bytes = truncate_and_pad(withdraw_params.recipient.as_ref());
             let relayer_bytes = truncate_and_pad(withdraw_params.relayer.as_ref());
 
-            let fee_bytes = element_encoder(&withdraw_params.fee.to_be_bytes());
-            let refund_bytes = element_encoder(&withdraw_params.refund.to_be_bytes());
+            let fee_bytes = &withdraw_params.fee.encode();
+            let refund_bytes = &withdraw_params.refund.encode();
 
             let mut arbitrary_data_bytes = Vec::new();
             arbitrary_data_bytes.extend_from_slice(&recipient_bytes);
@@ -219,7 +203,7 @@ pub mod mixer {
 
             ink_env::debug_println!("trying to verify proof");
             // Verify the proof
-            let result = self.verify(public_inputs, withdraw_params.proof_bytes)?;
+            let result = self.verify(bytes, withdraw_params.proof_bytes)?;
             let message = ink_prelude::format!("verification result is {:?}", result);
             ink_env::debug_println!("{}", &message);
             assert!(result, "Invalid withdraw proof");
@@ -230,7 +214,7 @@ pub mod mixer {
             let message = ink_prelude::format!("deposit in withdraw is {:?}", self.deposit_size);
             ink_env::debug_println!("{}", &message);
 
-            let message = ink_prelude::format!("fee in withdraw is {:?}", fee);
+            let message = ink_prelude::format!("fee in withdraw is {:?}", withdraw_params.fee);
             ink_env::debug_println!("{}", &message);
 
             let actual_amount = self.deposit_size - withdraw_params.fee;
@@ -268,6 +252,12 @@ pub mod mixer {
             Ok(())
         }
 
+        #[ink(message)]
+        pub fn insert_nullifier(&mut self, nullifier:[u8; 32])  {
+            self.used_nullifiers
+                .insert(&nullifier, &true);
+        }
+
         /// Returns native contract address
         #[ink(message)]
         pub fn native_contract_account_id(&self) -> Option<AccountId> {
@@ -285,8 +275,12 @@ pub mod mixer {
             // .map_err(|_| panic!("{}", ERROR_MSG))
         }
 
-        fn is_known_nullifier(&self, nullifier: [u8; 32]) -> bool {
-            //let null = [236, 235, 4, 214, 238, 196, 192, 154, 210, 230, 147, 255, 50, 207, 235, 240, 79, 181, 5, 74, 44, 224, 77, 249, 237, 255, 53, 220, 31, 55, 142, 11];
+        #[ink(message)]
+        pub fn is_known_nullifier(&self, nullifier: [u8; 32]) -> bool {
+            let nullifier_exists = self.used_nullifiers.contains(&nullifier);
+            let message = ink_prelude::format!("nullifier exists {:?}", nullifier_exists);
+            ink_env::debug_println!("{}", &message);
+            let null = [236, 235, 4, 214, 238, 196, 192, 154, 210, 230, 147, 255, 50, 207, 235, 240, 79, 181, 5, 74, 44, 224, 77, 249, 237, 255, 53, 220, 31, 55, 142, 11].to_vec();
             let result = self.used_nullifiers.get(&nullifier).unwrap_or(false);
             let message = ink_prelude::format!("nullifier is {:?}", result);
             ink_env::debug_println!("{}", &message);
@@ -297,6 +291,25 @@ pub mod mixer {
             ink_env::debug_println!("{}", &message);
             result
         }
+
+        #[ink(message, payable)]
+        pub fn is_known_nullifier_payable(&self, nullifier: [u8; 32]) -> bool {
+            let nullifier_exists = self.used_nullifiers.contains(&nullifier.clone());
+            let message = ink_prelude::format!("nullifier exists {:?}", nullifier_exists);
+            ink_env::debug_println!("{}", &message);
+            let null = [236, 235, 4, 214, 238, 196, 192, 154, 210, 230, 147, 255, 50, 207, 235, 240, 79, 181, 5, 74, 44, 224, 77, 249, 237, 255, 53, 220, 31, 55, 142, 11].to_vec();
+            let result = self.used_nullifiers.get(&nullifier).unwrap_or(false);
+            let message = ink_prelude::format!("nullifier is {:?}", result);
+            ink_env::debug_println!("{}", &message);
+            let message = ink_prelude::format!(
+                "nullifier value is {:?}",
+                self.used_nullifiers.get(&nullifier)
+            );
+            ink_env::debug_println!("{}", &message);
+            result
+        }
+
+
 
         /// Returns native contract balance
         #[ink(message)]

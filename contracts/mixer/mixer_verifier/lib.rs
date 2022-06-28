@@ -167,7 +167,7 @@ pub mod mixer_verifier {
             ink_env::debug_println!("sending chain extension verification");
             let tuple: (Vec<u8>, Vec<u8>) = (public_inp_bytes.clone(), proof_bytes.clone());
             // Get the on-chain proof verification result
-            let proof_result = self.env().extension().verify_proof(tuple).unwrap();
+            let proof_result = self.env().extension().verify_proof(tuple).unwrap_or(false);
             let message = ink_prelude::format!("result is {:?}", proof_result);
             ink_env::debug_println!("{}", &message);
 

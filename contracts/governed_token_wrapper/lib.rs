@@ -28,7 +28,7 @@ mod governed_token_wrapper {
 
     /// The contract storage
     #[ink(storage)]
-    #[derive(Default, SpreadAllocate, PSP22Storage, PSP22WrapperStorage, PSP22MetadataStorage)]
+    #[derive(SpreadAllocate, PSP22Storage, PSP22WrapperStorage, PSP22MetadataStorage)]
     pub struct GovernedTokenWrapper {
         #[PSP22StorageField]
         psp22: PSP22Data,
