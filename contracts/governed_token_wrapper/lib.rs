@@ -112,9 +112,22 @@ mod governed_token_wrapper {
     #[ink(event)]
     pub struct Wrap {
         #[ink(topic)]
-        sender: Option<AccountId>,
+        token_address: AccountId,
         #[ink(topic)]
-        mint_for: Option<AccountId>,
+        sender: AccountId,
+        #[ink(topic)]
+        mint_for: AccountId,
+        amount: Balance,
+    }
+
+    #[ink(event)]
+    pub struct Unwrap {
+        #[ink(topic)]
+        token_address: AccountId,
+        #[ink(topic)]
+        sender: AccountId,
+        #[ink(topic)]
+        burn_for: AccountId,
         amount: Balance,
     }
 
@@ -184,6 +197,13 @@ mod governed_token_wrapper {
                 leftover,
             )?;
 
+            self.env().emit_event(Wrap {
+                token_address: token_address.clone(),
+                sender: self.env().caller(),
+                mint_for: self.env().caller(),
+                amount,
+            });
+
             Ok(())
         }
 
@@ -202,6 +222,13 @@ mod governed_token_wrapper {
                 self.env().caller(),
                 amount,
             )?;
+
+            self.env().emit_event(Unwrap {
+                token_address,
+                sender: self.env().caller(),
+                burn_for: self.env().caller(),
+                amount,
+            });
 
             Ok(())
         }
@@ -226,6 +253,13 @@ mod governed_token_wrapper {
                 self.env().caller(),
                 amount,
             )?;
+
+            self.env().emit_event(Unwrap {
+                token_address,
+                sender: recipient,
+                burn_for: self.env().caller(),
+                amount,
+            });
 
             Ok(())
         }
@@ -259,8 +293,9 @@ mod governed_token_wrapper {
             )?;
 
             self.env().emit_event(Wrap {
-                sender: Some(sender),
-                mint_for: Some(sender),
+                token_address,
+                sender,
+                mint_for: sender,
                 amount,
             });
 
@@ -298,6 +333,13 @@ mod governed_token_wrapper {
                 leftover,
             )?;
 
+            self.env().emit_event(Wrap {
+                token_address,
+                sender: sender,
+                mint_for: recipient,
+                amount,
+            });
+
             Ok(())
         }
 
@@ -316,6 +358,13 @@ mod governed_token_wrapper {
         ) -> Result<()> {
             self.is_valid_unwrapping(token_address, amount)?;
             self.do_unwrap(token_address.clone(), sender, sender, amount)?;
+
+            self.env().emit_event(Unwrap {
+                token_address,
+                sender,
+                burn_for: sender,
+                amount,
+            });
 
             Ok(())
         }
