@@ -117,7 +117,6 @@ mod governed_token_wrapper {
         sender: AccountId,
         #[ink(topic)]
         mint_for: AccountId,
-        #[ink(topic)]
         amount: Balance,
     }
 
@@ -129,7 +128,6 @@ mod governed_token_wrapper {
         sender: AccountId,
         #[ink(topic)]
         burn_for: AccountId,
-        #[ink(topic)]
         amount: Balance,
     }
 
@@ -200,7 +198,7 @@ mod governed_token_wrapper {
             )?;
 
             self.env().emit_event(Wrap {
-                token_address,
+                token_address: token_address.clone(),
                 sender: self.env().caller(),
                 mint_for: self.env().caller(),
                 amount,
