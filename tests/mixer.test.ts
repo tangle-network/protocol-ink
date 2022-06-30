@@ -24,6 +24,7 @@ import fs from "fs";
 import { decodeAddress } from "@polkadot/util-crypto";
 import child from "child_process";
 import exp from "constants";
+import {startContractNode} from "./util";
 
 async function fetchSubstrateMixerProvingKey() {
   const IPFSUrl =
@@ -66,6 +67,7 @@ describe("mixer", () => {
   });
 
   async function setup() {
+    await startContractNode();
     console.log("trying setup");
     await api.isReady;
     const one = new BN(10).pow(new BN(api.registry.chainDecimals[0]));
