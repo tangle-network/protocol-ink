@@ -67,7 +67,7 @@ describe("mixer", () => {
   });
 
   async function setup() {
-    await startContractNode();
+    //await startContractNode();
     console.log("trying setup");
     await api.isReady;
     const one = new BN(10).pow(new BN(api.registry.chainDecimals[0]));
@@ -84,6 +84,7 @@ describe("mixer", () => {
   it.only("Test deposit and withdraw functionality", async () => {
     const { sender, BobSigner } = await setup();
 
+    console.log("instantiating poseidon");
     // Poseidon instantiation
     const poseidonContractFactory = await getContractFactory(
       "poseidon",
@@ -91,6 +92,7 @@ describe("mixer", () => {
     );
     const poseidonContract = await poseidonContractFactory.deploy("new");
 
+    console.log("instantiating verifier");
     // Mixer verifier instantiation
     const mixerVerifierContractFactory = await getContractFactory(
       "mixer_verifier",
@@ -127,12 +129,34 @@ describe("mixer", () => {
     let note = generateDeposit(depositSize);
     let commitment = note.getLeafCommitment();
 
-    const depositFunction = await mixerContract.tx.deposit(commitment, {
-      value: depositSize,
-    });
-    expect(depositFunction).to.be.ok;
+    console.log(`commitment ${u8aToHex(commitment)}`)
+
+    const noteGenInput: NoteGenInput = {
+      protocol: "mixer",
+      version: "v2",
+      sourceChain: "1",
+      targetChain: "1",
+      amount: "1",
+      tokenSymbol: "WEBB",
+      sourceIdentifyingData: "3",
+      targetIdentifyingData: "3",
+      denomination: "18",
+      backend: "Arkworks",
+      hashFunction: "Poseidon",
+      curve: "Bn254",
+      width: "3",
+      exponentiation: "5",
+    };
+
+    // Generate deposit note, and the secrets associated with the deposit.
+    //const note = await Note.generateNote(noteGenInput);
+
+    // The leaf is the value inserted on-chain. Users can prove knowledge of
+    // the secrets which were used in generating a leaf, without revealing the secrets.
+    //const commitment = note.getLeaf();
 
     const contractId = await mixerContract.query.nativeContractAccountId();
+    console.log(`contractId is ${contractId.output}`);
 
     const merkleTree = new MerkleTree(levels, [u8aToHex(commitment)]);
     const pm = new ArkworksProvingManager(undefined);
@@ -166,6 +190,8 @@ describe("mixer", () => {
       relayer: addressHex.replace("0x", ""),
     };
 
+    //console.log(`provingInput is ${provingInput}`);
+
     let proof = await pm.prove("mixer", provingInput);
     let proof_bytes = `0x${proof.proof}` as any;
     let root = `0x${proof.root}`;
@@ -175,10 +201,39 @@ describe("mixer", () => {
     let fee = 999979;
     let refund = 1;
 
+    console.log(`nullifier is ${nullifier_hash}`)
+
+    let contractBalance = await mixerContract.query.nativeContractBalance();
+
+    console.log(`contract balance is ${contractBalance.output}`);
+    //const publicInputsFunction = await mixerContract.query.formulatePublicInput(root, nullifier_hash, recipient, relayer, fee, refund);
+    //expect(publicInputsFunction).to.be.ok;
+
+    //const publicInputsFunctionKeccak = await mixerContract.query.formulatePublicInputWithKeccak(root, nullifier_hash, recipient, relayer, fee, refund);
+
+    // @ts-ignore
+    //const publicInputs = [publicInputsFunction.output.toString('hex').replace('0x', '')];
+    // @ts-ignore
+    //const publicInputsKeccak = [publicInputsFunctionKeccak.output.toString('hex').replace('0x', '')];
     let pub = "";
     proof.publicInputs.forEach(function (val) {
       pub += val;
     });
+    console.log(`proof input is ${proof.publicInputs}`);
+    console.log(`proof input mode ${pub}`);
+    //    console.log(`public input is ${publicInputsFunction.output}`)
+    //  console.log(`public input keccak is ${publicInputsFunctionKeccak.output}`)
+    //console.log(`proving key is ${provingKey.toString('hex').replace('0x', '')}`)
+
+    //const isValidProof = verify_js_proof(proof.proof, proof.publicInputs, provingKey.toString('hex').replace('0x', ''), 'Bn254');
+    //expect(isValidProof).to.be.true;
+    //console.log(`isValidProof is ${isValidProof.valueOf()}`)
+
+    console.log("sending deposit");
+    const depositFunction = await mixerContract.tx.deposit(commitment, {
+      value: depositSize,
+    });
+    expect(depositFunction).to.be.ok;
 
     const sendFundToContract = await mixerContract.tx.sendFundToContract({
       value: depositSize + depositSize,
@@ -188,29 +243,29 @@ describe("mixer", () => {
     let contractBalanceBeforeWithdraw =
       await mixerContract.query.nativeContractBalance();
 
-    let isNullifierKnown = await mixerContract.query.isKnownNullifier(
-      nullifier_hash
-    );
+    console.log(`contract balance before withdraw is ${contractBalanceBeforeWithdraw.output}`);
 
-    const withdrawFunction = await mixerContract.tx.withdraw({
-      proof_bytes,
+  //  console.log(`is known nullifier payable ${isNullifierKnownPayable.output}`);
+
+    console.log("sending withdrawal");
+    const withdrawFunction = await mixerContract.tx.withdraw(
+        {proof_bytes,
       root,
       nullifier_hash,
       recipient,
       relayer,
       fee,
-      refund,
-    });
+      refund}
+    );
     expect(withdrawFunction).to.be.ok;
 
     let contractBalanceAfterWithdraw =
-      await mixerContract.query.nativeContractBalance();
+        await mixerContract.query.nativeContractBalance();
+
+    console.log(`contract balance after withdraw is ${contractBalanceAfterWithdraw.output}`);
 
     // Expect contract balance to be lower after withdrawal
     // @ts-ignore
-    expect(
-      Number(contractBalanceAfterWithdraw.output) <
-        Number(contractBalanceBeforeWithdraw.output)
-    ).to.be.true;
+    expect(Number(contractBalanceAfterWithdraw.output) < Number(contractBalanceBeforeWithdraw.output)).to.be.true;
   });
 });
