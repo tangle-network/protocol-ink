@@ -1,0 +1,99 @@
+name: check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - 'README.md'
+  
+  workflow_dispatch:
+
+jobs:
+  rustfmt:
+    concurrency:
+      group: rustfmt-${{ github.ref }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          components: rustfmt
+
+      - name: Rustfmt check
+        run: cargo +nightly fmt --all -- --check
+
+  # This job builds and runs tests for the contracts
+  test:
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/setup-node@v3
+        with: 
+          node-version: '17.x'
+      - run: npm install wasm-opt -g
+
+      - name: Checkout sources & submodules
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+          submodules: recursive
+
+      - name: Install toolchain
+        id: toolchain
+        uses: actions-rs/toolchain@master
+        with:
+          profile: minimal
+          toolchain: nightly
+          target: wasm32-unknown-unknown
+          components: rust-src
+          override: true
+
+      # - name: Install cargo-dylint
+      #   uses: baptiste0928/cargo-install@v1
+      #   with:
+      #     crate: cargo-dylint
+      #     version: 2
+
+      - name: Install dylint-link
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: dylint-link
+          version: 2
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v1.4.0
+
+      - name: Install `cargo-contract` `master`
+        uses: actions-rs/cargo@v1
+        with:
+            command: install
+            args: --git https://github.com/paritytech/cargo-contract.git
+
+      - name: Output versions
+        run: |
+            wasm-opt --version
+            cargo -vV
+            cargo contract --version
+
+      - name: Install contract node from fork
+        run: | 
+          cargo install contracts-node --git https://github.com/webb-tools/substrate-contracts-node.git --force --locked
+
+      - name: Install Redspot
+        run: yarn global add redspot
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Build
+        run: yarn build
+
+      - name: Run tests
+        run: yarn test
+
