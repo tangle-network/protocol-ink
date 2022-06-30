@@ -28,6 +28,9 @@ jobs:
       - name: Get Path To Substrate Contracts Node
         run: readlink -f substrate-contracts-node
 
+      - name: Make Binary Unix Executable
+        run:  sudo chmod 755 substrate-contracts-node
+
       - name: File exists
         if: steps.check_files.outputs.files_exists == 'true'
         run: echo "It exists !"
