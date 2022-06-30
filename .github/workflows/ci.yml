@@ -92,10 +92,14 @@ jobs:
       - name: Rustup component
         run: rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
 
+      - name: Submodule Update
+        run: git submodule update --init --recursive
+
       - name: Set up Node.js ⚙️
         uses: actions/setup-node@v2
         with:
           node-version: '17.x'
+
 
       - name: Add Redspot
         run: yarn global add redspot
