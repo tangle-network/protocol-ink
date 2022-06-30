@@ -4,7 +4,7 @@ const substrateContractNodePath =
   "./substrate-contracts-node";
 export async function startContractNode() {
   const startArgs: string[] = [];
-  startArgs.push("--tmp -lruntime=debug -linfo");
+  //startArgs.push("--tmp -lruntime=debug -linfo");
   const ls = spawn(substrateContractNodePath, startArgs);
 
   ls.stdout.on("data", (data) => {
