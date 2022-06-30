@@ -1,7 +1,7 @@
 import { ChildProcess, spawn } from "child_process";
 
 const substrateContractNodePath =
-  "./substrate-contracts-node";
+  "sudo ./substrate-contracts-node";
 export async function startContractNode() {
   const startArgs: string[] = [];
   startArgs.push("--tmp -lruntime=debug -linfo");
