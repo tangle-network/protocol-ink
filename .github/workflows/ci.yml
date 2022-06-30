@@ -25,6 +25,9 @@ jobs:
         with:
           files: "substrate-contracts-node"
 
+      - name: Get Path To Substrate Contracts Node
+        run: readlink -f substrate-contracts-node
+
       - name: File exists
         if: steps.check_files.outputs.files_exists == 'true'
         run: echo "It exists !"
@@ -44,7 +47,7 @@ jobs:
         run: sudo tar -zxvf binaryen/binaryen-version_101-x86_64-linux.tar.gz
 
       - name: Get Path
-        run: readlink -f substrate-contracts-node
+        run: readlink -f libbinaryen.a
 
       - name: Binaryen Command 1
         run: sudo cp -r /home/runner/work/protocol-ink/protocol-ink/binaryen-version_101/bin/* /bin
