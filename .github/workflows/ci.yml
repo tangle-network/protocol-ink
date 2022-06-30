@@ -11,7 +11,7 @@ jobs:
       - uses: dsaltares/fetch-gh-release-asset@master
         with:
           repo: 'webb-tools/substrate-contracts-node'
-          version: 'tags/v12'
+          version: 'tags/v24'
           file: "substrate-contracts-node"
           target: "substrate-contracts-node"
           token: ${{ secrets.GITHUB_TOKEN }}

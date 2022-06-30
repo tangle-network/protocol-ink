@@ -161,6 +161,8 @@ pub mod mixer {
 
         #[ink(message)]
         pub fn withdraw(&mut self, withdraw_params: WithdrawParams) -> Result<()> {
+            ink_env::debug_println!("Withdrawing from Mixer");
+
             assert!(
                 self.merkle_tree.is_known_root(withdraw_params.root),
                 "Root is not known"
@@ -198,6 +200,8 @@ pub mod mixer {
 
             // Verify the proof
             let result = self.verify(bytes, withdraw_params.proof_bytes)?;
+            let message = ink_prelude::format!("Result of Proof verification is {:?}", result);
+            ink_env::debug_println!("{}", &message);
             if !result {
                 return Err(Error::InvalidWithdrawProof);
             }
