@@ -85,7 +85,7 @@ jobs:
         run: cargo install dylint-link
 
       - name: Install Cargo Dylint
-        run: cargo install cargo-dylint
+        run: cargo install cargo-dylint --locked
 
       - name: Install Cargo contract
         run: cargo install cargo-contract --force --locked
