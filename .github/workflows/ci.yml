@@ -44,7 +44,7 @@ jobs:
         run: sudo tar -zxvf binaryen/binaryen-version_101-x86_64-linux.tar.gz
 
       - name: Get Path
-        run: readlink -f libbinaryen.a
+        run: readlink -f substrate-contracts-node
 
       - name: Binaryen Command 1
         run: sudo cp -r /home/runner/work/protocol-ink/protocol-ink/binaryen-version_101/bin/* /bin
