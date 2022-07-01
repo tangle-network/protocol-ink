@@ -7,7 +7,7 @@ on:
     branches: [ main ]
     paths-ignore:
       - 'README.md'
-  
+
   workflow_dispatch:
 
 jobs:
@@ -34,7 +34,7 @@ jobs:
     steps:
 
       - uses: actions/setup-node@v3
-        with: 
+        with:
           node-version: '17.x'
       - run: npm install wasm-opt -g
 
@@ -66,6 +66,9 @@ jobs:
           crate: dylint-link
           version: 2
 
+      - name: Install Cargo Dylint
+        run: cargo install cargo-dylint --locked
+
       - name: Rust Cache
         uses: Swatinem/rust-cache@v1.4.0
 
@@ -82,7 +85,7 @@ jobs:
             cargo contract --version
 
       - name: Install contract node from fork
-        run: | 
+        run: |
           cargo install contracts-node --git https://github.com/webb-tools/substrate-contracts-node.git --force --locked
 
       - name: Install Redspot
