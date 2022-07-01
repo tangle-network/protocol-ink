@@ -1,7 +1,7 @@
 
 name: CI
 
-on: [push, pull_request]
+on: [push]
 
 jobs:
   # This job builds and runs tests for the contracts
