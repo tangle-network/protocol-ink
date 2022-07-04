@@ -17,9 +17,6 @@ jobs:
           target: "substrate-contracts-node"
           token: ${{ secrets.GITHUB_TOKEN }}
 
-     # - name: Extract Substrate Contract Node
-     #   run: sudo tar -zxvf substrate-contracts-node-linux.tar.gz
-
       - uses: andstor/file-existence-action@v1
         name: Check file existence
         id: check_files
@@ -31,9 +28,6 @@ jobs:
 
       - name: Make Binary Unix Executable
         run:  sudo chmod 755 substrate-contracts-node
-
-      #- name: Run Substrate Contract node
-      #  run: ./substrate-contracts-node
 
       - name: File exists
         if: steps.check_files.outputs.files_exists == 'true'
@@ -100,7 +94,6 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: '17.x'
-
 
       - name: Add Redspot
         run: yarn global add redspot
