@@ -21,22 +21,22 @@ The two major contract functions provided by the Mixer contract are:
 
 - **Deposit**
     
-    A Payable contract function for depositing into the mixer. It requires a `commitment` which is the leaf that is inserted
-    into the merkle tree.
+A Payable contract function for depositing into the mixer. It requires a `commitment` which is the leaf that is inserted
+into the merkle tree.
 
 - **Withdrawal**
     
-    A non-payable contract function which is for withdrawing from the mixer. It requires a `WithdrawParams` struct
+A non-payable contract function which is for withdrawing from the mixer. It requires a `WithdrawParams` struct
     
-    The `WithdrawParams` struct properties are:
+The `WithdrawParams` struct properties are:
     
-    - proof_bytes: The proof to verify for withdrawing from the mixer
-    - root: The merkle root of the tree
-    - nullifier_hash: You can think of the nullifier hash as a Nonce to stop the replay of withdrawals.
-    - recipient: Account address of the recipient
-    - relayer: Account address of the relayer
-    - fee: Amount paid to the relayer
-    - refund: Amount to refund to the recipient
+- proof_bytes: The proof to verify for withdrawing from the mixer
+- root: The merkle root of the tree
+- nullifier_hash: You can think of the nullifier hash as a Nonce to stop the replay of withdrawals.
+- recipient: Account address of the recipient
+- relayer: Account address of the relayer
+- fee: Amount paid to the relayer
+- refund: Amount to refund to the recipient
 
 
 
