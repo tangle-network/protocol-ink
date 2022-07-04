@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use ink_env::call::FromAccountId;
 use ink_lang as ink;
 use ink_env::call::FromAccountId;
 use ink_storage::traits::SpreadAllocate;

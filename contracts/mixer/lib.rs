@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(min_specialization)]
 
+mod keccak;
 pub mod merkle_tree;
 pub mod zeroes;
 
@@ -9,10 +10,12 @@ use ink_lang as ink;
 #[ink::contract]
 pub mod mixer {
     use super::*;
+    use crate::keccak::Keccak256;
     use crate::zeroes;
     use ink_prelude::vec::Vec;
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use poseidon::poseidon::PoseidonRef;
+    use scale::Encode;
     use verifier::MixerVerifierRef;
 
     pub const ROOT_HISTORY_SIZE: u32 = 100;
@@ -34,10 +37,23 @@ pub mod mixer {
     #[ink(event)]
     pub struct Deposit {
         #[ink(topic)]
-        from: Option<AccountId>,
+        from: AccountId,
         #[ink(topic)]
-        commitment: Option<[u8; 32]>,
+        commitment: [u8; 32],
+        #[ink(topic)]
         value: Balance,
+    }
+
+    #[ink(event)]
+    pub struct Withdraw {
+        #[ink(topic)]
+        recipient: AccountId,
+        #[ink(topic)]
+        relayer: AccountId,
+        #[ink(topic)]
+        fee: Balance,
+        #[ink(topic)]
+        refund: Balance,
     }
 
     /// The mixer error types.
@@ -52,6 +68,10 @@ pub mod mixer {
         HashError,
         /// Verify error
         VerifyError,
+        /// Nullifier is known
+        NullifierKnown,
+        /// Invalid Withdraw Proof
+        InvalidWithdrawProof,
     }
 
     /// The mixer result type.
@@ -141,7 +161,20 @@ pub mod mixer {
                 "Deposit size is not correct"
             );
 
-            self.merkle_tree.insert(self.poseidon.clone(), commitment)
+            let index = self.merkle_tree.insert(self.poseidon.clone(), commitment);
+
+            self.env().emit_event(Deposit {
+                from: self.env().caller(),
+                commitment,
+                value: self.env().transferred_value(),
+            });
+
+            index
+        }
+
+        #[ink(message, payable)]
+        pub fn send_fund_to_contract(&self) {
+            ink_env::debug_println!("funds sent");
         }
 
         #[ink(message)]
@@ -150,10 +183,11 @@ pub mod mixer {
                 self.merkle_tree.is_known_root(withdraw_params.root),
                 "Root is not known"
             );
-            assert!(
-                !self.is_known_nullifier(withdraw_params.nullifier_hash),
-                "Nullifier is known"
-            );
+
+            if self.is_known_nullifier(withdraw_params.nullifier_hash) {
+                return Err(Error::NullifierKnown);
+            }
+
             let element_encoder = |v: &[u8]| {
                 let mut output = [0u8; 32];
                 output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
@@ -162,30 +196,40 @@ pub mod mixer {
             // Format the public input bytes
             let recipient_bytes = truncate_and_pad(withdraw_params.recipient.as_ref());
             let relayer_bytes = truncate_and_pad(withdraw_params.relayer.as_ref());
-            let fee_bytes = element_encoder(&withdraw_params.fee.to_be_bytes());
-            let refund_bytes = element_encoder(&withdraw_params.refund.to_be_bytes());
+
+            let fee_bytes = &withdraw_params.fee.encode();
+            let refund_bytes = &withdraw_params.refund.encode();
+
+            let mut arbitrary_data_bytes = Vec::new();
+            arbitrary_data_bytes.extend_from_slice(&recipient_bytes);
+            arbitrary_data_bytes.extend_from_slice(&relayer_bytes);
+            arbitrary_data_bytes.extend_from_slice(&fee_bytes);
+            arbitrary_data_bytes.extend_from_slice(&refund_bytes);
+            let arbitrary_input =
+                Keccak256::hash(&arbitrary_data_bytes).map_err(|_| Error::HashError)?;
+
             // Join the public input bytes
             let mut bytes = Vec::new();
             bytes.extend_from_slice(&withdraw_params.nullifier_hash);
             bytes.extend_from_slice(&withdraw_params.root);
-            bytes.extend_from_slice(&recipient_bytes);
-            bytes.extend_from_slice(&relayer_bytes);
-            bytes.extend_from_slice(&fee_bytes);
-            bytes.extend_from_slice(&refund_bytes);
+            bytes.extend_from_slice(&arbitrary_input);
+
             // Verify the proof
             let result = self.verify(bytes, withdraw_params.proof_bytes)?;
-            assert!(result, "Invalid withdraw proof");
+            if !result {
+                return Err(Error::InvalidWithdrawProof);
+            }
             // Set used nullifier to true after successfuly verification
             self.used_nullifiers
                 .insert(withdraw_params.nullifier_hash, &true);
+
+            let actual_amount = self.deposit_size - withdraw_params.fee;
             // Send the funds
-            // TODO: Support "ERC20"-like tokens
+            // TODO: Support "PSP22"-like tokens and Native token
+            // TODO: SPEC this more with Drew and create task/issue
             if self
                 .env()
-                .transfer(
-                    withdraw_params.recipient,
-                    self.deposit_size - withdraw_params.fee,
-                )
+                .transfer(withdraw_params.recipient, actual_amount)
                 .is_err()
             {
                 panic!("{}", ERROR_MSG);
@@ -209,7 +253,25 @@ pub mod mixer {
                 }
             }
 
+            self.env().emit_event(Withdraw {
+                recipient: withdraw_params.recipient,
+                relayer: withdraw_params.relayer,
+                fee: withdraw_params.fee,
+                refund: withdraw_params.refund,
+            });
+
             Ok(())
+        }
+
+        #[ink(message)]
+        pub fn insert_nullifier(&mut self, nullifier: [u8; 32]) {
+            self.used_nullifiers.insert(&nullifier, &true);
+        }
+
+        /// Returns native contract address
+        #[ink(message)]
+        pub fn native_contract_account_id(&self) -> Option<AccountId> {
+            Some(self.env().account_id())
         }
 
         fn verify(&self, public_input: Vec<u8>, proof_bytes: Vec<u8>) -> Result<bool> {
@@ -218,8 +280,15 @@ pub mod mixer {
                 .map_err(|_| Error::VerifyError)
         }
 
-        fn is_known_nullifier(&self, nullifier: [u8; 32]) -> bool {
-            self.used_nullifiers.get(&nullifier).is_some()
+        #[ink(message)]
+        pub fn is_known_nullifier(&self, nullifier: [u8; 32]) -> bool {
+            self.used_nullifiers.get(&nullifier).unwrap_or(false)
+        }
+
+        /// Returns native contract balance
+        #[ink(message)]
+        pub fn native_contract_balance(&self) -> Balance {
+            self.env().balance()
         }
     }
 

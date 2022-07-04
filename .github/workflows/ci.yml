@@ -1,0 +1,108 @@
+
+name: CI
+
+on: [push]
+
+jobs:
+  # This job builds and runs tests for the contracts
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: dsaltares/fetch-gh-release-asset@master
+        with:
+          repo: 'webb-tools/substrate-contracts-node'
+          version: 'tags/v24'
+          file: "substrate-contracts-node"
+          target: "substrate-contracts-node"
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: andstor/file-existence-action@v1
+        name: Check file existence
+        id: check_files
+        with:
+          files: "substrate-contracts-node"
+
+      - name: Get Path To Substrate Contracts Node
+        run: readlink -f substrate-contracts-node
+
+      - name: Make Binary Unix Executable
+        run:  sudo chmod 755 substrate-contracts-node
+
+      - name: File exists
+        if: steps.check_files.outputs.files_exists == 'true'
+        run: echo "It exists !"
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v1.3.0
+
+      - uses: dsaltares/fetch-gh-release-asset@master
+        with:
+          repo: 'WebAssembly/binaryen/releases'
+          version: 'tags/version_101'
+          file: "binaryen-version_101-x86_64-linux.tar.gz"
+          target: "binaryen/binaryen-version_101-x86_64-linux.tar.gz"
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Binaryen
+        run: sudo tar -zxvf binaryen/binaryen-version_101-x86_64-linux.tar.gz
+
+      - name: Get Path
+        run: readlink -f libbinaryen.a
+
+      - name: Binaryen Command 1
+        run: sudo cp -r /home/runner/work/protocol-ink/protocol-ink/binaryen-version_101/bin/* /bin
+
+      - name: Binaryen Command 2
+        run: sudo cp -r /home/runner/work/protocol-ink/protocol-ink/binaryen-version_101/include/* /usr/include
+
+      - name: Binaryen Command 3
+        run: sudo cp -r /home/runner/work/protocol-ink/protocol-ink/binaryen-version_101/lib64/* /lib64
+
+      - name: Install cargo-nextest
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-nextest
+          version: latest
+
+      - name: Install Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Install Toolchain Nightly
+        run: rustup toolchain install nightly
+
+      - name: Install Dylint
+        run: cargo install dylint-link
+
+      - name: Install Cargo Dylint
+        run: cargo install cargo-dylint --locked
+
+      - name: Install Cargo contract
+        run: cargo install cargo-contract --force --locked
+
+      - name: Rustup component
+        run: rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+
+      - name: Submodule Update
+        run: git submodule update --init --recursive
+
+      - name: Set up Node.js ⚙️
+        uses: actions/setup-node@v2
+        with:
+          node-version: '17.x'
+
+      - name: Add Redspot
+        run: yarn global add redspot
+
+      - name: Install
+        run: yarn install
+
+      - name: Build
+        run: yarn build
+
+      - name: Test
+        run: yarn test

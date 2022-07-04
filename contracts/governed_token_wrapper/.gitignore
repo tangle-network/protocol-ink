@@ -1,7 +1,5 @@
 # Ignore build artifacts from the local tests sub-crate.
-target
-
-.yarn
+/target/
 
 # Ignore backup files creates by cargo fmt.
 **/*.rs.bk
@@ -9,17 +7,3 @@ target
 # Remove Cargo.lock when creating an executable, leave it for libraries
 # More information here http://doc.crates.io/guide.html#cargotoml-vs-cargolock
 Cargo.lock
-
-# Dependency directory
-node_modules
-
-artifacts/*
-!artifacts/psp22_token.contract
-!artifacts/psp22_token.json
-
-# macOS
-.DS_Store
-
-# cache
-.cache
-.ink
