@@ -1,9 +1,9 @@
 import { ChildProcess, spawn } from "child_process";
 
-const substrateContractNodePath =
-  "./artifacts/substrate-contracts-node-linux/substrate-contracts-node";
+const substrateContractNodePath = "./substrate-contracts-node";
 export async function startContractNode() {
   const startArgs: string[] = [];
+  startArgs.push("--dev", "--tmp", "-lruntime=debug");
   const ls = spawn(substrateContractNodePath, startArgs);
 
   ls.stdout.on("data", (data) => {
