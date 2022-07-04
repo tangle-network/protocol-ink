@@ -12,7 +12,7 @@
 
 <div align="center" >
 
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/webb-tools/dkg-substrate/CI?style=flat-square)](https://github.com/webb-tools/protocol-ink/actions)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/webb-tools/protocol-ink/CI?style=flat-square)](https://github.com/webb-tools/protocol-ink/actions)
 [![License Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Built with ink!](https://raw.githubusercontent.com/paritytech/ink/master/.images/badge_flat.svg)](https://github.com/paritytech/ink)
 [![Twitter](https://img.shields.io/twitter/follow/webbprotocol.svg?style=flat-square&label=Twitter&color=1DA1F2)](https://twitter.com/webbprotocol)
@@ -50,9 +50,9 @@ Looking for additional ink! documentation and deployment tools?
 
 ```
 /
-  |____contracts/           # Contains all ink! smart contracts, including governed token wrapper, mixer, vanchor, and poseidon contracts
-  |____scripts/             # Dedicated directory for useful scripts, currently holds the `deploy.ts` script for easy deployments
-  |____tests/               # Contains all integration tests for ink! contracts (e.g. `mixer_tests.ts`, `tokenWrapper.test.ts`)
+  |____contracts/   # Contains all ink! smart contracts, including governed token wrapper, mixer, vanchor, and poseidon contracts
+  |____scripts/     # Dedicated directory for useful scripts, currently holds the `deploy.ts` script for easy deployments
+  |____tests/       # Contains all integration tests for ink! contracts (e.g. `mixer_tests.ts`, `tokenWrapper.test.ts`)
 ```
 
 <h2 id="start"> Prerequisites  🎉 </h2>
@@ -91,7 +91,7 @@ Great! Now your Rust environment is ready! 🚀🚀
 Install `dylint-link`, required to lint ink! contracts, warning you about things like using API's in a way that could lead to security issues.\
 
 ```
-cargo install dylint-link
+cargo install dylint-link --locked
 ```
 
 We recommend installing [`cargo-contract`](https://github.com/paritytech/cargo-contract) as well.
