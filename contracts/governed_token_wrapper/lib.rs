@@ -2,9 +2,18 @@
 #![feature(min_specialization)]
 
 use ink_lang as ink;
+use ink_storage::traits::SpreadAllocate;
+use ink_env::call::FromAccountId;
+pub use self::governed_token_wrapper::{GovernedTokenWrapper, GovernedTokenWrapperRef};
+
+impl SpreadAllocate for GovernedTokenWrapperRef {
+    fn allocate_spread(_ptr: &mut ink_primitives::KeyPtr) -> Self {
+        FromAccountId::from_account_id([0; 32].into())
+    }
+}
 
 #[brush::contract]
-mod governed_token_wrapper {
+pub mod governed_token_wrapper {
     use brush::contracts::psp22::extensions::burnable::*;
     use brush::contracts::psp22::extensions::metadata::*;
     use brush::contracts::psp22::extensions::mintable::*;

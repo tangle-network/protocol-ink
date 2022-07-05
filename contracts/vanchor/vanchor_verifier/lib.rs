@@ -2,7 +2,6 @@
 
 use ink_env::call::FromAccountId;
 use ink_lang as ink;
-use ink_env::call::FromAccountId;
 use ink_storage::traits::SpreadAllocate;
 
 pub use self::vanchor_verifier::{VAnchorVerifier, VAnchorVerifierRef};

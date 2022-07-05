@@ -1,14 +1,18 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![feature(min_specialization)]
+
 
 mod field_ops;
 mod keccak;
 mod linkable_merkle_tree;
 mod merkle_tree;
 pub mod zeroes;
+use ink_storage::traits::SpreadAllocate;
+use ink_env::call::FromAccountId;
 
 use ink_lang as ink;
 
-#[ink::contract]
+#[brush::contract]
 mod vanchor {
     use crate::field_ops::{ArkworksIntoFieldBn254, IntoPrimeField};
     use crate::keccak::Keccak256;
@@ -21,6 +25,11 @@ mod vanchor {
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use poseidon::poseidon::PoseidonRef;
     use verifier::vanchor_verifier::VAnchorVerifierRef;
+    use governed_token_wrapper::governed_token_wrapper::GovernedTokenWrapperRef;
+
+    use brush::contracts::psp22::*;
+    use brush::contracts::traits::psp22::PSP22;
+    use brush::test_utils::*;
 
     /// The vanchor result type.
     pub type Result<T> = core::result::Result<T, Error>;
@@ -31,8 +40,11 @@ mod vanchor {
     contract's balance below minimum balance.";
 
     #[ink(storage)]
-    #[derive(SpreadAllocate)]
+    #[derive(SpreadAllocate, PSP22Storage)]
     pub struct VAnchor {
+        #[PSP22StorageField]
+        psp22: PSP22Data,
+
         /// chain id
         pub chain_id: u64,
         /// ERC20 token address
@@ -58,6 +70,25 @@ mod vanchor {
         pub poseidon: PoseidonRef,
         pub verifier_2_2: VAnchorVerifierRef,
         pub verifier_16_2: VAnchorVerifierRef,
+
+    }
+
+    impl PSP22 for VAnchor {}
+
+    #[ink(event)]
+    pub struct TransactDeposit {
+        #[ink(topic)]
+        from: AccountId,
+        #[ink(topic)]
+        to: AccountId,
+    }
+
+    #[ink(event)]
+    pub struct TransactWithdraw {
+        #[ink(topic)]
+        input_nullifier: [u8; 32],
+        #[ink(topic)]
+        output_commitment: [u8; 32],
     }
 
     #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
@@ -126,6 +157,8 @@ mod vanchor {
         InvalidWithdrawAmount,
         /// Insufficient funds
         InsufficientFunds,
+        /// Transfer Error
+        TransferError
     }
 
     impl VAnchor {
@@ -177,6 +210,18 @@ mod vanchor {
                     )
                 });
 
+            /*let token_wrapper = GovernedTokenWrapperRef::new(name, symbol,
+           decimal, governor, fee_recipient,
+            fee_percentage, is_native_allowed, wrapping_limit,
+           proposal_nonce, total_supply)
+                .endowment(0)
+                .code_hash(token_wrapper_contract_hash)
+                .salt_bytes(salt)
+                .instantiate()
+                .unwrap_or_else(|error| {
+                    panic!("failed at instantiating the Token Wrapper contract: {:?}", error)
+                });*/
+
             ink_lang::utils::initialize_contract(|contract: &mut VAnchor| {
                 contract.chain_id = chain_id;
                 contract.creator = Self::env().caller();
@@ -196,6 +241,7 @@ mod vanchor {
                 contract.poseidon = poseidon;
                 contract.verifier_2_2 = verifier_2_2;
                 contract.verifier_16_2 = verifier_16_2;
+                //contract.token_wrapper = token_wrapper;
 
                 for i in 0..levels {
                     contract
@@ -277,17 +323,16 @@ mod vanchor {
             let fee_exists = ext_data_fee != 0;
 
             if fee_exists {
+                // PSP22 Token Transfer
                 if self
-                    .env()
-                    .transfer(ext_data.relayer.clone(), ext_data_fee)
+                    .transfer(ext_data.relayer.clone(), ext_data_fee, Vec::<u8>::new())
                     .is_err()
                 {
-                    panic!("{}", ERROR_MSG);
+                    return Err(Error::TransferError);
                 }
             }
 
             self.execute_insertions(proof_data.clone());
-
             Ok(())
         }
 
@@ -316,12 +361,12 @@ mod vanchor {
             let fee_exists = ext_data_fee != 0;
 
             if fee_exists {
+                // PSP22 Token Transfer
                 if self
-                    .env()
-                    .transfer(ext_data.relayer.clone(), ext_data_fee)
+                    .transfer(ext_data.relayer.clone(), ext_data_fee, Vec::<u8>::new())
                     .is_err()
                 {
-                    panic!("{}", ERROR_MSG);
+                    return Err(Error::TransferError);
                 }
             }
 
