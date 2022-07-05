@@ -1,14 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(min_specialization)]
 
-
 mod field_ops;
 mod keccak;
 mod linkable_merkle_tree;
 mod merkle_tree;
 pub mod zeroes;
-use ink_storage::traits::SpreadAllocate;
 use ink_env::call::FromAccountId;
+use ink_storage::traits::SpreadAllocate;
 
 use ink_lang as ink;
 
@@ -19,13 +18,13 @@ mod vanchor {
     use crate::linkable_merkle_tree::{Edge, LinkableMerkleTree};
     use crate::merkle_tree::MerkleTree;
     use crate::zeroes;
+    use governed_token_wrapper::governed_token_wrapper::GovernedTokenWrapperRef;
     use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use poseidon::poseidon::PoseidonRef;
     use verifier::vanchor_verifier::VAnchorVerifierRef;
-    use governed_token_wrapper::governed_token_wrapper::GovernedTokenWrapperRef;
 
     use brush::contracts::psp22::*;
     use brush::contracts::traits::psp22::PSP22;
@@ -70,7 +69,7 @@ mod vanchor {
         pub poseidon: PoseidonRef,
         pub verifier_2_2: VAnchorVerifierRef,
         pub verifier_16_2: VAnchorVerifierRef,
-
+        pub token_wrapper: GovernedTokenWrapperRef,
     }
 
     impl PSP22 for VAnchor {}
@@ -111,6 +110,21 @@ mod vanchor {
         pub input_nullifiers: Vec<[u8; 32]>,
         pub output_commitments: Vec<[u8; 32]>,
         pub ext_data_hash: [u8; 32],
+    }
+
+    #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
+    #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
+    pub struct TokenWrapperData {
+        pub name: Option<String>,
+        pub symbol: Option<String>,
+        pub decimal: u8,
+        pub governor: AccountId,
+        pub fee_recipient: AccountId,
+        pub fee_percentage: Balance,
+        pub is_native_allowed: bool,
+        pub wrapping_limit: Balance,
+        pub proposal_nonce: u64,
+        pub total_supply: Balance,
     }
 
     /// The vanchor error types.
@@ -158,7 +172,9 @@ mod vanchor {
         /// Insufficient funds
         InsufficientFunds,
         /// Transfer Error
-        TransferError
+        TransferError,
+        /// Wrapping Error
+        WrappingError,
     }
 
     impl VAnchor {
@@ -172,9 +188,11 @@ mod vanchor {
             max_ext_amt: u128,
             max_fee: u128,
             tokenwrapper_addr: AccountId,
+            token_wrapper_data: TokenWrapperData,
             version: u32,
             poseidon_contract_hash: Hash,
             verifier_contract_hash: Hash,
+            token_wrapper_contract_hash: Hash,
         ) -> Self {
             let salt = version.to_le_bytes();
             let poseidon = PoseidonRef::new()
@@ -210,17 +228,28 @@ mod vanchor {
                     )
                 });
 
-            /*let token_wrapper = GovernedTokenWrapperRef::new(name, symbol,
-           decimal, governor, fee_recipient,
-            fee_percentage, is_native_allowed, wrapping_limit,
-           proposal_nonce, total_supply)
-                .endowment(0)
-                .code_hash(token_wrapper_contract_hash)
-                .salt_bytes(salt)
-                .instantiate()
-                .unwrap_or_else(|error| {
-                    panic!("failed at instantiating the Token Wrapper contract: {:?}", error)
-                });*/
+            let token_wrapper = GovernedTokenWrapperRef::new(
+                token_wrapper_data.name,
+                token_wrapper_data.symbol,
+                token_wrapper_data.decimal,
+                token_wrapper_data.governor,
+                token_wrapper_data.fee_recipient,
+                token_wrapper_data.fee_percentage,
+                token_wrapper_data.is_native_allowed,
+                token_wrapper_data.wrapping_limit,
+                token_wrapper_data.proposal_nonce,
+                token_wrapper_data.total_supply,
+            )
+            .endowment(0)
+            .code_hash(token_wrapper_contract_hash)
+            .salt_bytes(salt)
+            .instantiate()
+            .unwrap_or_else(|error| {
+                panic!(
+                    "failed at instantiating the Token Wrapper contract: {:?}",
+                    error
+                )
+            });
 
             ink_lang::utils::initialize_contract(|contract: &mut VAnchor| {
                 contract.chain_id = chain_id;
@@ -241,7 +270,7 @@ mod vanchor {
                 contract.poseidon = poseidon;
                 contract.verifier_2_2 = verifier_2_2;
                 contract.verifier_16_2 = verifier_16_2;
-                //contract.token_wrapper = token_wrapper;
+                contract.token_wrapper = token_wrapper;
 
                 for i in 0..levels {
                     contract
@@ -325,7 +354,72 @@ mod vanchor {
             if fee_exists {
                 // PSP22 Token Transfer
                 if self
-                    .transfer(ext_data.relayer.clone(), ext_data_fee, Vec::<u8>::new())
+                    .transfer_from(
+                        self.tokenwrapper_addr,
+                        ext_data.relayer.clone(),
+                        ext_data_fee,
+                        Vec::<u8>::new(),
+                    )
+                    .is_err()
+                {
+                    return Err(Error::TransferError);
+                }
+            }
+
+            self.execute_insertions(proof_data.clone());
+            Ok(())
+        }
+
+        #[ink(message, payable)]
+        pub fn transact_deposit_wrap_native(
+            &mut self,
+            proof_data: ProofData,
+            ext_data: ExtData,
+        ) -> Result<()> {
+            let ext_data_fee: u128 = ext_data.fee.clone();
+            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let abs_ext_amt = ext_amt.unsigned_abs();
+
+            let amount_to_wrap = self
+                .token_wrapper
+                .get_amount_to_wrap(abs_ext_amt)
+                .map_err(|_| Error::WrappingError)?;
+
+            // get native token amount
+            let recv_token_amt = self.env().transferred_value();
+
+            if recv_token_amt != amount_to_wrap {
+                return Err(Error::InsufficientFunds);
+            };
+
+            self.validate_proof(proof_data.clone(), ext_data.clone());
+
+            let is_withdraw = ext_amt.is_negative();
+            if is_withdraw {
+                return Err(Error::InvalidExecutionEntry);
+            } else {
+                if abs_ext_amt > self.max_deposit_amt {
+                    return Err(Error::InvalidDepositAmount);
+                };
+
+                let zero_address = self.token_wrapper.get_zero_address();
+
+                // wrap token natively
+                self.token_wrapper
+                    .wrap(zero_address, 0)
+                    .map_err(|_| Error::WrappingError)?;
+            }
+
+            let fee_exists = ext_data_fee != 0;
+            if fee_exists {
+                // PSP22 Token Transfer
+                if self
+                    .transfer_from(
+                        self.tokenwrapper_addr,
+                        ext_data.relayer.clone(),
+                        ext_data_fee,
+                        Vec::<u8>::new(),
+                    )
                     .is_err()
                 {
                     return Err(Error::TransferError);
@@ -355,7 +449,17 @@ mod vanchor {
                     return Err(Error::InvalidWithdrawAmount);
                 };
 
-                // TODO: execute token wrapper unwrap function
+                if self
+                    .transfer_from(
+                        self.tokenwrapper_addr,
+                        ext_data.relayer.clone(),
+                        ext_data_fee,
+                        Vec::<u8>::new(),
+                    )
+                    .is_err()
+                {
+                    return Err(Error::TransferError);
+                }
             }
 
             let fee_exists = ext_data_fee != 0;
@@ -363,7 +467,12 @@ mod vanchor {
             if fee_exists {
                 // PSP22 Token Transfer
                 if self
-                    .transfer(ext_data.relayer.clone(), ext_data_fee, Vec::<u8>::new())
+                    .transfer_from(
+                        self.tokenwrapper_addr,
+                        ext_data.relayer.clone(),
+                        ext_data_fee,
+                        Vec::<u8>::new(),
+                    )
                     .is_err()
                 {
                     return Err(Error::TransferError);
