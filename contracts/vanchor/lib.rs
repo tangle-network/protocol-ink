@@ -175,6 +175,8 @@ mod vanchor {
         TransferError,
         /// Wrapping Error
         WrappingError,
+        /// UnWrapping Error
+        UnWrappingError,
     }
 
     impl VAnchor {
@@ -324,7 +326,7 @@ mod vanchor {
             proof_data: ProofData,
             ext_data: ExtData,
             recv_token_addr: AccountId,
-            recv_token_amt: u128,
+            recv_token_amt: Balance,
         ) -> Result<()> {
             if self.tokenwrapper_addr != recv_token_addr {
                 return Err(Error::Unauthorized);
@@ -404,7 +406,7 @@ mod vanchor {
 
                 let zero_address = self.token_wrapper.get_zero_address();
 
-                // wrap token natively
+                // wrap token
                 self.token_wrapper
                     .wrap(zero_address, 0)
                     .map_err(|_| Error::WrappingError)?;
@@ -427,6 +429,70 @@ mod vanchor {
             }
 
             self.execute_insertions(proof_data.clone());
+            Ok(())
+        }
+
+        #[ink(message, payable)]
+        pub fn transact_deposit_wrap_psp22(
+            &mut self,
+            proof_data: ProofData,
+            ext_data: ExtData,
+            recv_token_addr: AccountId,
+            recv_token_amt: Balance,
+        ) -> Result<()> {
+            let ext_data_fee: u128 = ext_data.fee.clone();
+            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let abs_ext_amt = ext_amt.unsigned_abs();
+
+            // Only non-"TokenWrapper" Cw20 token contract can execute this message.
+            if self.tokenwrapper_addr == self.env().account_id() {
+                return Err(Error::Unauthorized);
+            }
+
+            let amount_to_wrap = self
+                .token_wrapper
+                .get_amount_to_wrap(abs_ext_amt)
+                .map_err(|_| Error::WrappingError)?;
+
+            if recv_token_amt != amount_to_wrap {
+                return Err(Error::InsufficientFunds);
+            };
+
+            self.validate_proof(proof_data.clone(), ext_data.clone());
+
+            let is_withdraw = ext_amt.is_negative();
+            if is_withdraw {
+                return Err(Error::InvalidExecutionEntry);
+            } else {
+                if abs_ext_amt > self.max_deposit_amt {
+                    return Err(Error::InvalidDepositAmount);
+                };
+
+                let zero_address = self.token_wrapper.get_zero_address();
+
+                // wrap token
+                self.token_wrapper
+                    .wrap(zero_address, 0)
+                    .map_err(|_| Error::WrappingError)?;
+            }
+
+            let fee_exists = ext_data_fee != 0;
+            if fee_exists {
+                // PSP22 Token Transfer
+                if self
+                    .transfer_from(
+                        self.tokenwrapper_addr,
+                        ext_data.relayer.clone(),
+                        ext_data_fee,
+                        Vec::<u8>::new(),
+                    )
+                    .is_err()
+                {
+                    return Err(Error::TransferError);
+                }
+            }
+            self.execute_insertions(proof_data.clone());
+
             Ok(())
         }
 
@@ -480,6 +546,61 @@ mod vanchor {
             }
 
             Ok(())
+        }
+
+        #[ink(message)]
+        pub fn transact_withdraw_unwrap(
+            &mut self,
+            proof_data: ProofData,
+            ext_data: ExtData,
+            token_address: AccountId,
+        ) -> Result<()> {
+            self.validate_proof(proof_data.clone(), ext_data.clone());
+
+            let ext_data_fee: u128 = ext_data.fee.clone();
+            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let abs_ext_amt = ext_amt.unsigned_abs();
+
+            if ext_amt.is_positive() {
+                return Err(Error::InvalidExecutionEntry);
+            } else {
+                if abs_ext_amt < self.min_withdraw_amt {
+                    return Err(Error::InvalidWithdrawAmount);
+                };
+
+                let zero_address = self.token_wrapper.get_zero_address();
+
+                self.token_wrapper
+                    .unwrap_and_send_to(zero_address, abs_ext_amt, ext_data.recipient)
+                    .map_err(|_| Error::UnWrappingError)?;
+            }
+
+            let fee_exists = ext_data_fee != 0;
+            if fee_exists {
+                // PSP22 Token Transfer
+                if self
+                    .transfer_from(
+                        self.tokenwrapper_addr,
+                        ext_data.relayer.clone(),
+                        ext_data_fee,
+                        Vec::<u8>::new(),
+                    )
+                    .is_err()
+                {
+                    return Err(Error::TransferError);
+                }
+            }
+
+            Ok(())
+        }
+
+        pub fn wrap_native(&mut self) -> Result<()> {
+            let zero_address = self.token_wrapper.get_zero_address();
+
+            // wrap token
+            self.token_wrapper
+                .wrap(zero_address, 0)
+                .map_err(|_| Error::WrappingError)
         }
 
         fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result<()> {
