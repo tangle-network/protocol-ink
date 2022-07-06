@@ -624,6 +624,7 @@ mod vanchor {
             Ok(())
         }
 
+        #[ink(message, payable)]
         pub fn wrap_native(&mut self) -> Result<()> {
             let zero_address = self.token_wrapper.get_zero_address();
 
@@ -633,6 +634,7 @@ mod vanchor {
                 .map_err(|_| Error::WrappingError)
         }
 
+        #[ink(message)]
         pub fn wrap_psp22_token(
             &mut self,
             token_address: AccountId,
@@ -644,6 +646,7 @@ mod vanchor {
                 .map_err(|_| Error::WrappingError)
         }
 
+        #[ink(message, payable)]
         pub fn unwrap_into_native_token(&mut self) -> Result<()> {
             let zero_address = self.token_wrapper.get_zero_address();
 
@@ -653,6 +656,7 @@ mod vanchor {
                 .map_err(|_| Error::UnWrappingError)
         }
 
+        #[ink(message)]
         pub fn unwrap_into_psp22_token(
             &mut self,
             token_address: AccountId,
