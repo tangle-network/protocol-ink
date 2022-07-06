@@ -553,7 +553,6 @@ mod vanchor {
             &mut self,
             proof_data: ProofData,
             ext_data: ExtData,
-            token_address: AccountId,
         ) -> Result<()> {
             self.validate_proof(proof_data.clone(), ext_data.clone());
 
@@ -601,6 +600,29 @@ mod vanchor {
             self.token_wrapper
                 .wrap(zero_address, 0)
                 .map_err(|_| Error::WrappingError)
+        }
+
+        pub fn wrap_psp22_token(&mut self, token_address: AccountId, amount: Balance) -> Result<()> {
+            // wrap token
+            self.token_wrapper
+                .wrap(token_address, amount)
+                .map_err(|_| Error::WrappingError)
+        }
+
+        pub fn unwrap_into_native_token(&mut self) -> Result<()> {
+            let zero_address = self.token_wrapper.get_zero_address();
+
+            // wrap token
+            self.token_wrapper
+                .unwrap_for(zero_address, 0, self.env().caller())
+                .map_err(|_| Error::UnWrappingError)
+        }
+
+        pub fn unwrap_into_psp22_token(&mut self, token_address: AccountId, amount: Balance) -> Result<()> {
+            // wrap token
+            self.token_wrapper
+                .unwrap_for(token_address, amount, self.env().caller())
+                .map_err(|_| Error::UnWrappingError)
         }
 
         fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result<()> {

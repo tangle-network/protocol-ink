@@ -67,7 +67,7 @@ describe("mixer", () => {
   });
 
   async function setup() {
-    //await startContractNode();
+    await startContractNode();
     await api.isReady;
     const one = new BN(10).pow(new BN(api.registry.chainDecimals[0]));
     const signerAddresses = await getAddresses();
