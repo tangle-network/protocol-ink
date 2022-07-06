@@ -55,13 +55,13 @@ mod vanchor {
         /// ERC20 token wrapper address
         pub tokenwrapper_addr: AccountId,
         /// maximum deposit amount
-        pub max_deposit_amt: u128,
+        pub max_deposit_amt: Balance,
         /// minimum withdrawal amount
-        pub min_withdraw_amt: u128,
+        pub min_withdraw_amt: Balance,
         /// maximum externalities amount
-        pub max_ext_amt: u128,
+        pub max_ext_amt: Balance,
         /// maximum fee
-        pub max_fee: u128,
+        pub max_fee: Balance,
 
         /// used nullifiers
         pub used_nullifiers: Mapping<[u8; 32], bool>,
@@ -185,10 +185,10 @@ mod vanchor {
             max_edges: u32,
             chain_id: u64,
             levels: u32,
-            max_deposit_amt: u128,
-            min_withdraw_amt: u128,
-            max_ext_amt: u128,
-            max_fee: u128,
+            max_deposit_amt: Balance,
+            min_withdraw_amt: Balance,
+            max_ext_amt: Balance,
+            max_fee: Balance,
             tokenwrapper_addr: AccountId,
             token_wrapper_data: TokenWrapperData,
             version: u32,
@@ -301,6 +301,31 @@ mod vanchor {
         }
 
         #[ink(message)]
+        pub fn configure_max_deposit_limit(&mut self, max_deposit_amt: Balance) -> Result<()> {
+            if self.creator != Self::env().caller() {
+                return Err(Error::UnknownRoot);
+            }
+
+            self.max_deposit_amt = max_deposit_amt;
+
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn configure_min_withdrawal_limit(
+            &mut self,
+            min_withdrawal_amt: Balance,
+        ) -> Result<()> {
+            if self.creator != Self::env().caller() {
+                return Err(Error::UnknownRoot);
+            }
+
+            self.min_withdraw_amt = min_withdrawal_amt;
+
+            Ok(())
+        }
+
+        #[ink(message)]
         pub fn update_edge(
             &mut self,
             src_chain_id: u64,
@@ -408,7 +433,12 @@ mod vanchor {
 
                 // wrap token
                 self.token_wrapper
-                    .wrap(zero_address, 0)
+                    .wrap_for_and_send_to(
+                        zero_address,
+                        self.env().caller(),
+                        0,
+                        self.env().account_id(),
+                    )
                     .map_err(|_| Error::WrappingError)?;
             }
 
@@ -432,7 +462,7 @@ mod vanchor {
             Ok(())
         }
 
-        #[ink(message, payable)]
+        #[ink(message)]
         pub fn transact_deposit_wrap_psp22(
             &mut self,
             proof_data: ProofData,
@@ -468,11 +498,14 @@ mod vanchor {
                     return Err(Error::InvalidDepositAmount);
                 };
 
-                let zero_address = self.token_wrapper.get_zero_address();
-
                 // wrap token
                 self.token_wrapper
-                    .wrap(zero_address, 0)
+                    .wrap_for_and_send_to(
+                        self.tokenwrapper_addr,
+                        self.env().caller(),
+                        amount_to_wrap,
+                        self.env().account_id(),
+                    )
                     .map_err(|_| Error::WrappingError)?;
             }
 
@@ -567,10 +600,8 @@ mod vanchor {
                     return Err(Error::InvalidWithdrawAmount);
                 };
 
-                let zero_address = self.token_wrapper.get_zero_address();
-
                 self.token_wrapper
-                    .unwrap_and_send_to(zero_address, abs_ext_amt, ext_data.recipient)
+                    .unwrap_and_send_to(self.tokenwrapper_addr, abs_ext_amt, ext_data.recipient)
                     .map_err(|_| Error::UnWrappingError)?;
             }
 
@@ -602,7 +633,11 @@ mod vanchor {
                 .map_err(|_| Error::WrappingError)
         }
 
-        pub fn wrap_psp22_token(&mut self, token_address: AccountId, amount: Balance) -> Result<()> {
+        pub fn wrap_psp22_token(
+            &mut self,
+            token_address: AccountId,
+            amount: Balance,
+        ) -> Result<()> {
             // wrap token
             self.token_wrapper
                 .wrap(token_address, amount)
@@ -618,7 +653,11 @@ mod vanchor {
                 .map_err(|_| Error::UnWrappingError)
         }
 
-        pub fn unwrap_into_psp22_token(&mut self, token_address: AccountId, amount: Balance) -> Result<()> {
+        pub fn unwrap_into_psp22_token(
+            &mut self,
+            token_address: AccountId,
+            amount: Balance,
+        ) -> Result<()> {
             // wrap token
             self.token_wrapper
                 .unwrap_for(token_address, amount, self.env().caller())
