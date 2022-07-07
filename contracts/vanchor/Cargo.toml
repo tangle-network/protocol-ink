@@ -5,18 +5,32 @@ authors = ["[your_name] <[your_email]>"]
 edition = "2021"
 
 [dependencies]
-ink_primitives = { version = "3.0", default-features = false }
-ink_metadata = { version = "3.0", default-features = false, features = ["derive"], optional = true }
-ink_env = { version = "3.0", default-features = false }
-ink_storage = { version = "3.0", default-features = false }
-ink_lang = { version = "3.0", default-features = false }
-ink_prelude = { version = "3.0", default-features = false }
+ink_primitives = { tag = "v3.0.1", git = "https://github.com/paritytech/ink", default-features = false }
+ink_metadata = { tag = "v3.0.1", git = "https://github.com/paritytech/ink", default-features = false, features = ["derive"], optional = true }
+ink_env = { tag = "v3.0.1", git = "https://github.com/paritytech/ink", default-features = false }
+ink_storage = { tag = "v3.0.1", git = "https://github.com/paritytech/ink", default-features = false }
+ink_lang = { tag = "v3.0.1", git = "https://github.com/paritytech/ink", default-features = false }
+ink_prelude = { tag = "v3.0.1", git = "https://github.com/paritytech/ink", default-features = false }
 
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
 
+ark-ff = { version = "^0.3.0", default-features = false }
+ark-std = { version = "^0.3.0", default-features = false }
+ark-bn254 = { version = "^0.3.0", default-features = false, features = [ "curve" ] }
+ark-crypto-primitives = { version = "^0.3.0", features = ["r1cs"], default-features = false }
+
+arkworks-setups = { version = "1.1.1",  features = ["r1cs"], default-features = false }
+arkworks-native-gadgets = { version = "1.0.0", default-features = false }
+
+# Brush dependency
+brush = { tag = "v1.6.1", git = "https://github.com/Supercolony-net/openbrush-contracts", default-features = false, features = ["psp22"] }
+
+
 verifier = { package = "vanchor_verifier", path = "vanchor_verifier", default-features = false, features = ["ink-as-dependency"] }
 poseidon = { path = "../poseidon", default-features = false, features = ["ink-as-dependency"] }
+governed_token_wrapper = { path = "../governed_token_wrapper", default-features = false, features = ["ink-as-dependency"] }
+
 
 [lib]
 name = "vanchor"
@@ -36,7 +50,17 @@ std = [
     "scale/std",
     "scale-info/std",
 
+    "ark-ff/std",
+    "ark-std/std",
+    "ark-bn254/std",
+    "ark-crypto-primitives/std",
+    "arkworks-setups/std",
+    "arkworks-native-gadgets/std",
+
     "poseidon/std",
-    "verifier/std"
+    "verifier/std",
+    "governed_token_wrapper/std",
+
+    "brush/std",
 ]
 ink-as-dependency = []

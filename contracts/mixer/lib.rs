@@ -40,7 +40,6 @@ pub mod mixer {
         from: AccountId,
         #[ink(topic)]
         commitment: [u8; 32],
-        #[ink(topic)]
         value: Balance,
     }
 
@@ -50,9 +49,7 @@ pub mod mixer {
         recipient: AccountId,
         #[ink(topic)]
         relayer: AccountId,
-        #[ink(topic)]
         fee: Balance,
-        #[ink(topic)]
         refund: Balance,
     }
 
@@ -249,6 +246,7 @@ pub mod mixer {
                     .transfer(withdraw_params.recipient, withdraw_params.refund)
                     .is_err()
                 {
+                    ink_env::debug_println!("refund processing failed");
                     panic!("{}", ERROR_MSG);
                 }
             }

@@ -1,10 +1,19 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(min_specialization)]
 
+pub use self::governed_token_wrapper::{GovernedTokenWrapper, GovernedTokenWrapperRef};
+use ink_env::call::FromAccountId;
 use ink_lang as ink;
+use ink_storage::traits::SpreadAllocate;
+
+impl SpreadAllocate for GovernedTokenWrapperRef {
+    fn allocate_spread(_ptr: &mut ink_primitives::KeyPtr) -> Self {
+        FromAccountId::from_account_id([0; 32].into())
+    }
+}
 
 #[brush::contract]
-mod governed_token_wrapper {
+pub mod governed_token_wrapper {
     use brush::contracts::psp22::extensions::burnable::*;
     use brush::contracts::psp22::extensions::metadata::*;
     use brush::contracts::psp22::extensions::mintable::*;
@@ -682,6 +691,18 @@ mod governed_token_wrapper {
             amount_to_wrap
                 .saturating_mul(self.fee_percentage)
                 .saturating_div(100)
+        }
+
+        /// Calculates the amount to be wrapped
+        ///
+        /// * `amount_to_wrap` - The amount to wrap
+        #[ink(message)]
+        pub fn get_amount_to_wrap(&mut self, deposit: Balance) -> Result<Balance> {
+            let amount_to_wrap = deposit
+                .saturating_mul(100)
+                .saturating_div(100 - self.fee_percentage);
+
+            Ok(amount_to_wrap)
         }
 
         /// Determine if an account id/address is a governor
