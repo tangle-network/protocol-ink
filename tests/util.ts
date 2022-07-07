@@ -13,10 +13,4 @@ export async function startContractNode() {
   ls.stderr.on("data", (data) => {
     console.error(`stderr: ${data}`);
   });
-
-  const sleep = (waitTimeInMs) =>
-    new Promise((resolve) => setTimeout(resolve, waitTimeInMs));
-  await sleep(5000).then(() => {
-    console.log("sleeping");
-  });
 }
