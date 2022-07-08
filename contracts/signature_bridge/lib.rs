@@ -40,7 +40,7 @@ mod signature_bridge {
         chain_id: u64,
         chain_type: [u8; 2],
         counts: Mapping<Vec<u8>, [u8; 32]>,
-        resource_id_to_handler_address: Mapping<Vec<u8>, AccountId>,
+        resource_id_to_handler_address: Mapping<[u8; 32], AccountId>,
     }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -111,7 +111,7 @@ mod signature_bridge {
 
             // Save the info of "resource_id -> handler(contract)" in this contract.
             self.resource_id_to_handler_address.insert(
-                resource_params.new_resource_id.to_vec(),
+                resource_params.new_resource_id,
                 &resource_params.handler_address,
             );
 
@@ -141,9 +141,7 @@ mod signature_bridge {
                 return Err(Error::WrongChainExecution);
             }
 
-            let handler_address = self
-                .resource_id_to_handler_address
-                .get(resource_id.to_vec());
+            let handler_address = self.resource_id_to_handler_address.get(resource_id);
 
             if handler_address.is_none() {
                 return Err(Error::InvalidResourceId);
