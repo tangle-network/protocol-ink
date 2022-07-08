@@ -1,6 +1,6 @@
 import { ChildProcess, spawn } from "child_process";
 
-const substrateContractNodePath = "/Users/banks/Desktop/Projects/webb/substrate-contracts-node/target/release/substrate-contracts-node";
+const substrateContractNodePath = "./substrate-contracts-node";
 export async function startContractNode() {
   const startArgs: string[] = [];
   startArgs.push("--dev", "--tmp", "-lerror,runtime::contracts=debug");
