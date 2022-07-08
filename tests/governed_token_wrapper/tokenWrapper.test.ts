@@ -193,6 +193,20 @@ describe("token-wrapper", () => {
     };
   }
 
+  it.only("Get Wrapping Fee", async () => {
+    
+      let getFeeFromAmount = await tokenWrapperContract.tx.getFeeFromAmount(
+        1500
+      );
+
+      expect(getFeeFromAmount).to.be.ok;
+
+      expect(Number(getFeeFromAmount.output)).to.not.equal(0);
+
+      console.log(`amount is ${Number(getFeeFromAmount.output)}`);
+
+  });
+
   it("Add token address", async () => {
     expect(
       await tokenWrapperContract.tx.addTokenAddress(
