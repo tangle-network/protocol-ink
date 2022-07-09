@@ -193,7 +193,7 @@ describe("token-wrapper", () => {
     };
   }
 
-  it.only("Get Wrapping Fee", async () => {
+  it("Get Wrapping Fee", async () => {
     let getFeeFromAmount = await tokenWrapperContract.query.getFeeFromAmount(
       1500
     );
@@ -201,7 +201,7 @@ describe("token-wrapper", () => {
     expect(Number(getFeeFromAmount.output) != 0);
   });
 
-  it.only("Get Amount to Wrap", async () => {
+  it("Get Amount to Wrap", async () => {
     let getAmountToWrap = await tokenWrapperContract.query.getAmountToWrap(
       2500
     );
