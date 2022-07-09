@@ -24,7 +24,7 @@ import fs from "fs";
 import { decodeAddress } from "@polkadot/util-crypto";
 import child from "child_process";
 import exp from "constants";
-import { startContractNode } from "./util";
+import { killContractNode, startContractNode } from "./util";
 
 async function fetchSubstrateMixerProvingKey() {
   const IPFSUrl =
@@ -62,13 +62,19 @@ export function generateDeposit(amount: number) {
 
 // to call a 'method', you use contract.tx.methodName(args). to get a value, you use contract.query.methodName(args).
 describe("mixer", () => {
+  let childProcess: any;
+
+  before(async () => {
+    childProcess = await startContractNode();
+    await api.isReady;
+  });
+
   after(() => {
+    killContractNode(childProcess);
     return api.disconnect();
   });
 
   async function setup() {
-    await startContractNode();
-    await api.isReady;
     const one = new BN(10).pow(new BN(api.registry.chainDecimals[0]));
     const signerAddresses = await getAddresses();
     const Alice = signerAddresses[0];

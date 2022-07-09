@@ -12,6 +12,7 @@ mod signature_bridge {
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
+    use webb_proposals::TypedChainId;
 
     /// The vanchor result type.
     pub type Result<T> = core::result::Result<T, Error>;
@@ -38,7 +39,6 @@ mod signature_bridge {
         governor: Vec<u8>,
         proposal_nonce: u32,
         chain_id: u64,
-        chain_type: [u8; 2],
         counts: Mapping<Vec<u8>, [u8; 32]>,
         resource_id_to_handler_address: Mapping<[u8; 32], AccountId>,
     }
@@ -64,17 +64,11 @@ mod signature_bridge {
 
     impl SignatureBridge {
         #[ink(constructor)]
-        pub fn new(
-            governor: Vec<u8>,
-            proposal_nonce: u32,
-            chain_id: u64,
-            chain_type: [u8; 2],
-        ) -> Self {
+        pub fn new(governor: Vec<u8>, proposal_nonce: u32, chain_id: u64) -> Self {
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
                 instance.governor = governor;
                 instance.proposal_nonce = proposal_nonce;
                 instance.chain_id = chain_id;
-                instance.chain_type = chain_type;
             })
         }
 
@@ -136,8 +130,12 @@ mod signature_bridge {
             let resource_id = element_encoder(resource_id_bytes);
 
             // Parse chain ID + chain type from the resource ID
-            let execution_chain_id_type: u64 = get_chain_id_type(&resource_id_bytes[26..32]);
-            if compute_chain_id_type(self.chain_id, &self.chain_type) != execution_chain_id_type {
+            let typed_chain_id_bytes: [u8; 8] = resource_id_bytes[26..32].try_into().unwrap();
+            let execution_typed_chain =
+                TypedChainId::from(u64::from_be_bytes(typed_chain_id_bytes));
+            let execution_chain_id_type: u64 = execution_typed_chain.chain_id();
+
+            if TypedChainId::Substrate(self.chain_id as u32).chain_id() != execution_chain_id_type {
                 return Err(Error::WrongChainExecution);
             }
 
@@ -169,27 +167,5 @@ mod signature_bridge {
         let mut output = [0u8; 32];
         output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
         output
-    }
-
-    /// Get the `chain_id_type` from bytes array.
-    pub fn get_chain_id_type(chain_id_type: &[u8]) -> u64 {
-        let mut buf = [0u8; 8];
-        #[allow(clippy::needless_borrow)]
-        buf[2..8].copy_from_slice(&chain_id_type);
-        u64::from_be_bytes(buf)
-    }
-
-    /// Computes the combination bytes of "chain_type" and "chain_id".
-    /// Combination rule: 8 bytes array(00 * 2 bytes + [chain_type] 2 bytes + [chain_id] 4 bytes)
-    /// Example:
-    ///    chain_type - 0x0401, chain_id - 0x00000001 (big endian)
-    ///    Result - [00, 00, 04, 01, 00, 00, 00, 01]
-    pub fn compute_chain_id_type(chain_id: u64, chain_type: &[u8]) -> u64 {
-        let chain_id_value: u32 = chain_id.try_into().unwrap_or_default();
-        let mut buf = [0u8; 8];
-        #[allow(clippy::needless_borrow)]
-        buf[2..4].copy_from_slice(&chain_type);
-        buf[4..8].copy_from_slice(&chain_id_value.to_be_bytes());
-        u64::from_be_bytes(buf)
     }
 }

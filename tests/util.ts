@@ -1,10 +1,11 @@
 import { ChildProcess, spawn } from "child_process";
+import exp from "constants";
 
 const substrateContractNodePath = "./substrate-contracts-node";
 export async function startContractNode() {
   const startArgs: string[] = [];
   startArgs.push("--dev", "--tmp", "-lerror,runtime::contracts=debug");
-  const ls = spawn(substrateContractNodePath, startArgs);
+  let ls = spawn(substrateContractNodePath, startArgs);
 
   ls.stdout.on("data", (data) => {
     console.log(`stdout: ${data}`);
@@ -19,4 +20,10 @@ export async function startContractNode() {
   await sleep(5000).then(() => {
     console.log("sleeping");
   });
+
+  return ls;
+}
+
+export function killContractNode(childProcess: any) {
+  childProcess.kill("SIGINT");
 }
