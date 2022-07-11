@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { artifacts, network, patract } from "redspot";
 import BN from "bn.js";
+import {killContractNode, startContractNode} from "../util";
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
@@ -21,11 +22,14 @@ describe("token-wrapper-negative-tests", () => {
   let EveSigner: any;
   let DaveSigner: any;
   let psp22Contract: any;
+  let childProcess: any;
   after(() => {
+    killContractNode(childProcess);
     return api.disconnect();
   });
 
   before(async () => {
+    childProcess = await startContractNode();
     await api.isReady;
   });
 
