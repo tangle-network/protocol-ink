@@ -3,7 +3,7 @@ import { artifacts, network, patract } from "redspot";
 import BN from "bn.js";
 import { all } from "@polkadot/api-derive/balances";
 import { hexToU8a } from "@polkadot/util";
-import {killContractNode, startContractNode} from "../util";
+import { killContractNode, startContractNode } from "../util";
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
@@ -194,6 +194,22 @@ describe("token-wrapper", () => {
       governorBalance,
     };
   }
+
+  it("Get Wrapping Fee", async () => {
+    let getFeeFromAmount = await tokenWrapperContract.query.getFeeFromAmount(
+      1500
+    );
+
+    expect(Number(getFeeFromAmount.output) != 0);
+  });
+
+  it("Get Amount to Wrap", async () => {
+    let getAmountToWrap = await tokenWrapperContract.query.getAmountToWrap(
+      2500
+    );
+
+    expect(Number(JSON.parse(getAmountToWrap.output).ok) != 0);
+  });
 
   it("Add token address", async () => {
     expect(

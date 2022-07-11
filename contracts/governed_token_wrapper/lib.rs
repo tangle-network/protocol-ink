@@ -687,7 +687,8 @@ pub mod governed_token_wrapper {
         /// Calculates the fee to be sent to fee recipient
         ///
         /// * `amount_to_wrap` - The amount to wrap
-        fn get_fee_from_amount(&mut self, amount_to_wrap: Balance) -> Balance {
+        #[ink(message)]
+        pub fn get_fee_from_amount(&mut self, amount_to_wrap: Balance) -> Balance {
             amount_to_wrap
                 .saturating_mul(self.fee_percentage)
                 .saturating_div(100)
