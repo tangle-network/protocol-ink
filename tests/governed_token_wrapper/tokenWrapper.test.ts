@@ -3,11 +3,7 @@ import { artifacts, network, patract } from "redspot";
 import BN from "bn.js";
 import { all } from "@polkadot/api-derive/balances";
 import { hexToU8a } from "@polkadot/util";
-<<<<<<< femi/amount-to-wrap-integration-test -- Incoming Change
-import { startContractNode } from "../util";
-=======
-import {killContractNode, startContractNode} from "../util";
->>>>>>> main -- Current Change
+import { killContractNode, startContractNode } from "../util";
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
