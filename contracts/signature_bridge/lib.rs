@@ -130,7 +130,7 @@ mod signature_bridge {
             let resource_id = element_encoder(resource_id_bytes);
 
             // Parse chain ID + chain type from the resource ID
-            let typed_chain_id_bytes: [u8; 8] = resource_id_bytes[26..32].try_into().unwrap();
+            let typed_chain_id_bytes: [u8; 8] = resource_id_bytes[24..32].try_into().unwrap();
             let execution_typed_chain =
                 TypedChainId::from(u64::from_be_bytes(typed_chain_id_bytes));
             let execution_chain_id_type: u64 = execution_typed_chain.chain_id();
