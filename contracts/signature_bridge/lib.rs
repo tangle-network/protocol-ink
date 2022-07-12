@@ -134,11 +134,12 @@ mod signature_bridge {
             let mut padded_typed_chain_id_bytes: [u8; 8] = [0; 8];
             padded_typed_chain_id_bytes[..typed_chain_id_bytes.len()]
                 .copy_from_slice(&typed_chain_id_bytes);
+
             let execution_typed_chain =
                 TypedChainId::from(u64::from_be_bytes(padded_typed_chain_id_bytes));
             let execution_chain_id_type: u64 = execution_typed_chain.chain_id();
 
-            if TypedChainId::Substrate(self.chain_id as u32).chain_id() != execution_chain_id_type {
+            if TypedChainId::Ink(self.chain_id as u32).chain_id() != execution_chain_id_type {
                 return Err(Error::WrongChainExecution);
             }
 
