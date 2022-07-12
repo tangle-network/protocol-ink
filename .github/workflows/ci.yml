@@ -88,7 +88,7 @@ jobs:
         run: rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
 
       - name: Install Cargo contract
-        run: cargo install cargo-contract --force --locked
+        run: cargo install cargo-contract --force
 
       - name: Submodule Update
         run: git submodule update --init --recursive
