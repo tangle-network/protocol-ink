@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+mod keccak;
+
 use ink_lang as ink;
 
 #[ink::contract]
@@ -9,6 +11,8 @@ mod token_wrapper_handler {
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
+
+    use crate::keccak::Keccak256;
 
     #[ink(storage)]
     #[derive(SpreadAllocate)]
@@ -158,10 +162,42 @@ mod token_wrapper_handler {
 
             Ok(())
         }
+
+        pub fn execute_function_signature(
+            &mut self,
+            function_signature: [u8; 4],
+            arguments: &[u8],
+        ) -> Result<()> {
+            if function_signature
+                == Keccak256::hash_with_four_bytes_output(b"setFee".to_vec().as_slice()).unwrap()
+            {
+                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
+                let fee_bytes: [u8; 1] = element_encoder_for_one_byte(&arguments[4..5]);
+
+                let nonce = u32::from_be_bytes(nonce_bytes);
+                let fee = u8::from_be_bytes(fee_bytes);
+
+                self.token_wrapper
+                    .update_config(None, None, None, Some(fee.into()), None);
+            }
+            Ok(())
+        }
     }
 
     pub fn element_encoder(v: &[u8]) -> [u8; 32] {
         let mut output = [0u8; 32];
+        output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
+        output
+    }
+
+    pub fn element_encoder_for_four_bytes(v: &[u8]) -> [u8; 4] {
+        let mut output = [0u8; 4];
+        output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
+        output
+    }
+
+    pub fn element_encoder_for_one_byte(v: &[u8]) -> [u8; 1] {
+        let mut output = [0u8; 1];
         output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
         output
     }
