@@ -46,6 +46,7 @@ mod token_wrapper_handler {
         InvalidFunctionSignature,
     }
 
+    // Represents the token wrapper contract instantiation configs/data
     #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
     #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub struct TokenWrapperData {
@@ -62,6 +63,14 @@ mod token_wrapper_handler {
     }
 
     impl TokenWrapperHandler {
+        /// Instantiates the Token wrapper handler contract
+        ///
+        /// * `bridge_address` -  Contract address of previously deployed Bridge.
+        /// * `initial_resource_ids` - These are the resource ids the contract will initially support
+        /// * `initial_contract_addresses` - These are the the contract addresses that the contract will initially support
+        /// * `version` - contract version
+        /// * `token_wrapper_contract_hash` - The hash representation of the token wrapper contract
+        /// * `token_wrapper_data` - token wrapper instantiation data/config
         #[ink(constructor)]
         pub fn new(
             bridge_address: AccountId,
@@ -114,6 +123,9 @@ mod token_wrapper_handler {
         }
 
         /// Sets the resource_ids and addresses
+        ///
+        /// * `resource_id` -  The resource id to be mapped to.
+        /// * `contract_address` -  The contract address to be mapped to
         #[ink(message)]
         pub fn set_resource(&mut self, resource_id: [u8; 32], contract_address: AccountId) {
             self.resource_id_to_contract_address
@@ -124,6 +136,9 @@ mod token_wrapper_handler {
                 .insert(contract_address.clone(), &true);
         }
 
+        /// Sets the bridge address
+        ///
+        /// * `bridge_address` -  The bridge address to migrate to
         #[ink(message)]
         pub fn migrate_bridge(&mut self, bridge_address: AccountId) -> Result<()> {
             if self.env().caller() != bridge_address {
@@ -134,6 +149,9 @@ mod token_wrapper_handler {
             Ok(())
         }
 
+        /// Sets the bridge address
+        ///
+        /// * `bridge_address` -  The bridge address to migrate to
         #[ink(message)]
         pub fn execute_proposal(&mut self, resource_id: [u8; 32], data: Vec<u8>) -> Result<()> {
             // Parse the (proposal)`data`.
@@ -168,6 +186,10 @@ mod token_wrapper_handler {
             Ok(())
         }
 
+        /// Executes the function signature
+        ///
+        /// * `function_signature` -  The signature to be interpreted and executed on the token-wrapper contract
+        /// * `arguments` - The function arguments to be passed to respective functions in the token-wrapper contract
         pub fn execute_function_signature(
             &mut self,
             function_signature: [u8; 4],
@@ -224,18 +246,27 @@ mod token_wrapper_handler {
         }
     }
 
+    /// Transforms a u8 array to a fixed size array of 32 bytes
+    ///
+    /// * `v` -  u8 array to transform
     pub fn element_encoder(v: &[u8]) -> [u8; 32] {
         let mut output = [0u8; 32];
         output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
         output
     }
 
+    /// Transforms a u8 array to a fixed size array of 4 bytes
+    ///
+    /// * `v` -  u8 array to transform
     pub fn element_encoder_for_four_bytes(v: &[u8]) -> [u8; 4] {
         let mut output = [0u8; 4];
         output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
         output
     }
 
+    /// Transforms a u8 array to a fixed size array of 1 byte
+    ///
+    /// * `v` -  u8 array to transform
     pub fn element_encoder_for_one_byte(v: &[u8]) -> [u8; 1] {
         let mut output = [0u8; 1];
         output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
