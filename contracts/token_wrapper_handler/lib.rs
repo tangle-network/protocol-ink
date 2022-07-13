@@ -4,9 +4,11 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod token_wrapper_handler {
-    use ink_env::is_contract;
-    use ink_storage::{traits::SpreadAllocate, Mapping};
+    use governed_token_wrapper::GovernedTokenWrapperRef;
+    use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
+    use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
+    use ink_storage::{traits::SpreadAllocate, Mapping};
 
     #[ink(storage)]
     #[derive(SpreadAllocate)]
@@ -18,7 +20,9 @@ mod token_wrapper_handler {
         /// Execution contract address => resourceID
         contract_address_to_resource_id: Mapping<AccountId, [u8; 32]>,
         /// Execution contract address => is whitelisted
-        contract_whitelist: Mapping<AccountId, bool>
+        contract_whitelist: Mapping<AccountId, bool>,
+
+        pub token_wrapper: GovernedTokenWrapperRef,
     }
 
     /// The token wrapper handler result type.
@@ -33,22 +37,66 @@ mod token_wrapper_handler {
         /// Invalid Resource Id
         InvalidResourceId,
         /// Contract Address Not Whitelisted
-        UnWhitelistedContractAddress
+        UnWhitelistedContractAddress,
+    }
+
+    #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
+    #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
+    pub struct TokenWrapperData {
+        pub name: Option<String>,
+        pub symbol: Option<String>,
+        pub decimal: u8,
+        pub governor: AccountId,
+        pub fee_recipient: AccountId,
+        pub fee_percentage: Balance,
+        pub is_native_allowed: bool,
+        pub wrapping_limit: Balance,
+        pub proposal_nonce: u64,
+        pub total_supply: Balance,
     }
 
     impl TokenWrapperHandler {
-
         #[ink(constructor)]
-        pub fn new(bridge_address: AccountId, initial_resource_ids: Vec<[u8; 32]>, initial_contract_addresses: Vec<AccountId>) -> Self {
+        pub fn new(
+            bridge_address: AccountId,
+            initial_resource_ids: Vec<[u8; 32]>,
+            initial_contract_addresses: Vec<AccountId>,
+            version: u32,
+            token_wrapper_contract_hash: Hash,
+            token_wrapper_data: TokenWrapperData,
+        ) -> Self {
+            let salt = version.to_le_bytes();
+
+            let token_wrapper = GovernedTokenWrapperRef::new(
+                token_wrapper_data.name,
+                token_wrapper_data.symbol,
+                token_wrapper_data.decimal,
+                token_wrapper_data.governor,
+                token_wrapper_data.fee_recipient,
+                token_wrapper_data.fee_percentage,
+                token_wrapper_data.is_native_allowed,
+                token_wrapper_data.wrapping_limit,
+                token_wrapper_data.proposal_nonce,
+                token_wrapper_data.total_supply,
+            )
+            .endowment(0)
+            .code_hash(token_wrapper_contract_hash)
+            .salt_bytes(salt)
+            .instantiate()
+            .unwrap_or_else(|error| {
+                panic!(
+                    "failed at instantiating the Token Wrapper contract: {:?}",
+                    error
+                )
+            });
+
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
                 instance.bridge_address = bridge_address;
+                instance.token_wrapper = token_wrapper;
 
                 if initial_resource_ids.len() != initial_contract_addresses.len() {
-                    panic!(
-                        "initial_resource_ids and initial_contract_addresses len mismatch"
-                    );
+                    panic!("initial_resource_ids and initial_contract_addresses len mismatch");
                 }
-                let n = initial_resource_ids.len();
 
                 for i in 0..initial_resource_ids.len() {
                     let resource_id = initial_resource_ids[i];
@@ -62,9 +110,12 @@ mod token_wrapper_handler {
         /// Sets the resource_ids and addresses
         #[ink(message)]
         pub fn set_resource(&mut self, resource_id: [u8; 32], contract_address: AccountId) {
-            self.resource_id_to_contract_address.insert(resource_id, &contract_address);
-            self.contract_address_to_resource_id.insert(contract_address.clone(), &resource_id);
-            self.contract_whitelist.insert(contract_address.clone(), &true);
+            self.resource_id_to_contract_address
+                .insert(resource_id, &contract_address);
+            self.contract_address_to_resource_id
+                .insert(contract_address.clone(), &resource_id);
+            self.contract_whitelist
+                .insert(contract_address.clone(), &true);
         }
 
         #[ink(message)]
@@ -78,7 +129,7 @@ mod token_wrapper_handler {
         }
 
         #[ink(message)]
-        pub fn execute_proposal(&mut self, resource_id: [u8; 32],  data: Vec<u8>) -> Result<()> {
+        pub fn execute_proposal(&mut self, resource_id: [u8; 32], data: Vec<u8>) -> Result<()> {
             // Parse the (proposal)`data`.
             let parsed_resource_id = element_encoder(&data[0..32]);
             let base64_encoded_proposal = &data[32..];
@@ -97,16 +148,16 @@ mod token_wrapper_handler {
                 return Err(Error::InvalidResourceId);
             }
 
-            let is_contract_whitelisted = self.contract_whitelist.get(token_wrapper_address.unwrap());
+            let is_contract_whitelisted =
+                self.contract_whitelist.get(token_wrapper_address.unwrap());
 
             // check if contract address is whitelisted
             if is_contract_whitelisted.is_none() || !is_contract_whitelisted.unwrap() {
-                return Err(Error::UnWhitelistedContractAddress)
+                return Err(Error::UnWhitelistedContractAddress);
             }
 
             Ok(())
         }
-
     }
 
     pub fn element_encoder(v: &[u8]) -> [u8; 32] {
@@ -114,5 +165,4 @@ mod token_wrapper_handler {
         output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
         output
     }
-
 }

@@ -12,9 +12,11 @@ ink_storage = { tag = "v3.0.1", git = "https://github.com/paritytech/ink", defau
 ink_lang = { tag = "v3.0.1", git = "https://github.com/paritytech/ink", default-features = false }
 ink_prelude = { tag = "v3.0.1", git = "https://github.com/paritytech/ink", default-features = false }
 
-
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
+
+governed_token_wrapper = { path = "../governed_token_wrapper", default-features = false, features = ["ink-as-dependency"] }
+
 
 [lib]
 name = "token_wrapper_handler"
@@ -33,5 +35,7 @@ std = [
     "ink_primitives/std",
     "scale/std",
     "scale-info/std",
+
+    "governed_token_wrapper/std",
 ]
 ink-as-dependency = []
