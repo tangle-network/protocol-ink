@@ -278,13 +278,6 @@ describe("token-wrapper-negative-tests", () => {
     let newProposalNonce = await tokenWrapperContract.query.nonce();
     expect(newProposalNonce.output).to.be.equal(contractProposalNonce + 1);
 
-    // increase nonce
-    // @ts-ignore
-    let proposalNonce = Number(newProposalNonce.output) + 1;
-
-    console.log(`proposalNonce is ${proposalNonce}`);
-
-
       await expect(
         tokenWrapperContract.tx.removeTokenAddress(
           psp22Contract.address,
@@ -298,7 +291,6 @@ describe("token-wrapper-negative-tests", () => {
         psp22Contract.address
       );
     expect(isValidAddressAgain.output).to.equal(true);
-    console.log(`new proposalNonce is ${isValidAddressAgain.output}`);
 
     // validate that proposalNonce has not increased
     let newProposalNonceAgain = await tokenWrapperContract.query.nonce();
