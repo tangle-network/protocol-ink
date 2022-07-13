@@ -42,6 +42,8 @@ mod token_wrapper_handler {
         InvalidResourceId,
         /// Contract Address Not Whitelisted
         UnWhitelistedContractAddress,
+        /// Invalid Function signature
+        InvalidFunctionSignature,
     }
 
     #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
@@ -136,7 +138,6 @@ mod token_wrapper_handler {
         pub fn execute_proposal(&mut self, resource_id: [u8; 32], data: Vec<u8>) -> Result<()> {
             // Parse the (proposal)`data`.
             let parsed_resource_id = element_encoder(&data[0..32]);
-            let base64_encoded_proposal = &data[32..];
 
             if self.env().caller() != self.bridge_address {
                 return Err(Error::Unauthorized);
@@ -160,6 +161,10 @@ mod token_wrapper_handler {
                 return Err(Error::UnWhitelistedContractAddress);
             }
 
+            let function_signature = element_encoder_for_four_bytes(&data[32..36]);
+            let arguments = &data[36..];
+            self.execute_function_signature(function_signature, arguments);
+
             Ok(())
         }
 
@@ -171,14 +176,49 @@ mod token_wrapper_handler {
             if function_signature
                 == Keccak256::hash_with_four_bytes_output(b"setFee".to_vec().as_slice()).unwrap()
             {
-                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
                 let fee_bytes: [u8; 1] = element_encoder_for_one_byte(&arguments[4..5]);
 
-                let nonce = u32::from_be_bytes(nonce_bytes);
                 let fee = u8::from_be_bytes(fee_bytes);
 
                 self.token_wrapper
                     .update_config(None, None, None, Some(fee.into()), None);
+            } else if function_signature
+                == Keccak256::hash_with_four_bytes_output(b"addTokenAddress".to_vec().as_slice())
+                    .unwrap()
+            {
+                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
+                let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
+
+                let nonce = u32::from_be_bytes(nonce_bytes);
+
+                self.token_wrapper
+                    .add_token_address(token_address.into(), nonce.into());
+            } else if function_signature
+                == Keccak256::hash_with_four_bytes_output(b"removeTokenAddress".to_vec().as_slice())
+                    .unwrap()
+            {
+                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
+                let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
+
+                let nonce = u32::from_be_bytes(nonce_bytes);
+
+                self.token_wrapper
+                    .remove_token_address(token_address.into(), nonce.into());
+            } else if function_signature
+                == Keccak256::hash_with_four_bytes_output(b"removeTokenAddress".to_vec().as_slice())
+                    .unwrap()
+            {
+                let fee_recipient: [u8; 32] = element_encoder(&arguments[4..36]);
+
+                self.token_wrapper.update_config(
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(fee_recipient.into()),
+                );
+            } else {
+                return Err(Error::InvalidFunctionSignature);
             }
             Ok(())
         }
