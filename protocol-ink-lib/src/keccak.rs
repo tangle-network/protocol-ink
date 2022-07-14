@@ -38,5 +38,11 @@ pub mod keccak {
             let out: [u8; 32] = res.try_into().map_err(|_| Error::HashError)?;
             Ok(out)
         }
+
+        pub fn hash_with_four_bytes_output(inputs: &[u8]) -> Result<[u8; 4], Error> {
+            let res = Keccak256Bn254::hash(inputs, &[]);
+            let out: [u8; 4] = res.try_into().map_err(|_| Error::HashError)?;
+            Ok(out)
+        }
     }
 }

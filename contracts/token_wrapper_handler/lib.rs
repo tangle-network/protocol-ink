@@ -1,7 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-mod keccak;
-
 use ink_lang as ink;
 
 #[ink::contract]
@@ -11,8 +9,10 @@ mod token_wrapper_handler {
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
-
-    use crate::keccak::Keccak256;
+    use protocol_ink_lib::keccak::Keccak256;
+    use protocol_ink_lib::utils::{
+        element_encoder, element_encoder_for_four_bytes, element_encoder_for_one_byte,
+    };
 
     #[ink(storage)]
     #[derive(SpreadAllocate)]
@@ -244,32 +244,5 @@ mod token_wrapper_handler {
             }
             Ok(())
         }
-    }
-
-    /// Transforms a u8 array to a fixed size array of 32 bytes
-    ///
-    /// * `v` -  u8 array to transform
-    pub fn element_encoder(v: &[u8]) -> [u8; 32] {
-        let mut output = [0u8; 32];
-        output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
-        output
-    }
-
-    /// Transforms a u8 array to a fixed size array of 4 bytes
-    ///
-    /// * `v` -  u8 array to transform
-    pub fn element_encoder_for_four_bytes(v: &[u8]) -> [u8; 4] {
-        let mut output = [0u8; 4];
-        output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
-        output
-    }
-
-    /// Transforms a u8 array to a fixed size array of 1 byte
-    ///
-    /// * `v` -  u8 array to transform
-    pub fn element_encoder_for_one_byte(v: &[u8]) -> [u8; 1] {
-        let mut output = [0u8; 1];
-        output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
-        output
     }
 }
