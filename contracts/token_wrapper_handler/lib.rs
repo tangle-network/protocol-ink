@@ -198,10 +198,8 @@ mod token_wrapper_handler {
             arguments: &[u8],
         ) -> Result<()> {
             if function_signature
-                == Keccak256::hash_with_four_bytes_output(
-                    b"set_fee(u8,[u8;4])".to_vec().as_slice(),
-                )
-                .unwrap()
+                == Keccak256::hash_with_four_bytes_output(b"set_fee(u8,[u8;4])".to_vec().as_slice())
+                    .unwrap()
             {
                 let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
                 let fee_bytes: [u8; 1] = element_encoder_for_one_byte(&arguments[4..5]);
