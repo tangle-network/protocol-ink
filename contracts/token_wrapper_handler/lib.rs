@@ -180,6 +180,7 @@ mod token_wrapper_handler {
                 return Err(Error::UnWhitelistedContractAddress);
             }
 
+            // extract function signature
             let function_signature = element_encoder_for_four_bytes(&data[32..36]);
             let arguments = &data[36..];
             self.execute_function_signature(function_signature, arguments);
