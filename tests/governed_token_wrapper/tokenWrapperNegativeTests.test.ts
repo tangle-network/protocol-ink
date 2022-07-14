@@ -278,8 +278,6 @@ describe("token-wrapper-negative-tests", () => {
     let newProposalNonce = await tokenWrapperContract.query.nonce();
     expect(newProposalNonce.output).to.be.equal(contractProposalNonce + 1);
 
-    // increase nonce
-    // @ts-ignore
       await expect(
         tokenWrapperContract.tx.removeTokenAddress(
           psp22Contract.address,

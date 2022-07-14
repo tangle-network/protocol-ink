@@ -1,0 +1,21 @@
+[package]
+name = "protocol-ink-lib"
+version = "0.1.0"
+edition = "2021"
+
+
+[lib]
+name = "protocol_ink_lib"
+path = "src/lib.rs"
+
+[dependencies]
+ark-ff = { version = "^0.3.0", default-features = false }
+ark-std = { version = "^0.3.0", default-features = false }
+ark-bn254 = { version = "^0.3.0", default-features = false, features = [ "curve" ] }
+ark-crypto-primitives = { version = "^0.3.0", features = ["r1cs"], default-features = false }
+
+arkworks-setups = { version = "1.1.1",  features = ["r1cs"], default-features = false }
+arkworks-native-gadgets = { version = "1.0.0", default-features = false }
+
+ink_prelude = { tag = "v3.0.1", git = "https://github.com/paritytech/ink", default-features = false }
+

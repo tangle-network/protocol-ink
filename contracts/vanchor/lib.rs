@@ -1,11 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(min_specialization)]
 
-mod field_ops;
-mod keccak;
 mod linkable_merkle_tree;
 mod merkle_tree;
-pub mod zeroes;
 use ink_env::call::FromAccountId;
 use ink_storage::traits::SpreadAllocate;
 
@@ -13,17 +10,18 @@ use ink_lang as ink;
 
 #[brush::contract]
 mod vanchor {
-    use crate::field_ops::{ArkworksIntoFieldBn254, IntoPrimeField};
-    use crate::keccak::Keccak256;
     use crate::linkable_merkle_tree::{Edge, LinkableMerkleTree};
     use crate::merkle_tree::MerkleTree;
-    use crate::zeroes;
     use governed_token_wrapper::governed_token_wrapper::GovernedTokenWrapperRef;
     use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use poseidon::poseidon::PoseidonRef;
+    use protocol_ink_lib::field_ops::{ArkworksIntoFieldBn254, IntoPrimeField};
+    use protocol_ink_lib::keccak::Keccak256;
+    use protocol_ink_lib::utils::element_encoder;
+    use protocol_ink_lib::zeroes::zeroes;
     use verifier::vanchor_verifier::VAnchorVerifierRef;
 
     use brush::contracts::psp22::*;
@@ -275,16 +273,10 @@ mod vanchor {
                 contract.token_wrapper = token_wrapper;
 
                 for i in 0..levels {
-                    contract
-                        .merkle_tree
-                        .filled_subtrees
-                        .insert(i, &zeroes::zeroes(i));
+                    contract.merkle_tree.filled_subtrees.insert(i, &zeroes(i));
                 }
 
-                contract
-                    .merkle_tree
-                    .roots
-                    .insert(0, &zeroes::zeroes(levels));
+                contract.merkle_tree.roots.insert(0, &zeroes(levels));
             })
         }
 
@@ -693,12 +685,6 @@ mod vanchor {
                     return Err(Error::AlreadyRevealedNullfier);
                 }
             }
-
-            let element_encoder = |v: &[u8]| {
-                let mut output = [0u8; 32];
-                output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
-                output
-            };
 
             // Compute hash of abi encoded ext_data, reduced into field from config
             // Ensure that the passed external data hash matches the computed one
