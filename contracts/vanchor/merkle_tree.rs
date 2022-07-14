@@ -7,6 +7,7 @@ use poseidon::PoseidonRef;
 
 use crate::vanchor;
 use ink_prelude::vec;
+use protocol_ink_lib::zeroes::zeroes;
 use scale::{Decode, Encode, Error, Input};
 
 pub const ROOT_HISTORY_SIZE: u32 = 100;
@@ -47,7 +48,7 @@ impl MerkleTree {
         for i in 0..self.levels {
             if current_index % 2 == 0 {
                 left = current_level_hash;
-                right = zeroes::zeroes(i);
+                right = zeroes(i);
                 self.filled_subtrees.insert(i, &current_level_hash);
             } else {
                 left = self.filled_subtrees.get(&i).unwrap_or_default();

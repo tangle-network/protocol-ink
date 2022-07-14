@@ -1,6 +1,7 @@
 [workspace]
 members = [
 	"contracts/*",
+	"protocol-ink-lib"
 ]
 
 [profile.dev]
