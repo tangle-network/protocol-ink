@@ -228,7 +228,7 @@ mod token_wrapper_handler {
                 self.token_wrapper
                     .remove_token_address(token_address.into(), nonce.into());
             } else if function_signature
-                == Keccak256::hash_with_four_bytes_output(b"removeTokenAddress".to_vec().as_slice())
+                == Keccak256::hash_with_four_bytes_output(b"setFeeRecipient".to_vec().as_slice())
                     .unwrap()
             {
                 let fee_recipient: [u8; 32] = element_encoder(&arguments[4..36]);
