@@ -149,9 +149,10 @@ mod token_wrapper_handler {
             Ok(())
         }
 
-        /// Sets the bridge address
+        /// Executes proposal
         ///
-        /// * `bridge_address` -  The bridge address to migrate to
+        /// * `resource_id` -  The resource id
+        /// * `data` - The data to execute
         #[ink(message)]
         pub fn execute_proposal(&mut self, resource_id: [u8; 32], data: Vec<u8>) -> Result<()> {
             // Parse the (proposal)`data`.
