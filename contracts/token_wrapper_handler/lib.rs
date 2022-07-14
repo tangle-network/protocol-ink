@@ -1,7 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-mod keccak;
-
 use ink_lang as ink;
 
 #[ink::contract]
@@ -10,9 +8,10 @@ mod token_wrapper_handler {
     use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
-    use ink_storage::{traits::SpreadAllocate, Mapping};
+    use ink_storage::{Mapping, traits::SpreadAllocate};
 
-    use crate::keccak::Keccak256;
+    use protocol_ink_lib::keccak::Keccak256;
+
 
     #[ink(storage)]
     #[derive(SpreadAllocate)]

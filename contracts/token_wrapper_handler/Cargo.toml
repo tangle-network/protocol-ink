@@ -15,15 +15,8 @@ ink_prelude = { tag = "v3.0.1", git = "https://github.com/paritytech/ink", defau
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
 
-ark-ff = { version = "^0.3.0", default-features = false }
-ark-std = { version = "^0.3.0", default-features = false }
-ark-bn254 = { version = "^0.3.0", default-features = false, features = [ "curve" ] }
-ark-crypto-primitives = { version = "^0.3.0", features = ["r1cs"], default-features = false }
-
-arkworks-setups = { version = "1.1.1",  features = ["r1cs"], default-features = false }
-arkworks-native-gadgets = { version = "1.0.0", default-features = false }
-
 governed_token_wrapper = { path = "../governed_token_wrapper", default-features = false, features = ["ink-as-dependency"] }
+protocol-ink-lib = {path =  "../../protocol-ink-lib"}
 
 [lib]
 name = "token_wrapper_handler"
@@ -42,14 +35,6 @@ std = [
     "ink_primitives/std",
     "scale/std",
     "scale-info/std",
-
-    "ark-ff/std",
-    "ark-std/std",
-    "ark-bn254/std",
-    "ark-crypto-primitives/std",
-    "arkworks-setups/std",
-    "arkworks-native-gadgets/std",
-
     "governed_token_wrapper/std",
 ]
 ink-as-dependency = []
