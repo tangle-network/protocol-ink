@@ -1,7 +1,6 @@
 use ink_prelude::vec::Vec;
 
 pub mod ecdsa;
-mod keccak;
 
 pub trait SigningSystem {
     type Error;

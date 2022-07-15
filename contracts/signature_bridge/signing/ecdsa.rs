@@ -1,6 +1,6 @@
-use super::keccak::Keccak256;
 use ink_env::Error;
 use ink_prelude::vec::Vec;
+use protocol_ink_lib::keccak::Keccak256;
 
 pub const SIGNATURE_LENGTH: usize = 65;
 
