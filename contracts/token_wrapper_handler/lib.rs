@@ -11,7 +11,8 @@ mod token_wrapper_handler {
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use protocol_ink_lib::keccak::Keccak256;
     use protocol_ink_lib::utils::{
-        element_encoder, element_encoder_for_four_bytes, element_encoder_for_one_byte,
+        element_encoder, element_encoder_for_eight_bytes, element_encoder_for_four_bytes,
+        element_encoder_for_one_byte,
     };
 
     #[ink(storage)]
@@ -198,55 +199,57 @@ mod token_wrapper_handler {
             arguments: &[u8],
         ) -> Result<()> {
             if function_signature
-                == Keccak256::hash_with_four_bytes_output(b"set_fee(u8,[u8;4])".to_vec().as_slice())
-                    .unwrap()
+                == Keccak256::hash_with_four_bytes_output(
+                    b"set_fee([u8;1],[u8;8])".to_vec().as_slice(),
+                )
+                .unwrap()
             {
-                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
-                let fee_bytes: [u8; 1] = element_encoder_for_one_byte(&arguments[4..5]);
+                let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
+                let fee_bytes: [u8; 1] = element_encoder_for_one_byte(&arguments[8..9]);
 
+                let nonce = u64::from_be_bytes(nonce_bytes);
                 let fee = u8::from_be_bytes(fee_bytes);
-                let nonce = u32::from_be_bytes(nonce_bytes);
 
-                self.token_wrapper.set_fee(fee.into(), nonce.into());
+                self.token_wrapper.set_fee(fee.into(), nonce);
             } else if function_signature
                 == Keccak256::hash_with_four_bytes_output(
-                    b"add_token_address([u8;32],[u8;4])".to_vec().as_slice(),
+                    b"add_token_address([u8;32],[u8;8])".to_vec().as_slice(),
                 )
                 .unwrap()
             {
-                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
-                let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
+                let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
+                let token_address: [u8; 32] = element_encoder(&arguments[8..40]);
 
-                let nonce = u32::from_be_bytes(nonce_bytes);
+                let nonce = u64::from_be_bytes(nonce_bytes);
 
                 self.token_wrapper
-                    .add_token_address(token_address.into(), nonce.into());
+                    .add_token_address(token_address.into(), nonce);
             } else if function_signature
                 == Keccak256::hash_with_four_bytes_output(
-                    b"remove_token_address([u8;32],[u8;4])".to_vec().as_slice(),
+                    b"remove_token_address([u8;32],[u8;8])".to_vec().as_slice(),
                 )
                 .unwrap()
             {
-                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
-                let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
+                let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
+                let token_address: [u8; 32] = element_encoder(&arguments[8..40]);
 
-                let nonce = u32::from_be_bytes(nonce_bytes);
+                let nonce = u64::from_be_bytes(nonce_bytes);
 
                 self.token_wrapper
-                    .remove_token_address(token_address.into(), nonce.into());
+                    .remove_token_address(token_address.into(), nonce);
             } else if function_signature
                 == Keccak256::hash_with_four_bytes_output(
-                    b"set_fee_recipient([u8;32],[u8;4])".to_vec().as_slice(),
+                    b"set_fee_recipient([u8;32],[u8;8])".to_vec().as_slice(),
                 )
                 .unwrap()
             {
-                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
-                let fee_recipient: [u8; 32] = element_encoder(&arguments[4..36]);
+                let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
+                let fee_recipient: [u8; 32] = element_encoder(&arguments[8..40]);
 
-                let nonce = u32::from_be_bytes(nonce_bytes);
+                let nonce = u64::from_be_bytes(nonce_bytes);
 
                 self.token_wrapper
-                    .set_fee_recipient(fee_recipient.into(), nonce.into());
+                    .set_fee_recipient(fee_recipient.into(), nonce);
             } else {
                 return Err(Error::InvalidFunctionSignature);
             }
