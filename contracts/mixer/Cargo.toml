@@ -31,6 +31,8 @@ scale-info = { version = "2", default-features = false, features = [
     "derive",
 ], optional = true }
 
+protocol-ink-lib = {path = "../../protocol-ink-lib"}
+
 # brush = { git = "https://github.com/Supercolony-net/openbrush-contracts", default-features = false, features = ["psp22"] }
 
 [lib]
@@ -56,12 +58,5 @@ std = [
     # "brush/std",
     "poseidon/std",
     "verifier/std",
-
-    "ark-ff/std",
-    "ark-std/std",
-    "ark-bn254/std",
-    "ark-crypto-primitives/std",
-    "arkworks-setups/std",
-    "arkworks-native-gadgets/std",
 ]
 ink-as-dependency = []

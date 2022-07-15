@@ -1,20 +1,19 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(min_specialization)]
 
-mod keccak;
 pub mod merkle_tree;
-pub mod zeroes;
 
 use ink_lang as ink;
 
 #[ink::contract]
 pub mod mixer {
     use super::*;
-    use crate::keccak::Keccak256;
-    use crate::zeroes;
     use ink_prelude::vec::Vec;
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use poseidon::poseidon::PoseidonRef;
+    use protocol_ink_lib::keccak::Keccak256;
+    use protocol_ink_lib::utils::truncate_and_pad;
+    use protocol_ink_lib::zeroes::zeroes;
     use scale::Encode;
     use verifier::MixerVerifierRef;
 
@@ -126,16 +125,10 @@ pub mod mixer {
                 contract.merkle_tree.next_index = 0;
 
                 for i in 0..levels {
-                    contract
-                        .merkle_tree
-                        .filled_subtrees
-                        .insert(i, &zeroes::zeroes(i));
+                    contract.merkle_tree.filled_subtrees.insert(i, &zeroes(i));
                 }
 
-                contract
-                    .merkle_tree
-                    .roots
-                    .insert(0, &zeroes::zeroes(levels));
+                contract.merkle_tree.roots.insert(0, &zeroes(levels));
             })
         }
 
@@ -288,11 +281,5 @@ pub mod mixer {
         pub fn native_contract_balance(&self) -> Balance {
             self.env().balance()
         }
-    }
-
-    pub fn truncate_and_pad(t: &[u8]) -> Vec<u8> {
-        let mut truncated_bytes = t[..20].to_vec();
-        truncated_bytes.extend_from_slice(&[0u8; 12]);
-        truncated_bytes
     }
 }
