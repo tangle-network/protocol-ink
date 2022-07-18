@@ -11,3 +11,30 @@ pub fn element_encoder(v: &[u8]) -> [u8; 32] {
     output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
     output
 }
+
+/// Transforms a u8 array to a fixed size array of 4 bytes
+///
+/// * `v` -  u8 array to transform
+pub fn element_encoder_for_four_bytes(v: &[u8]) -> [u8; 4] {
+    let mut output = [0u8; 4];
+    output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
+    output
+}
+
+/// Transforms a u8 array to a fixed size array of 8 bytes
+///
+/// * `v` -  u8 array to transform
+pub fn element_encoder_for_eight_bytes(v: &[u8]) -> [u8; 8] {
+    let mut output = [0u8; 8];
+    output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
+    output
+}
+
+/// Transforms a u8 array to a fixed size array of 1 byte
+///
+/// * `v` -  u8 array to transform
+pub fn element_encoder_for_one_byte(v: &[u8]) -> [u8; 1] {
+    let mut output = [0u8; 1];
+    output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
+    output
+}
