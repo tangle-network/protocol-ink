@@ -9,7 +9,10 @@ mod anchor_handler {
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use protocol_ink_lib::keccak::Keccak256;
-    use protocol_ink_lib::utils::{element_encoder, element_encoder_for_four_bytes};
+    use protocol_ink_lib::utils::{
+        element_encoder, element_encoder_for_eight_bytes, element_encoder_for_four_bytes,
+        element_encoder_for_one_byte,
+    };
     use vanchor::vanchor::TokenWrapperData;
     use vanchor::VAnchorRef;
     /// The token wrapper handler result type.
@@ -38,7 +41,7 @@ mod anchor_handler {
         pub src_chain_id: u64,
         pub resource_id: [u8; 32],
         pub merkle_root: [u8; 32],
-        pub leaf_id: u64,
+        pub leaf_id: u32,
     }
 
     #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
@@ -203,7 +206,64 @@ mod anchor_handler {
             function_signature: [u8; 4],
             arguments: &[u8],
         ) -> Result<()> {
+            if function_signature
+                == Keccak256::hash_with_four_bytes_output(
+                    b"set_handler([u8;32],[u8;8])".to_vec().as_slice(),
+                )
+                .unwrap()
+            {
+                let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
+                let token_address: [u8; 32] = element_encoder(&arguments[8..40]);
 
+                let nonce = u64::from_be_bytes(nonce_bytes);
+
+                self.vanchor.set_handler(token_address.into(), nonce);
+            } else if function_signature
+                == Keccak256::hash_with_four_bytes_output(
+                    b"update_edge([u8;8],[u8;32],[u8;4],[u8;32])"
+                        .to_vec()
+                        .as_slice(),
+                )
+                .unwrap()
+            {
+                let src_chain_id_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
+                let root: [u8; 32] = element_encoder(&arguments[8..40]);
+                let latest_leaf_index_bytes: [u8; 4] =
+                    element_encoder_for_four_bytes(&arguments[40..44]);
+                let target: [u8; 32] = element_encoder(&arguments[44..76]);
+
+                let src_chain_id = u64::from_be_bytes(src_chain_id_bytes);
+                let latest_leaf_index = u32::from_be_bytes(latest_leaf_index_bytes);
+
+                self.vanchor
+                    .update_edge(src_chain_id, root, latest_leaf_index, target);
+            } else if function_signature
+                == Keccak256::hash_with_four_bytes_output(
+                    b"configure_max_deposit_limit([u8;1])".to_vec().as_slice(),
+                )
+                .unwrap()
+            {
+                let amount_bytes: [u8; 1] = element_encoder_for_one_byte(&arguments[0..1]);
+
+                let amount = u8::from_be_bytes(amount_bytes);
+
+                self.vanchor.configure_max_deposit_limit(amount.into());
+            } else if function_signature
+                == Keccak256::hash_with_four_bytes_output(
+                    b"configure_min_withdrawal_limit([u8;32],[u8;8])"
+                        .to_vec()
+                        .as_slice(),
+                )
+                .unwrap()
+            {
+                let amount_bytes: [u8; 1] = element_encoder_for_one_byte(&arguments[0..1]);
+
+                let amount = u8::from_be_bytes(amount_bytes);
+
+                self.vanchor.configure_min_withdrawal_limit(amount.into());
+            } else {
+                return Err(Error::InvalidFunctionSignature);
+            }
             Ok(())
         }
 
