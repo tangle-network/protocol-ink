@@ -480,6 +480,52 @@ pub mod governed_token_wrapper {
             Ok(())
         }
 
+        /// Sets wrapping fee percentage
+        ///
+        /// * `fee` - The wrapping fee percentage
+        /// * `nonce` -  The nonce tracking updates to this contract
+        #[ink(message)]
+        pub fn set_fee(&mut self, fee: Balance, nonce: u64) -> Result<()> {
+            // only contract governor can execute this function
+            self.is_governor(self.env().caller())?;
+
+            if self.proposal_nonce > nonce {
+                return Err(Error::InvalidNonce);
+            }
+
+            if nonce != self.proposal_nonce + 1 {
+                return Err(Error::NonceMustIncrementByOne);
+            }
+
+            self.fee_percentage = fee;
+            self.proposal_nonce = nonce;
+
+            Ok(())
+        }
+
+        /// Sets the wrapping fee recipient
+        ///
+        /// * `fee_recipient` - The address to receive wrapping fee
+        /// * `nonce` -  The nonce tracking updates to this contract
+        #[ink(message)]
+        pub fn set_fee_recipient(&mut self, fee_recipient: AccountId, nonce: u64) -> Result<()> {
+            // only contract governor can execute this function
+            self.is_governor(self.env().caller())?;
+
+            if self.proposal_nonce > nonce {
+                return Err(Error::InvalidNonce);
+            }
+
+            if nonce != self.proposal_nonce + 1 {
+                return Err(Error::NonceMustIncrementByOne);
+            }
+
+            self.fee_recipient = fee_recipient;
+            self.proposal_nonce = nonce;
+
+            Ok(())
+        }
+
         /// Handles unwrapping by transferring token to the sender and burning for the burn_for address
         ///
         /// * `token_address` - is the address of PSP22 to unwrap into,
