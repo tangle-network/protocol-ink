@@ -10,6 +10,8 @@ mod anchor_handler {
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use protocol_ink_lib::keccak::Keccak256;
     use protocol_ink_lib::utils::{element_encoder, element_encoder_for_four_bytes};
+    use vanchor::vanchor::TokenWrapperData;
+    use vanchor::VAnchorRef;
     /// The token wrapper handler result type.
     pub type Result<T> = core::result::Result<T, Error>;
 
@@ -26,6 +28,7 @@ mod anchor_handler {
         contract_whitelist: Mapping<AccountId, bool>,
         /// (src_chain_id, height) -> UpdateRecord
         update_records: Mapping<(u64, u64), UpdateRecord>,
+        vanchor: VAnchorRef,
     }
 
     #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
@@ -36,6 +39,24 @@ mod anchor_handler {
         pub resource_id: [u8; 32],
         pub merkle_root: [u8; 32],
         pub leaf_id: u64,
+    }
+
+    #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
+    #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
+    pub struct VAnchorData {
+        pub max_edges: u32,
+        pub chain_id: u64,
+        pub levels: u32,
+        pub max_deposit_amt: Balance,
+        pub min_withdraw_amt: Balance,
+        pub max_ext_amt: Balance,
+        pub max_fee: Balance,
+        pub tokenwrapper_addr: AccountId,
+        pub handler: AccountId,
+        pub version: u32,
+        pub poseidon_contract_hash: Hash,
+        pub verifier_contract_hash: Hash,
+        pub token_wrapper_contract_hash: Hash,
     }
 
     /// The token wrapper handler error types.
@@ -62,8 +83,40 @@ mod anchor_handler {
             bridge_address: AccountId,
             initial_resource_ids: Vec<[u8; 32]>,
             initial_contract_addresses: Vec<AccountId>,
+            vanchor_contract_hash: Hash,
+            vanchor_data: VAnchorData,
+            token_wrapper_data: TokenWrapperData,
         ) -> Self {
+            let salt = vanchor_data.version.to_le_bytes();
+
+            let vanchor = VAnchorRef::new(
+                vanchor_data.max_edges,
+                vanchor_data.chain_id,
+                vanchor_data.levels,
+                vanchor_data.max_deposit_amt,
+                vanchor_data.min_withdraw_amt,
+                vanchor_data.max_ext_amt,
+                vanchor_data.max_fee,
+                vanchor_data.tokenwrapper_addr,
+                vanchor_data.handler,
+                token_wrapper_data,
+                vanchor_data.version,
+                vanchor_data.poseidon_contract_hash,
+                vanchor_data.verifier_contract_hash,
+                vanchor_data.token_wrapper_contract_hash,
+            )
+            .endowment(0)
+            .code_hash(vanchor_contract_hash)
+            .salt_bytes(salt)
+            .instantiate()
+            .unwrap_or_else(|error| {
+                panic!(
+                    "failed at instantiating the Token Wrapper contract: {:?}",
+                    error
+                )
+            });
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
+                instance.vanchor = vanchor;
                 instance.bridge_address = bridge_address;
                 if initial_resource_ids.len() != initial_contract_addresses.len() {
                     panic!("initial_resource_ids and initial_contract_addresses len mismatch");
@@ -99,6 +152,57 @@ mod anchor_handler {
                 return Err(Error::Unauthorized);
             }
             self.bridge_address = bridge_address;
+
+            Ok(())
+        }
+
+        /// Executes proposal
+        ///
+        /// * `resource_id` -  The resource id
+        /// * `data` - The data to execute
+        #[ink(message)]
+        pub fn execute_proposal(&mut self, resource_id: [u8; 32], data: Vec<u8>) -> Result<()> {
+            // Parse the (proposal)`data`.
+            let parsed_resource_id = element_encoder(&data[0..32]);
+
+            if self.env().caller() != self.bridge_address {
+                return Err(Error::Unauthorized);
+            }
+
+            if parsed_resource_id != resource_id {
+                return Err(Error::InvalidResourceId);
+            }
+
+            let anchor_address = self.resource_id_to_contract_address.get(resource_id);
+
+            if anchor_address.is_none() {
+                return Err(Error::InvalidResourceId);
+            }
+
+            let is_contract_whitelisted = self.contract_whitelist.get(anchor_address.unwrap());
+
+            // check if contract address is whitelisted
+            if is_contract_whitelisted.is_none() || !is_contract_whitelisted.unwrap() {
+                return Err(Error::UnWhitelistedContractAddress);
+            }
+
+            // extract function signature
+            let function_signature = element_encoder_for_four_bytes(&data[32..36]);
+            let arguments = &data[36..];
+            self.execute_function_signature(function_signature, arguments);
+
+            Ok(())
+        }
+
+        /// Executes the function signature
+        ///
+        /// * `function_signature` -  The signature to be interpreted and executed on the vanchor contract
+        /// * `arguments` - The function arguments to be passed to respective functions in the vanchor contract
+        pub fn execute_function_signature(
+            &mut self,
+            function_signature: [u8; 4],
+            arguments: &[u8],
+        ) -> Result<()> {
 
             Ok(())
         }

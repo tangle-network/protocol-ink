@@ -16,6 +16,8 @@ scale = { package = "parity-scale-codec", version = "3", default-features = fals
 scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
 
 protocol-ink-lib = {path = "../../protocol-ink-lib"}
+vanchor = { path = "../vanchor", default-features = false, features = ["ink-as-dependency"] }
+
 
 [lib]
 name = "anchor_handler"
@@ -23,6 +25,7 @@ path = "lib.rs"
 crate-type = [
 	# Used for normal contract Wasm blobs.
 	"cdylib",
+    "rlib"
 ]
 
 [features]
@@ -34,5 +37,7 @@ std = [
     "ink_primitives/std",
     "scale/std",
     "scale-info/std",
+
+    "vanchor/std"
 ]
 ink-as-dependency = []
