@@ -222,7 +222,7 @@ describe("treasury-tests", () => {
       treasuryContract.tx.insertPsp22Balance(treasuryContract.address, 2000)
     ).to.be.fulfilled;
 
-    // perform token rescue
+    // perform token rescue for amount lesser than contract balance
     await expect(
       treasuryContract.tx.rescueTokens(
         psp22Contract.address,
@@ -265,7 +265,7 @@ describe("treasury-tests", () => {
       BobSigner.address
     );
 
-    // secondly set psp22 allowance. Make psp22Contract the owner, and Alice the spender
+    //  Make psp22Contract the owner, and Alice the spender
     let allowedAmount = 500000;
     expect(
       await treasuryContract.tx.setPsp22AllowanceForOwner(
@@ -291,7 +291,7 @@ describe("treasury-tests", () => {
       treasuryContract.tx.insertPsp22Balance(treasuryContract.address, 2000)
     ).to.be.fulfilled;
 
-    // perform token rescue
+    // perform token rescue for amount greater than contract balance
     await expect(
       treasuryContract.tx.rescueTokens(
         psp22Contract.address,
