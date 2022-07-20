@@ -6,10 +6,9 @@ use ink_lang as ink;
 mod treasury {
     use brush::contracts::psp22::*;
     use brush::contracts::traits::psp22::PSP22;
+    use ink_prelude::vec::Vec;
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use protocol_ink_lib::utils::{is_account_id_zero, ZERO_ADDRESS};
-    use ink_prelude::vec::Vec;
-
 
     /// The treasury result type.
     pub type Result<T> = core::result::Result<T, Error>;
@@ -48,6 +47,12 @@ mod treasury {
             })
         }
 
+        /// Rescues tokens
+        ///
+        /// * `token_address` -  The token address
+        /// * `to` -  Location address to rescue the token to
+        /// * `amount_to_rescue` -  The amount to rescue
+        /// * `nonce` - The nonce to use
         #[ink(message, payable)]
         pub fn rescue_tokens(
             &mut self,
@@ -86,21 +91,17 @@ mod treasury {
                 }
             } else {
                 let psp22_balance = self.balance_of(self.env().account_id());
+
                 if psp22_balance >= amount_to_rescue {
                     if self
-                        .transfer_from(
-                            self.env().account_id(),
-                            to,
-                            amount_to_rescue,
-                            Vec::<u8>::new(),
-                        )
+                        .transfer_from(token_address, to, amount_to_rescue, Vec::<u8>::new())
                         .is_err()
                     {
                         return Err(Error::TransferError);
                     }
                 } else {
                     if self
-                        .transfer_from(self.env().account_id(), to, psp22_balance, Vec::<u8>::new())
+                        .transfer_from(token_address, to, psp22_balance, Vec::<u8>::new())
                         .is_err()
                     {
                         return Err(Error::TransferError);
@@ -129,6 +130,78 @@ mod treasury {
             self.proposal_nonce = nonce;
             self.treasury_handler = handler;
 
+            Ok(())
+        }
+
+        /// Returns the `handler` value.
+        #[ink(message)]
+        pub fn handler(&self) -> AccountId {
+            self.treasury_handler
+        }
+
+        /// Returns the `proposal_nonce` value.
+        #[ink(message)]
+        pub fn nonce(&self) -> u32 {
+            self.proposal_nonce
+        }
+
+        /// Returns native contract balance
+        #[ink(message)]
+        pub fn native_contract_balance(&self) -> Balance {
+            self.env().balance()
+        }
+
+        /// Returns contract psp22 balance
+        #[ink(message)]
+        pub fn psp22_contract_balance(&self) -> Balance {
+            self.balance_of(self.env().account_id())
+        }
+
+        /// sets the psp22 allowance for the spender(spend on behalf of owner)
+        ///
+        /// * `owner` - owner's address
+        /// * `spender` - spender's address
+        /// * `amount` - amount to spend
+        #[ink(message)]
+        pub fn set_psp22_allowance_for_owner(
+            &mut self,
+            owner: AccountId,
+            spender: AccountId,
+            amount: Balance,
+        ) -> Result<()> {
+            // psp22 call to increase allowance
+            self.psp22.allowances.insert((owner, spender), &amount);
+            Ok(())
+        }
+
+        /// Gets the psp22 allowance for the spender(spend on behalf of owner)
+        ///
+        /// * `owner` - owner's address
+        /// * `spender` - spender's address
+        #[ink(message)]
+        pub fn get_psp22_allowance(&self, owner: AccountId, spender: AccountId) -> Balance {
+            self.allowance(owner, spender)
+        }
+
+        /// Returns psp22 balance for an address
+        ///
+        /// * `address` - The address to check
+        #[ink(message)]
+        pub fn psp22_balance(&self, address: AccountId) -> Balance {
+            self.balance_of(address)
+        }
+
+        /// Insert's psp22 token for an address
+        ///
+        /// * `account_id` - address to transfer to
+        /// * `amount` - amount to transfer
+        #[ink(message)]
+        pub fn insert_psp22_balance(
+            &mut self,
+            account_id: AccountId,
+            amount: Balance,
+        ) -> Result<()> {
+            self.psp22.balances.insert(&account_id, &amount);
             Ok(())
         }
     }
