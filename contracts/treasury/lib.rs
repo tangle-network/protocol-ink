@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+mod tests;
+
 use ink_lang as ink;
 
 #[ink::contract]
