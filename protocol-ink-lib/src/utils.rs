@@ -1,6 +1,5 @@
-use ink_prelude::vec::Vec;
 use ink_env::AccountId;
-
+use ink_prelude::vec::Vec;
 
 pub const ZERO_ADDRESS: [u8; 32] = [0; 32];
 
