@@ -1,4 +1,8 @@
 use ink_prelude::vec::Vec;
+use ink_env::AccountId;
+
+
+pub const ZERO_ADDRESS: [u8; 32] = [0; 32];
 
 pub fn truncate_and_pad(t: &[u8]) -> Vec<u8> {
     let mut truncated_bytes = t[..20].to_vec();
@@ -37,4 +41,11 @@ pub fn element_encoder_for_one_byte(v: &[u8]) -> [u8; 1] {
     let mut output = [0u8; 1];
     output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
     output
+}
+
+/// Determines if an account is zero token address
+///
+/// * `account_id` - an address to determine,
+pub fn is_account_id_zero(account_id: AccountId) -> bool {
+    account_id == ZERO_ADDRESS.into()
 }
