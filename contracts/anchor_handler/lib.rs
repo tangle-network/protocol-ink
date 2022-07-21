@@ -15,7 +15,7 @@ mod anchor_handler {
     };
     use vanchor::vanchor::TokenWrapperData;
     use vanchor::VAnchorRef;
-    /// The token wrapper handler result type.
+    /// The anchor handler result type.
     pub type Result<T> = core::result::Result<T, Error>;
 
     #[ink(storage)]

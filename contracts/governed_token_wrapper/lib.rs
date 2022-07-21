@@ -25,6 +25,7 @@ pub mod governed_token_wrapper {
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
+    use protocol_ink_lib::utils::{is_account_id_zero, ZERO_ADDRESS};
 
     /// The vanchor result type.
     pub type Result<T> = core::result::Result<T, Error>;
@@ -32,8 +33,6 @@ pub mod governed_token_wrapper {
         "requested transfer failed. this can be the case if the contract does not\
     have sufficient free funds or if the transfer would have brought the\
     contract's balance below minimum balance.";
-
-    pub const ZERO_ADDRESS: [u8; 32] = [0; 32];
 
     /// The contract storage
     #[ink(storage)]
@@ -544,7 +543,7 @@ pub mod governed_token_wrapper {
                 return Err(Error::TokenBurnError);
             }
 
-            if self.is_account_id_zero(token_address) {
+            if is_account_id_zero(token_address) {
                 // transfer native liquidity from the token wrapper to the sender
                 if self.env().transfer(sender, amount).is_err() {
                     return Err(Error::TransferError);
@@ -577,7 +576,7 @@ pub mod governed_token_wrapper {
             cost_to_wrap: Balance,
             leftover: Balance,
         ) -> Result<()> {
-            if self.is_account_id_zero(token_address) {
+            if is_account_id_zero(token_address) {
                 // mint the native value sent to the contract
                 if self.mint(mint_for, leftover).is_err() {
                     return Err(Error::TokenMintError);
@@ -635,18 +634,11 @@ pub mod governed_token_wrapper {
             token_address: AccountId,
             amount: Balance,
         ) -> Balance {
-            if self.is_account_id_zero(token_address) {
+            if is_account_id_zero(token_address) {
                 self.env().transferred_value()
             } else {
                 amount
             }
-        }
-
-        /// Determines if an account is zero
-        ///
-        /// * `account_id` - an address to determine,
-        fn is_account_id_zero(&mut self, account_id: AccountId) -> bool {
-            account_id == ZERO_ADDRESS.into()
         }
 
         /// Checks to determine if it's safe to wrap
@@ -654,7 +646,7 @@ pub mod governed_token_wrapper {
         /// * `token_address` - Is the address for wrapping,
         /// * `amount` - Is the amount for wrapping.
         fn is_valid_wrapping(&mut self, token_address: AccountId, amount: Balance) -> Result<()> {
-            if self.is_account_id_zero(token_address) {
+            if is_account_id_zero(token_address) {
                 if amount != 0 {
                     return Err(Error::InvalidAmountForNativeWrapping);
                 }
@@ -685,7 +677,7 @@ pub mod governed_token_wrapper {
         /// * `token_address` - Is the address for unwrapping,
         /// * `amount` - Is the amount for unwrapping.
         fn is_valid_unwrapping(&mut self, token_address: AccountId, amount: Balance) -> Result<()> {
-            if self.is_account_id_zero(token_address) {
+            if is_account_id_zero(token_address) {
                 if amount >= self.env().balance() {
                     return Err(Error::InsufficientNativeBalance);
                 }

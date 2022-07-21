@@ -1,6 +1,6 @@
 [package]
-name = "governed_token_wrapper"
-version = "1.6.1"
+name = "treasury"
+version = "0.1.0"
 authors = ["Webb Developers"]
 edition = "2021"
 
@@ -14,40 +14,31 @@ ink_prelude = { tag = "v3.0.1", git = "https://github.com/paritytech/ink", defau
 
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
+
 # Brush dependency
 brush = { tag = "v1.6.1", git = "https://github.com/Supercolony-net/openbrush-contracts", default-features = false, features = ["psp22"] }
 protocol-ink-lib = {path = "../../protocol-ink-lib"}
 
+
 [lib]
-name = "governed_token_wrapper"
+name = "treasury"
 path = "lib.rs"
 crate-type = [
-    # Used for normal contract Wasm blobs.
-    "cdylib",
-    "rlib",
+	# Used for normal contract Wasm blobs.
+	"cdylib",
 ]
 
 [features]
 default = ["std"]
 std = [
-    "ink_primitives/std",
-    "ink_metadata",
     "ink_metadata/std",
     "ink_env/std",
     "ink_storage/std",
-    "ink_lang/std",
+    "ink_primitives/std",
     "scale/std",
-    "scale-info",
     "scale-info/std",
 
     "brush/std",
+
 ]
 ink-as-dependency = []
-
-[profile.dev]
-codegen-units = 16
-overflow-checks = false
-
-[profile.release]
-codegen-units = 16
-overflow-checks = false
