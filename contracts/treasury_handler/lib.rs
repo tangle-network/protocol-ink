@@ -17,7 +17,6 @@ mod treasury_handler {
     /// The treasury wrapper handler result type.
     pub type Result<T> = core::result::Result<T, Error>;
 
-
     #[ink(storage)]
     #[derive(SpreadAllocate)]
     pub struct TreasuryHandler {
@@ -31,7 +30,6 @@ mod treasury_handler {
         contract_whitelist: Mapping<AccountId, bool>,
         /// (src_chain_id, nonce) -> UpdateRecord
         update_records: Mapping<(u64, u64), UpdateRecord>,
-
     }
 
     #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
@@ -70,10 +68,12 @@ mod treasury_handler {
         /// * `initial_contract_addresses` - These are the the contract addresses that the contract will initially support
         /// * `version` - contract version
         #[ink(constructor)]
-        pub fn new(bridge_address: AccountId,
-                   initial_resource_ids: Vec<[u8; 32]>,
-                   initial_contract_addresses: Vec<AccountId>,
-                   version: u32,) -> Self {
+        pub fn new(
+            bridge_address: AccountId,
+            initial_resource_ids: Vec<[u8; 32]>,
+            initial_contract_addresses: Vec<AccountId>,
+            version: u32,
+        ) -> Self {
             let salt = version.to_le_bytes();
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
                 instance.bridge_address = bridge_address;
@@ -115,6 +115,86 @@ mod treasury_handler {
             }
             self.bridge_address = bridge_address;
 
+            Ok(())
+        }
+
+        /// Executes proposal
+        ///
+        /// * `resource_id` -  The resource id
+        /// * `data` - The data to execute
+        #[ink(message)]
+        pub fn execute_proposal(&mut self, resource_id: [u8; 32], data: Vec<u8>) -> Result<()> {
+            // Parse the (proposal)`data`.
+            let parsed_resource_id = element_encoder(&data[0..32]);
+
+            if self.env().caller() != self.bridge_address {
+                return Err(Error::Unauthorized);
+            }
+
+            if parsed_resource_id != resource_id {
+                return Err(Error::InvalidResourceId);
+            }
+
+            let anchor_address = self.resource_id_to_contract_address.get(resource_id);
+
+            if anchor_address.is_none() {
+                return Err(Error::InvalidResourceId);
+            }
+
+            let is_contract_whitelisted = self.contract_whitelist.get(anchor_address.unwrap());
+
+            // check if contract address is whitelisted
+            if is_contract_whitelisted.is_none() || !is_contract_whitelisted.unwrap() {
+                return Err(Error::UnWhitelistedContractAddress);
+            }
+
+            // extract function signature
+            let function_signature = element_encoder_for_four_bytes(&data[32..36]);
+            let arguments = &data[36..];
+            self.execute_function_signature(function_signature, arguments);
+
+            Ok(())
+        }
+
+        /// Executes the function signature
+        ///
+        /// * `function_signature` -  The signature to be interpreted and executed on the vanchor contract
+        /// * `arguments` - The function arguments to be passed to respective functions in the vanchor contract
+        pub fn execute_function_signature(
+            &mut self,
+            function_signature: [u8; 4],
+            arguments: &[u8],
+        ) -> Result<()> {
+            if function_signature
+                == Keccak256::hash_with_four_bytes_output(
+                    b"set_handler([u8;32],[u8;4])".to_vec().as_slice(),
+                )
+                .unwrap()
+            {
+                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
+                let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
+
+                let nonce = u32::from_be_bytes(nonce_bytes);
+
+                // TODO: cross contract call to set treasury handler
+            } else if function_signature
+                == Keccak256::hash_with_four_bytes_output(
+                    b"rescue_tokens([u8;32],[u8;32],[u8;4],[u8;4])"
+                        .to_vec()
+                        .as_slice(),
+                )
+                .unwrap()
+            {
+                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
+                let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
+                let to: [u8; 32] = element_encoder(&arguments[36..68]);
+                let amount_to_rescue_bytes = element_encoder_for_four_bytes(&arguments[68..72]);
+
+                let nonce = u32::from_be_bytes(nonce_bytes);
+                let amount_to_rescue = u32::from_be_bytes(amount_to_rescue_bytes);
+
+                // TODO: cross contract call to resuce tokens
+            }
             Ok(())
         }
 
