@@ -4,6 +4,7 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod treasury_handler {
+    use ink_env::hash::Blake2x256;
     use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
