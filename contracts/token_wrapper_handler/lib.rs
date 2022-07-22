@@ -9,6 +9,7 @@ mod token_wrapper_handler {
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
+    use protocol_ink_lib::blake::blake2b_256_4_bytes_output;
     use protocol_ink_lib::keccak::Keccak256;
     use protocol_ink_lib::utils::{
         element_encoder, element_encoder_for_eight_bytes, element_encoder_for_four_bytes,
@@ -199,10 +200,7 @@ mod token_wrapper_handler {
             arguments: &[u8],
         ) -> Result<()> {
             if function_signature
-                == Keccak256::hash_with_four_bytes_output(
-                    b"set_fee([u8;1],[u8;8])".to_vec().as_slice(),
-                )
-                .unwrap()
+                == blake2b_256_4_bytes_output(b"GovernedTokenWrapper::set_fee".to_vec().as_slice())
             {
                 let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
                 let fee_bytes: [u8; 1] = element_encoder_for_one_byte(&arguments[8..9]);
@@ -212,10 +210,11 @@ mod token_wrapper_handler {
 
                 self.token_wrapper.set_fee(fee.into(), nonce);
             } else if function_signature
-                == Keccak256::hash_with_four_bytes_output(
-                    b"add_token_address([u8;32],[u8;8])".to_vec().as_slice(),
+                == blake2b_256_4_bytes_output(
+                    b"GovernedTokenWrapper::add_token_address"
+                        .to_vec()
+                        .as_slice(),
                 )
-                .unwrap()
             {
                 let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
                 let token_address: [u8; 32] = element_encoder(&arguments[8..40]);
@@ -225,10 +224,11 @@ mod token_wrapper_handler {
                 self.token_wrapper
                     .add_token_address(token_address.into(), nonce);
             } else if function_signature
-                == Keccak256::hash_with_four_bytes_output(
-                    b"remove_token_address([u8;32],[u8;8])".to_vec().as_slice(),
+                == blake2b_256_4_bytes_output(
+                    b"GovernedTokenWrapper::remove_token_address"
+                        .to_vec()
+                        .as_slice(),
                 )
-                .unwrap()
             {
                 let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
                 let token_address: [u8; 32] = element_encoder(&arguments[8..40]);
@@ -238,10 +238,11 @@ mod token_wrapper_handler {
                 self.token_wrapper
                     .remove_token_address(token_address.into(), nonce);
             } else if function_signature
-                == Keccak256::hash_with_four_bytes_output(
-                    b"set_fee_recipient([u8;32],[u8;8])".to_vec().as_slice(),
+                == blake2b_256_4_bytes_output(
+                    b"GovernedTokenWrapper::set_fee_recipient"
+                        .to_vec()
+                        .as_slice(),
                 )
-                .unwrap()
             {
                 let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
                 let fee_recipient: [u8; 32] = element_encoder(&arguments[8..40]);

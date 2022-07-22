@@ -8,6 +8,7 @@ mod anchor_handler {
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
+    use protocol_ink_lib::blake::blake2b_256_4_bytes_output;
     use protocol_ink_lib::keccak::Keccak256;
     use protocol_ink_lib::utils::{
         element_encoder, element_encoder_for_eight_bytes, element_encoder_for_four_bytes,
@@ -15,6 +16,7 @@ mod anchor_handler {
     };
     use vanchor::vanchor::TokenWrapperData;
     use vanchor::VAnchorRef;
+
     /// The anchor handler result type.
     pub type Result<T> = core::result::Result<T, Error>;
 
@@ -207,10 +209,9 @@ mod anchor_handler {
             arguments: &[u8],
         ) -> Result<()> {
             if function_signature
-                == Keccak256::hash_with_four_bytes_output(
-                    b"set_handler([u8;32],[u8;8])".to_vec().as_slice(),
+                == blake2b_256_4_bytes_output(
+                    b"VAnchor::set_handler".to_vec().as_slice(),
                 )
-                .unwrap()
             {
                 let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
                 let token_address: [u8; 32] = element_encoder(&arguments[8..40]);
@@ -219,12 +220,7 @@ mod anchor_handler {
 
                 self.vanchor.set_handler(token_address.into(), nonce);
             } else if function_signature
-                == Keccak256::hash_with_four_bytes_output(
-                    b"update_edge([u8;8],[u8;32],[u8;4],[u8;32])"
-                        .to_vec()
-                        .as_slice(),
-                )
-                .unwrap()
+                == blake2b_256_4_bytes_output(b"VAnchor::update_edge".to_vec().as_slice())
             {
                 let src_chain_id_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
                 let root: [u8; 32] = element_encoder(&arguments[8..40]);
@@ -238,10 +234,9 @@ mod anchor_handler {
                 self.vanchor
                     .update_edge(src_chain_id, root, latest_leaf_index, target);
             } else if function_signature
-                == Keccak256::hash_with_four_bytes_output(
-                    b"configure_max_deposit_limit([u8;1])".to_vec().as_slice(),
+                == blake2b_256_4_bytes_output(
+                    b"VAnchor::configure_max_deposit_limit".to_vec().as_slice(),
                 )
-                .unwrap()
             {
                 let amount_bytes: [u8; 1] = element_encoder_for_one_byte(&arguments[0..1]);
 
@@ -249,12 +244,11 @@ mod anchor_handler {
 
                 self.vanchor.configure_max_deposit_limit(amount.into());
             } else if function_signature
-                == Keccak256::hash_with_four_bytes_output(
-                    b"configure_min_withdrawal_limit([u8;32],[u8;8])"
+                == blake2b_256_4_bytes_output(
+                    b"VAnchor::configure_min_withdrawal_limit"
                         .to_vec()
                         .as_slice(),
                 )
-                .unwrap()
             {
                 let amount_bytes: [u8; 1] = element_encoder_for_one_byte(&arguments[0..1]);
 

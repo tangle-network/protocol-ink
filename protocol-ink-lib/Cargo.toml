@@ -3,7 +3,6 @@ name = "protocol-ink-lib"
 version = "0.1.0"
 edition = "2021"
 
-
 [lib]
 name = "protocol_ink_lib"
 path = "src/lib.rs"
