@@ -2,10 +2,10 @@
 
 mod tests;
 
+pub use crate::treasury::{Treasury, TreasuryRef};
+use ink_env::call::FromAccountId;
 use ink_lang as ink;
 use ink_storage::traits::SpreadAllocate;
-use ink_env::call::FromAccountId;
-pub use crate::treasury::{Treasury, TreasuryRef};
 
 impl SpreadAllocate for TreasuryRef {
     fn allocate_spread(_ptr: &mut ink_primitives::KeyPtr) -> Self {

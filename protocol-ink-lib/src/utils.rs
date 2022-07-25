@@ -1,8 +1,5 @@
-use ink_prelude::vec::Vec;
 use ink_env::AccountId;
-use ink_lang_ir::Selector;
-use ink_lang_ir::Selector::;
-
+use ink_prelude::vec::Vec;
 
 pub const ZERO_ADDRESS: [u8; 32] = [0; 32];
 
@@ -50,9 +47,4 @@ pub fn element_encoder_for_one_byte(v: &[u8]) -> [u8; 1] {
 /// * `account_id` - an address to determine,
 pub fn is_account_id_zero(account_id: AccountId) -> bool {
     account_id == ZERO_ADDRESS.into()
-}
-
-/// Hashes
-pub fn hash_function(input: &[u8]) -> [u8; 4] {
-    Selector::compute(input).to_bytes();
 }

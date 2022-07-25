@@ -74,7 +74,6 @@ pub mod vanchor {
         /// used nullifiers
         pub used_nullifiers: Mapping<[u8; 32], bool>,
 
-
         pub poseidon: PoseidonRef,
         pub verifier_2_2: VAnchorVerifierRef,
         pub verifier_16_2: VAnchorVerifierRef,

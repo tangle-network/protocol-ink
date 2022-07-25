@@ -14,6 +14,7 @@ mod treasury_handler {
         element_encoder, element_encoder_for_eight_bytes, element_encoder_for_four_bytes,
         element_encoder_for_one_byte,
     };
+    use treasury::TreasuryRef;
 
     /// The treasury wrapper handler result type.
     pub type Result<T> = core::result::Result<T, Error>;
@@ -31,6 +32,8 @@ mod treasury_handler {
         contract_whitelist: Mapping<AccountId, bool>,
         /// (src_chain_id, nonce) -> UpdateRecord
         update_records: Mapping<(u64, u64), UpdateRecord>,
+
+        pub treasury: TreasuryRef,
     }
 
     #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
@@ -74,8 +77,19 @@ mod treasury_handler {
             initial_resource_ids: Vec<[u8; 32]>,
             initial_contract_addresses: Vec<AccountId>,
             version: u32,
+            treasury_contract_handler: AccountId,
+            treasury_contract_hash: Hash,
         ) -> Self {
             let salt = version.to_le_bytes();
+            let treasury = TreasuryRef::new(treasury_contract_handler)
+                .endowment(0)
+                .code_hash(treasury_contract_hash)
+                .salt_bytes(salt)
+                .instantiate()
+                .unwrap_or_else(|error| {
+                    panic!("failed at instantiating the Treasury contract: {:?}", error)
+                });
+
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
                 instance.bridge_address = bridge_address;
 
@@ -84,6 +98,16 @@ mod treasury_handler {
                 }
 
                 for i in 0..initial_resource_ids.len() {
+                    let resource_id =
+                        ink_prelude::format!("resource_id is {:?}", initial_resource_ids[i]);
+                    ink_env::debug_println!("{}", &resource_id);
+
+                    let contract_address = ink_prelude::format!(
+                        "contract_address is {:?}",
+                        initial_contract_addresses[i]
+                    );
+                    ink_env::debug_println!("{}", &contract_address);
+
                     let resource_id = initial_resource_ids[i];
                     let contract_address = initial_contract_addresses[i];
 
@@ -97,13 +121,19 @@ mod treasury_handler {
         /// * `resource_id` -  The resource id to be mapped to.
         /// * `contract_address` -  The contract address to be mapped to
         #[ink(message)]
-        pub fn set_resource(&mut self, resource_id: [u8; 32], contract_address: AccountId) {
+        pub fn set_resource(
+            &mut self,
+            resource_id: [u8; 32],
+            contract_address: AccountId,
+        ) -> Result<()> {
             self.resource_id_to_contract_address
                 .insert(resource_id, &contract_address);
             self.contract_address_to_resource_id
                 .insert(contract_address.clone(), &resource_id);
             self.contract_whitelist
                 .insert(contract_address.clone(), &true);
+
+            Ok(())
         }
 
         /// Sets the bridge address
@@ -111,7 +141,7 @@ mod treasury_handler {
         /// * `bridge_address` -  The bridge address to migrate to
         #[ink(message)]
         pub fn migrate_bridge(&mut self, bridge_address: AccountId) -> Result<()> {
-            if self.env().caller() != bridge_address {
+            if self.env().caller() != self.bridge_address {
                 return Err(Error::Unauthorized);
             }
             self.bridge_address = bridge_address;
@@ -177,7 +207,7 @@ mod treasury_handler {
 
                 let nonce = u32::from_be_bytes(nonce_bytes);
 
-                // TODO: cross contract call to set treasury handler
+                self.treasury.set_handler(token_address.into(), nonce);
             } else if function_signature
                 == Keccak256::hash_with_four_bytes_output(
                     b"rescue_tokens([u8;32],[u8;32],[u8;4],[u8;4])"
@@ -194,7 +224,12 @@ mod treasury_handler {
                 let nonce = u32::from_be_bytes(nonce_bytes);
                 let amount_to_rescue = u32::from_be_bytes(amount_to_rescue_bytes);
 
-                // TODO: cross contract call to resuce tokens
+                self.treasury.rescue_tokens(
+                    token_address.into(),
+                    to.into(),
+                    amount_to_rescue.into(),
+                    nonce,
+                );
             }
             Ok(())
         }
