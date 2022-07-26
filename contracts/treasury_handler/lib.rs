@@ -9,6 +9,7 @@ mod treasury_handler {
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
+    use protocol_ink_lib::blake::blake2b_256_4_bytes_output;
     use protocol_ink_lib::keccak::Keccak256;
     use protocol_ink_lib::utils::{
         element_encoder, element_encoder_for_eight_bytes, element_encoder_for_four_bytes,
@@ -32,8 +33,7 @@ mod treasury_handler {
         contract_whitelist: Mapping<AccountId, bool>,
         /// (src_chain_id, nonce) -> UpdateRecord
         update_records: Mapping<(u64, u64), UpdateRecord>,
-
-        pub treasury: TreasuryRef,
+        treasury: TreasuryRef,
     }
 
     #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
@@ -92,6 +92,7 @@ mod treasury_handler {
 
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
                 instance.bridge_address = bridge_address;
+                instance.treasury = treasury;
 
                 if initial_resource_ids.len() != initial_contract_addresses.len() {
                     panic!("initial_resource_ids and initial_contract_addresses len mismatch");
@@ -155,8 +156,16 @@ mod treasury_handler {
         /// * `data` - The data to execute
         #[ink(message)]
         pub fn execute_proposal(&mut self, resource_id: [u8; 32], data: Vec<u8>) -> Result<()> {
+            let message = ink_prelude::format!(" data is {:?}", data);
+            ink_env::debug_println!("{}", &message);
+
+            let message = ink_prelude::format!(" resource id is {:?}", resource_id);
+            ink_env::debug_println!("{}", &message);
+
             // Parse the (proposal)`data`.
             let parsed_resource_id = element_encoder(&data[0..32]);
+            let message = ink_prelude::format!(" parsed_resource_id is {:?}", parsed_resource_id);
+            ink_env::debug_println!("{}", &message);
 
             if self.env().caller() != self.bridge_address {
                 return Err(Error::Unauthorized);
@@ -196,25 +205,26 @@ mod treasury_handler {
             function_signature: [u8; 4],
             arguments: &[u8],
         ) -> Result<()> {
+            let message = ink_prelude::format!(" contract caller is {:?}", self.env().caller());
+            ink_env::debug_println!("{}", &message);
+
             if function_signature
-                == Keccak256::hash_with_four_bytes_output(
-                    b"set_handler([u8;32],[u8;4])".to_vec().as_slice(),
-                )
-                .unwrap()
+                == blake2b_256_4_bytes_output(b"Treasury::set_handler".to_vec().as_slice())
             {
                 let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
                 let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
 
+                let message = ink_prelude::format!(" token_address  is {:?}", token_address);
+                ink_env::debug_println!("{}", &message);
+
                 let nonce = u32::from_be_bytes(nonce_bytes);
+
+                let message = ink_prelude::format!(" nonce  is {:?}", nonce);
+                ink_env::debug_println!("{}", &message);
 
                 self.treasury.set_handler(token_address.into(), nonce);
             } else if function_signature
-                == Keccak256::hash_with_four_bytes_output(
-                    b"rescue_tokens([u8;32],[u8;32],[u8;4],[u8;4])"
-                        .to_vec()
-                        .as_slice(),
-                )
-                .unwrap()
+                == blake2b_256_4_bytes_output(b"Treasury::rescue_tokens".to_vec().as_slice())
             {
                 let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
                 let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
@@ -295,5 +305,33 @@ mod treasury_handler {
 
             Ok(self.contract_whitelist.get(address).unwrap())
         }
+
+        #[ink(message)]
+        pub fn construct_data_for_set_handler(
+            &self,
+            resource_id: [u8; 32],
+            function_signature: [u8; 4],
+            nonce: [u8; 4],
+            address: AccountId,
+        ) -> Result<Vec<u8>> {
+            let mut result: Vec<u8> = [
+                resource_id.as_slice(),
+                function_signature.as_slice(),
+                nonce.as_slice(),
+                address.as_ref(),
+            ]
+            .concat();
+            let message = ink_prelude::format!("result is {:?}", result);
+            ink_env::debug_println!("{}", &message);
+            Ok(result)
+        }
+    }
+
+    pub fn transform_u32_to_array_of_u8(x: u32) -> [u8; 4] {
+        let b1: u8 = ((x >> 24) & 0xff) as u8;
+        let b2: u8 = ((x >> 16) & 0xff) as u8;
+        let b3: u8 = ((x >> 8) & 0xff) as u8;
+        let b4: u8 = (x & 0xff) as u8;
+        return [b1, b2, b3, b4];
     }
 }

@@ -1,8 +1,20 @@
 import { expect } from "chai";
 import { artifacts, network, patract } from "redspot";
 import BN from "bn.js";
-import { killContractNode, startContractNode, toHexString } from "./util";
+import {
+  killContractNode,
+  startContractNode,
+  toHexString,
+  parseHexString,
+  hexStringToByteArray,
+  toEncodedBinary,
+  genResourceId,
+} from "./util";
 import { hexToU8a } from "@polkadot/util";
+import { createType } from "@polkadot/types";
+import keccak256 from "keccak256";
+import { BigNumber, BigNumberish } from "ethers";
+import { registry } from "@subsocial/types";
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
@@ -25,12 +37,12 @@ describe("treasury-handler-tests", () => {
   let psp22Contract: any;
   let childProcess: any;
   after(() => {
-    killContractNode(childProcess);
+    //killContractNode(childProcess);
     return api.disconnect();
   });
 
   before(async () => {
-    childProcess = await startContractNode();
+    //childProcess = await startContractNode();
     await api.isReady;
   });
 
@@ -159,10 +171,12 @@ describe("treasury-handler-tests", () => {
 
   it.only("Set Resource", async () => {
     // sets random resource
-    let resourceId: any = [
+    /* let resourceId: any = [
       0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
       21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-    ];
+    ];*/
+    let resourceId = Array.from(genResourceId(psp22Contract.address));
+    //console.log(`resource_id_generated ${Array.from(resource_id)}`)
 
     await expect(
       treasuryHandlerContract.tx.setResource(resourceId, psp22Contract.address)
@@ -189,5 +203,46 @@ describe("treasury-handler-tests", () => {
         psp22Contract.address
       );
     expect(JSON.parse(isContractWhitelistedResult.output).ok).to.be.true;
+  });
+
+  it.only("Execute Proposal", async () => {
+    // sets random resource
+    let resourceId = Array.from(genResourceId(psp22Contract.address));
+    console.log(`resourceId is  ${resourceId}`);
+
+    await expect(
+      treasuryHandlerContract.tx.setResource(resourceId, psp22Contract.address)
+    ).to.be.fulfilled;
+
+    // validate that resource id exists
+    let resourceIdResult = await treasuryHandlerContract.query.getResourceId(
+      psp22Contract.address
+    );
+    expect(`0x${toHexString(resourceId)}`).to.equal(
+      `${JSON.parse(resourceIdResult.output).ok}`
+    );
+
+    let functionSig = [29, 246, 193, 234];
+
+    let nonce = [0, 0, 4, 24];
+
+    let dataResult =
+      await treasuryHandlerContract.query.constructDataForSetHandler(
+        resourceId,
+        functionSig,
+        nonce,
+        sender.address
+      );
+
+    console.log(
+      `dataResult is ${hexStringToByteArray(JSON.parse(dataResult.output).ok)}`
+    );
+
+    await expect(
+      treasuryHandlerContract.tx.executeProposal(
+        resourceId,
+        JSON.parse(dataResult.output).ok
+      )
+    ).to.be.fulfilled;
   });
 });

@@ -129,7 +129,12 @@ mod treasury {
         /// * `nonce` - The nonce to use
         #[ink(message)]
         pub fn set_handler(&mut self, handler: AccountId, nonce: u32) -> Result<()> {
+            ink_env::debug_println!("inside set handler");
+
             if self.env().caller() != self.treasury_handler {
+                let message = ink_prelude::format!(" you are not authorized {:?}", self.env().caller());
+                ink_env::debug_println!("{}", &message);
+
                 return Err(Error::Unauthorized);
             }
 

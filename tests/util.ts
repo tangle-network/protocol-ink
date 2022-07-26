@@ -1,4 +1,6 @@
 import { ChildProcess, spawn } from "child_process";
+import keccak256 from "keccak256";
+import { BigNumber, BigNumberish } from "ethers";
 
 const substrateContractNodePath = "./substrate-contracts-node";
 export async function startContractNode() {
@@ -32,4 +34,70 @@ export function toHexString(byteArray) {
     // @ts-ignore
     return ("0" + (byte & 0xff).toString(16)).slice(-2);
   }).join("");
+}
+
+export function parseHexString(str) {
+  let result = [];
+  while (str.length >= 8) {
+    // @ts-ignore
+    result.push(parseInt(str.substring(0, 8), 16));
+
+    str = str.substring(8, str.length);
+  }
+
+  return result;
+}
+
+export function hexStringToByteArray(hexString) {
+  if (hexString.length % 2 !== 0) {
+    throw "Must have an even number of hex digits to convert to bytes";
+  }
+  var numBytes = hexString.length / 2;
+  var byteArray = new Uint8Array(numBytes);
+  for (var i = 0; i < numBytes; i++) {
+    byteArray[i] = parseInt(hexString.substr(i * 2, 2), 16);
+  }
+  return byteArray;
+}
+
+export const genResourceId = (address: string): Buffer => {
+  const leftPadBuf: Buffer = Buffer.alloc(6);
+  const keccak = keccak256(address.toString());
+  const hashedAddrBuf: Buffer = Buffer.from(keccak.buffer.slice(12));
+
+  const chainIdType: number = getChainIdType();
+  const chainIdType_buf: Buffer = Buffer.allocUnsafe(6);
+  chainIdType_buf.writeUintBE(chainIdType, 0, 6);
+
+  const resource_id: Buffer = Buffer.concat([
+    leftPadBuf,
+    hashedAddrBuf,
+    chainIdType_buf,
+  ]);
+
+  return resource_id;
+};
+
+export const getChainIdType = (chainID: number = 1): number => {
+  const CHAIN_TYPE = "0x0600";
+  const chainIdType = CHAIN_TYPE + toFixedHex(chainID, 4).substr(2);
+  return Number(BigInt(chainIdType));
+};
+
+/** BigNumber to hex string of specified length */
+export function toFixedHex(number: BigNumberish, length: number = 32): string {
+  let result =
+    "0x" +
+    (number instanceof Buffer
+      ? number.toString("hex")
+      : BigNumber.from(number.toString()).toHexString().replace("0x", "")
+    ).padStart(length * 2, "0");
+  if (result.indexOf("-") > -1) {
+    result = "-" + result.replace("-", "");
+  }
+  return result;
+}
+
+export function toEncodedBinary(obj: any): string {
+  return Buffer.from(JSON.stringify(obj)).toString("base64");
 }
