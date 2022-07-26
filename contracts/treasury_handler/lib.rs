@@ -77,20 +77,19 @@ mod treasury_handler {
             initial_resource_ids: Vec<[u8; 32]>,
             initial_contract_addresses: Vec<AccountId>,
             version: u32,
-            treasury_contract_handler: AccountId,
             treasury_contract_hash: Hash,
         ) -> Self {
-            let salt = version.to_le_bytes();
-            let treasury = TreasuryRef::new(treasury_contract_handler)
-                .endowment(0)
-                .code_hash(treasury_contract_hash)
-                .salt_bytes(salt)
-                .instantiate()
-                .unwrap_or_else(|error| {
-                    panic!("failed at instantiating the Treasury contract: {:?}", error)
-                });
-
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
+                let salt = version.to_le_bytes();
+                let treasury = TreasuryRef::new(instance.env().account_id())
+                    .endowment(0)
+                    .code_hash(treasury_contract_hash)
+                    .salt_bytes(salt)
+                    .instantiate()
+                    .unwrap_or_else(|error| {
+                        panic!("failed at instantiating the Treasury contract: {:?}", error)
+                    });
+
                 instance.bridge_address = bridge_address;
                 instance.treasury = treasury;
 
@@ -154,7 +153,7 @@ mod treasury_handler {
         ///
         /// * `resource_id` -  The resource id
         /// * `data` - The data to execute
-        #[ink(message)]
+        #[ink(message, payable)]
         pub fn execute_proposal(&mut self, resource_id: [u8; 32], data: Vec<u8>) -> Result<()> {
             let message = ink_prelude::format!(" data is {:?}", data);
             ink_env::debug_println!("{}", &message);
@@ -208,6 +207,9 @@ mod treasury_handler {
             let message = ink_prelude::format!(" contract caller is {:?}", self.env().caller());
             ink_env::debug_println!("{}", &message);
 
+            let message = ink_prelude::format!("contract address is {:?}", self.env().account_id());
+            ink_env::debug_println!("{}", &message);
+
             if function_signature
                 == blake2b_256_4_bytes_output(b"Treasury::set_handler".to_vec().as_slice())
             {
@@ -226,6 +228,7 @@ mod treasury_handler {
             } else if function_signature
                 == blake2b_256_4_bytes_output(b"Treasury::rescue_tokens".to_vec().as_slice())
             {
+                ink_env::debug_println!("trying to rescue tokens");
                 let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
                 let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
                 let to: [u8; 32] = element_encoder(&arguments[36..68]);
@@ -319,6 +322,44 @@ mod treasury_handler {
                 function_signature.as_slice(),
                 nonce.as_slice(),
                 address.as_ref(),
+            ]
+            .concat();
+            let message = ink_prelude::format!("result is {:?}", result);
+            ink_env::debug_println!("{}", &message);
+
+            let func_sig =
+                blake2b_256_4_bytes_output(b"Treasury::rescue_tokens".to_vec().as_slice());
+            let message = ink_prelude::format!("rescue token function sig is {:?}", func_sig);
+            ink_env::debug_println!("{}", &message);
+
+            let amount_bytes: [u8; 4] = transform_u32_to_array_of_u8(100);
+            let message = ink_prelude::format!("amount is {:?}", amount_bytes);
+            ink_env::debug_println!("{}", &message);
+
+            let nonce_bytes: [u8; 4] = transform_u32_to_array_of_u8(2096);
+            let message = ink_prelude::format!("nonce is {:?}", nonce_bytes);
+            ink_env::debug_println!("{}", &message);
+
+            Ok(result)
+        }
+
+        #[ink(message)]
+        pub fn construct_data_for_rescue_tokens(
+            &self,
+            resource_id: [u8; 32],
+            function_signature: [u8; 4],
+            nonce: [u8; 4],
+            token_address: AccountId,
+            to: AccountId,
+            amount_to_rescue: [u8; 4],
+        ) -> Result<Vec<u8>> {
+            let mut result: Vec<u8> = [
+                resource_id.as_slice(),
+                function_signature.as_slice(),
+                nonce.as_slice(),
+                token_address.as_ref(),
+                to.as_ref(),
+                amount_to_rescue.as_slice(),
             ]
             .concat();
             let message = ink_prelude::format!("result is {:?}", result);

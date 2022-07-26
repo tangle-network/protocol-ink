@@ -35,14 +35,15 @@ describe("treasury-handler-tests", () => {
   let EveSigner: any;
   let DaveSigner: any;
   let psp22Contract: any;
+  let treasuryContract: any;
   let childProcess: any;
   after(() => {
-    killContractNode(childProcess);
+    //killContractNode(childProcess);
     return api.disconnect();
   });
 
   before(async () => {
-    childProcess = await startContractNode();
+    //childProcess = await startContractNode();
     await api.isReady;
   });
 
@@ -57,6 +58,7 @@ describe("treasury-handler-tests", () => {
       EveSigner,
       DaveSigner,
       psp22Contract,
+      treasuryContract,
     } = await setup());
   });
 
@@ -99,6 +101,7 @@ describe("treasury-handler-tests", () => {
       "treasury",
       sender.address
     );
+
     const treasuryContract = await treasuryContractFactory.deploy(
       "new",
       sender.address
@@ -117,6 +120,19 @@ describe("treasury-handler-tests", () => {
     const initialContractAddresses = [psp22Contract.address];
     const randomVersion = Math.floor(Math.random() * 10000);
 
+    /*const treasuryHandlerContractAddress = await treasuryHandlerContractFactory.getContractAddress(
+        "new", [ sender.address,
+          null,
+          null,
+          randomVersion,
+          treasuryHandlerContractFactory.attach(sender.address),
+          treasuryContract.abi.info.source.wasmHash]
+    );
+
+    console.log(`handler contract address ${JSON.stringify(treasuryHandlerContractAddress)}`);*/
+
+    treasuryHandlerContractFactory.connect(sender);
+
     //TODO will change Alice address to signature bridge address as soon as signature bridge is ready
     const treasuryHandlerContract = await treasuryHandlerContractFactory.deploy(
       "new",
@@ -124,7 +140,6 @@ describe("treasury-handler-tests", () => {
       null,
       null,
       randomVersion,
-      sender.address,
       treasuryContract.abi.info.source.wasmHash
     );
 
@@ -144,6 +159,7 @@ describe("treasury-handler-tests", () => {
       treasuryHandlerContractFactory,
       treasuryHandlerContract,
       psp22Contract,
+      treasuryContract,
     };
   }
 
@@ -205,7 +221,7 @@ describe("treasury-handler-tests", () => {
     expect(JSON.parse(isContractWhitelistedResult.output).ok).to.be.true;
   });
 
-  it.only("Execute Proposal", async () => {
+  it.only("Execute Proposal for setting handler", async () => {
     // sets random resource
     let resourceId = Array.from(genResourceId(psp22Contract.address));
     console.log(`resourceId is  ${resourceId}`);
@@ -242,6 +258,54 @@ describe("treasury-handler-tests", () => {
       treasuryHandlerContract.tx.executeProposal(
         resourceId,
         JSON.parse(dataResult.output).ok
+      )
+    ).to.be.fulfilled;
+  });
+
+  it.only("Execute Proposal for rescuing tokens", async () => {
+    // sets random resource
+    let resourceId = Array.from(genResourceId(psp22Contract.address));
+    console.log(`resourceId is  ${resourceId}`);
+
+    await expect(
+      treasuryHandlerContract.tx.setResource(resourceId, psp22Contract.address)
+    ).to.be.fulfilled;
+
+    // validate that resource id exists
+    let resourceIdResult = await treasuryHandlerContract.query.getResourceId(
+      psp22Contract.address
+    );
+    expect(`0x${toHexString(resourceId)}`).to.equal(
+      `${JSON.parse(resourceIdResult.output).ok}`
+    );
+
+    let functionSig = [173, 65, 206, 122];
+
+    let nonce = [0, 0, 4, 24];
+
+    let amountToRescue = [0, 0, 0, 100];
+
+    let dataResult =
+      await treasuryHandlerContract.query.constructDataForRescueTokens(
+        resourceId,
+        functionSig,
+        nonce,
+        null,
+        BobSigner.address,
+        amountToRescue
+      );
+
+    console.log(
+      `dataResult is ${hexStringToByteArray(JSON.parse(dataResult.output).ok)}`
+    );
+
+    await expect(
+      treasuryHandlerContract.tx.executeProposal(
+        resourceId,
+        JSON.parse(dataResult.output).ok,
+        {
+          value: 1000,
+        }
       )
     ).to.be.fulfilled;
   });
