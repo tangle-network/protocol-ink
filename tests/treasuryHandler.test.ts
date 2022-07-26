@@ -37,12 +37,12 @@ describe("treasury-handler-tests", () => {
   let psp22Contract: any;
   let childProcess: any;
   after(() => {
-    //killContractNode(childProcess);
+    killContractNode(childProcess);
     return api.disconnect();
   });
 
   before(async () => {
-    //childProcess = await startContractNode();
+    childProcess = await startContractNode();
     await api.isReady;
   });
 
