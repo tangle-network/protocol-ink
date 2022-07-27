@@ -6,10 +6,18 @@ mod merkle_tree;
 use ink_env::call::FromAccountId;
 use ink_storage::traits::SpreadAllocate;
 
+pub use self::vanchor::{VAnchor, VAnchorRef};
+
 use ink_lang as ink;
 
+impl SpreadAllocate for VAnchorRef {
+    fn allocate_spread(_ptr: &mut ink_primitives::KeyPtr) -> Self {
+        FromAccountId::from_account_id([0; 32].into())
+    }
+}
+
 #[brush::contract]
-mod vanchor {
+pub mod vanchor {
     use crate::linkable_merkle_tree::{Edge, LinkableMerkleTree};
     use crate::merkle_tree::MerkleTree;
     use governed_token_wrapper::governed_token_wrapper::GovernedTokenWrapperRef;
@@ -60,6 +68,8 @@ mod vanchor {
         pub max_ext_amt: Balance,
         /// maximum fee
         pub max_fee: Balance,
+        pub handler: AccountId,
+        pub proposal_nonce: u64,
 
         /// used nullifiers
         pub used_nullifiers: Mapping<[u8; 32], bool>,
@@ -175,6 +185,8 @@ mod vanchor {
         WrappingError,
         /// UnWrapping Error
         UnWrappingError,
+        /// Invalid Nonce
+        InvalidNonce,
     }
 
     impl VAnchor {
@@ -188,6 +200,7 @@ mod vanchor {
             max_ext_amt: Balance,
             max_fee: Balance,
             tokenwrapper_addr: AccountId,
+            handler: AccountId,
             token_wrapper_data: TokenWrapperData,
             version: u32,
             poseidon_contract_hash: Hash,
@@ -259,6 +272,7 @@ mod vanchor {
                 contract.max_deposit_amt = max_deposit_amt;
                 contract.max_fee = max_fee;
                 contract.tokenwrapper_addr = tokenwrapper_addr;
+                contract.handler = handler;
 
                 contract.linkable_tree.max_edges = max_edges;
                 contract.linkable_tree.chain_id_list = Vec::new();
@@ -278,6 +292,27 @@ mod vanchor {
 
                 contract.merkle_tree.roots.insert(0, &zeroes(levels));
             })
+        }
+
+        /// Sets handler address for contract
+        ///
+        /// * `fee` - The wrapping fee percentage
+        /// * `nonce` -  The nonce tracking updates to this contract
+        #[ink(message)]
+        pub fn set_handler(&mut self, handler: AccountId, nonce: u64) -> Result<()> {
+            // only current handler can execute this function
+            if self.handler != self.env().caller() {
+                return Err(Error::Unauthorized);
+            }
+
+            if nonce <= self.proposal_nonce || self.proposal_nonce + 1048 < nonce {
+                return Err(Error::InvalidNonce);
+            }
+
+            self.handler = handler;
+            self.proposal_nonce = nonce;
+
+            Ok(())
         }
 
         #[ink(message)]
