@@ -38,12 +38,12 @@ describe("treasury-handler-tests", () => {
   let treasuryContract: any;
   let childProcess: any;
   after(() => {
-    //killContractNode(childProcess);
+    killContractNode(childProcess);
     return api.disconnect();
   });
 
   before(async () => {
-    //childProcess = await startContractNode();
+    childProcess = await startContractNode();
     await api.isReady;
   });
 
@@ -119,17 +119,6 @@ describe("treasury-handler-tests", () => {
 
     const initialContractAddresses = [psp22Contract.address];
     const randomVersion = Math.floor(Math.random() * 10000);
-
-    /*const treasuryHandlerContractAddress = await treasuryHandlerContractFactory.getContractAddress(
-        "new", [ sender.address,
-          null,
-          null,
-          randomVersion,
-          treasuryHandlerContractFactory.attach(sender.address),
-          treasuryContract.abi.info.source.wasmHash]
-    );
-
-    console.log(`handler contract address ${JSON.stringify(treasuryHandlerContractAddress)}`);*/
 
     treasuryHandlerContractFactory.connect(sender);
 
