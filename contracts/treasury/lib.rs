@@ -71,52 +71,35 @@ mod treasury {
             amount_to_rescue: Balance,
             nonce: u32,
         ) -> Result<()> {
-            ink_env::debug_println!("inside rescue tokens call");
             if is_account_id_zero(to) {
                 return Err(Error::InvalidAddress);
             }
 
             if self.env().caller() != self.treasury_handler {
-                let message = ink_prelude::format!(" you are not authorized {:?}", self.env().caller());
-                ink_env::debug_println!("{}", &message);
-
-                let message = ink_prelude::format!(" handler {:?}", self.treasury_handler);
-                ink_env::debug_println!("{}", &message);
-
                 return Err(Error::Unauthorized);
             }
 
             if self.proposal_nonce > nonce || self.proposal_nonce + 1048 < nonce {
-                ink_env::debug_println!("invalid nonce");
                 return Err(Error::InvalidNonce);
             }
 
             if amount_to_rescue == 0 {
-                ink_env::debug_println!("amount to rescue is 0");
                 return Err(Error::InvalidRescueAmount);
             }
 
             if is_account_id_zero(token_address) {
-                ink_env::debug_println!("token address zero");
                 let native_balance = self.env().balance();
 
                 if native_balance >= amount_to_rescue {
                     if self.env().transfer(to, amount_to_rescue).is_err() {
-                        ink_env::debug_println!("amount to rescue transfer failed");
                         return Err(Error::TransferError);
-                    } else {
-                        ink_env::debug_println!("amount to rescue transfer successful");
                     }
                 } else {
                     if self.env().transfer(to, native_balance).is_err() {
-                        ink_env::debug_println!("native balance transfer failed");
                         return Err(Error::TransferError);
-                    } else {
-                        ink_env::debug_println!("native balance transfer successful");
                     }
                 }
             } else {
-                ink_env::debug_println!("token address not zero");
                 let psp22_balance = self.balance_of(self.env().account_id());
 
                 if psp22_balance >= amount_to_rescue {
@@ -146,15 +129,8 @@ mod treasury {
         /// * `nonce` - The nonce to use
         #[ink(message)]
         pub fn set_handler(&mut self, handler: AccountId, nonce: u32) -> Result<()> {
-            ink_env::debug_println!("inside set handler");
 
             if self.env().caller() != self.treasury_handler {
-                let message = ink_prelude::format!(" you are not authorized {:?}", self.env().caller());
-                ink_env::debug_println!("{}", &message);
-
-                let message = ink_prelude::format!(" handler {:?}", self.treasury_handler);
-                ink_env::debug_println!("{}", &message);
-
                 return Err(Error::Unauthorized);
             }
 

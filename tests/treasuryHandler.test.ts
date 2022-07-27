@@ -38,12 +38,12 @@ describe("treasury-handler-tests", () => {
   let treasuryContract: any;
   let childProcess: any;
   after(() => {
-    killContractNode(childProcess);
+    //killContractNode(childProcess);
     return api.disconnect();
   });
 
   before(async () => {
-    childProcess = await startContractNode();
+    // childProcess = await startContractNode();
     await api.isReady;
   });
 
@@ -162,7 +162,6 @@ describe("treasury-handler-tests", () => {
   it.only("Migrate Bridge", async () => {
     let initialBridgeAddress =
       await treasuryHandlerContract.query.getBridgeAddress();
-    console.log(`initial bridge address ${initialBridgeAddress.output}`);
 
     await expect(treasuryHandlerContract.tx.migrateBridge(BobSigner.address)).to
       .be.fulfilled;
@@ -175,13 +174,7 @@ describe("treasury-handler-tests", () => {
   });
 
   it.only("Set Resource", async () => {
-    // sets random resource
-    /* let resourceId: any = [
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-      21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-    ];*/
     let resourceId = Array.from(genResourceId(psp22Contract.address));
-    //console.log(`resource_id_generated ${Array.from(resource_id)}`)
 
     await expect(
       treasuryHandlerContract.tx.setResource(resourceId, psp22Contract.address)
@@ -213,8 +206,6 @@ describe("treasury-handler-tests", () => {
   it.only("Execute Proposal for setting handler", async () => {
     // sets random resource
     let resourceId = Array.from(genResourceId(psp22Contract.address));
-    console.log(`resourceId is  ${resourceId}`);
-
     await expect(
       treasuryHandlerContract.tx.setResource(resourceId, psp22Contract.address)
     ).to.be.fulfilled;
@@ -239,10 +230,6 @@ describe("treasury-handler-tests", () => {
         sender.address
       );
 
-    console.log(
-      `dataResult is ${hexStringToByteArray(JSON.parse(dataResult.output).ok)}`
-    );
-
     await expect(
       treasuryHandlerContract.tx.executeProposal(
         resourceId,
@@ -254,7 +241,6 @@ describe("treasury-handler-tests", () => {
   it.only("Execute Proposal for rescuing tokens", async () => {
     // sets random resource
     let resourceId = Array.from(genResourceId(psp22Contract.address));
-    console.log(`resourceId is  ${resourceId}`);
 
     await expect(
       treasuryHandlerContract.tx.setResource(resourceId, psp22Contract.address)
@@ -283,10 +269,6 @@ describe("treasury-handler-tests", () => {
         BobSigner.address,
         amountToRescue
       );
-
-    console.log(
-      `dataResult is ${hexStringToByteArray(JSON.parse(dataResult.output).ok)}`
-    );
 
     await expect(
       treasuryHandlerContract.tx.executeProposal(

@@ -62,6 +62,10 @@ mod treasury_handler {
         UpdateRecordNotFound,
         /// Invalid Contract Address
         InvalidContractAddress,
+        /// Set Handler Error
+        SetHandlerError,
+        /// Rescue Tokens Error
+        RescueTokensError,
     }
 
     impl TreasuryHandler {
@@ -98,16 +102,6 @@ mod treasury_handler {
                 }
 
                 for i in 0..initial_resource_ids.len() {
-                    let resource_id =
-                        ink_prelude::format!("resource_id is {:?}", initial_resource_ids[i]);
-                    ink_env::debug_println!("{}", &resource_id);
-
-                    let contract_address = ink_prelude::format!(
-                        "contract_address is {:?}",
-                        initial_contract_addresses[i]
-                    );
-                    ink_env::debug_println!("{}", &contract_address);
-
                     let resource_id = initial_resource_ids[i];
                     let contract_address = initial_contract_addresses[i];
 
@@ -155,16 +149,8 @@ mod treasury_handler {
         /// * `data` - The data to execute
         #[ink(message, payable)]
         pub fn execute_proposal(&mut self, resource_id: [u8; 32], data: Vec<u8>) -> Result<()> {
-            let message = ink_prelude::format!(" data is {:?}", data);
-            ink_env::debug_println!("{}", &message);
-
-            let message = ink_prelude::format!(" resource id is {:?}", resource_id);
-            ink_env::debug_println!("{}", &message);
-
             // Parse the (proposal)`data`.
             let parsed_resource_id = element_encoder(&data[0..32]);
-            let message = ink_prelude::format!(" parsed_resource_id is {:?}", parsed_resource_id);
-            ink_env::debug_println!("{}", &message);
 
             if self.env().caller() != self.bridge_address {
                 return Err(Error::Unauthorized);
@@ -190,7 +176,7 @@ mod treasury_handler {
             // extract function signature
             let function_signature = element_encoder_for_four_bytes(&data[32..36]);
             let arguments = &data[36..];
-            self.execute_function_signature(function_signature, arguments);
+            self.execute_function_signature(function_signature, arguments)?;
 
             Ok(())
         }
@@ -204,31 +190,24 @@ mod treasury_handler {
             function_signature: [u8; 4],
             arguments: &[u8],
         ) -> Result<()> {
-            let message = ink_prelude::format!(" contract caller is {:?}", self.env().caller());
-            ink_env::debug_println!("{}", &message);
-
-            let message = ink_prelude::format!("contract address is {:?}", self.env().account_id());
-            ink_env::debug_println!("{}", &message);
-
             if function_signature
                 == blake2b_256_4_bytes_output(b"Treasury::set_handler".to_vec().as_slice())
             {
                 let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
                 let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
 
-                let message = ink_prelude::format!(" token_address  is {:?}", token_address);
-                ink_env::debug_println!("{}", &message);
-
                 let nonce = u32::from_be_bytes(nonce_bytes);
 
-                let message = ink_prelude::format!(" nonce  is {:?}", nonce);
-                ink_env::debug_println!("{}", &message);
-
-                self.treasury.set_handler(token_address.into(), nonce);
+                if self
+                    .treasury
+                    .set_handler(token_address.into(), nonce)
+                    .is_err()
+                {
+                    return Err(Error::SetHandlerError);
+                }
             } else if function_signature
                 == blake2b_256_4_bytes_output(b"Treasury::rescue_tokens".to_vec().as_slice())
             {
-                ink_env::debug_println!("trying to rescue tokens");
                 let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
                 let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
                 let to: [u8; 32] = element_encoder(&arguments[36..68]);
@@ -237,12 +216,18 @@ mod treasury_handler {
                 let nonce = u32::from_be_bytes(nonce_bytes);
                 let amount_to_rescue = u32::from_be_bytes(amount_to_rescue_bytes);
 
-                self.treasury.rescue_tokens(
-                    token_address.into(),
-                    to.into(),
-                    amount_to_rescue.into(),
-                    nonce,
-                );
+                if self
+                    .treasury
+                    .rescue_tokens(
+                        token_address.into(),
+                        to.into(),
+                        amount_to_rescue.into(),
+                        nonce,
+                    )
+                    .is_err()
+                {
+                    return Err(Error::RescueTokensError);
+                }
             }
             Ok(())
         }
@@ -324,21 +309,6 @@ mod treasury_handler {
                 address.as_ref(),
             ]
             .concat();
-            let message = ink_prelude::format!("result is {:?}", result);
-            ink_env::debug_println!("{}", &message);
-
-            let func_sig =
-                blake2b_256_4_bytes_output(b"Treasury::rescue_tokens".to_vec().as_slice());
-            let message = ink_prelude::format!("rescue token function sig is {:?}", func_sig);
-            ink_env::debug_println!("{}", &message);
-
-            let amount_bytes: [u8; 4] = transform_u32_to_array_of_u8(100);
-            let message = ink_prelude::format!("amount is {:?}", amount_bytes);
-            ink_env::debug_println!("{}", &message);
-
-            let nonce_bytes: [u8; 4] = transform_u32_to_array_of_u8(2096);
-            let message = ink_prelude::format!("nonce is {:?}", nonce_bytes);
-            ink_env::debug_println!("{}", &message);
 
             Ok(result)
         }
@@ -362,17 +332,7 @@ mod treasury_handler {
                 amount_to_rescue.as_slice(),
             ]
             .concat();
-            let message = ink_prelude::format!("result is {:?}", result);
-            ink_env::debug_println!("{}", &message);
             Ok(result)
         }
-    }
-
-    pub fn transform_u32_to_array_of_u8(x: u32) -> [u8; 4] {
-        let b1: u8 = ((x >> 24) & 0xff) as u8;
-        let b2: u8 = ((x >> 16) & 0xff) as u8;
-        let b3: u8 = ((x >> 8) & 0xff) as u8;
-        let b4: u8 = (x & 0xff) as u8;
-        return [b1, b2, b3, b4];
     }
 }
