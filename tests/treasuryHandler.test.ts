@@ -38,12 +38,12 @@ describe("treasury-handler-tests", () => {
   let treasuryContract: any;
   let childProcess: any;
   after(() => {
-    //killContractNode(childProcess);
+    killContractNode(childProcess);
     return api.disconnect();
   });
 
   before(async () => {
-    // childProcess = await startContractNode();
+    childProcess = await startContractNode();
     await api.isReady;
   });
 
