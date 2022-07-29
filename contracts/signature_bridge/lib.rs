@@ -93,7 +93,16 @@ mod signature_bridge {
                 truncate_and_pad(resource_params.execution_context_address.as_ref());
             data.extend_from_slice(&*execution_context_address_bytes);
 
-            if !self.is_signed_by_governor(&data, &resource_params.sig) {
+            let mut sig =  resource_params.sig;
+            sig.pop();
+            let message = ink_prelude::format!("data in resource is {:?}", data);
+            ink_env::debug_println!("{}", &message);
+
+            let message = ink_prelude::format!("sig parsed is {:?}", sig);
+            ink_env::debug_println!("{}", &message);
+
+            if !self.is_signed_by_governor(&data, &sig) {
+                ink_env::debug_println!("not signed by governor");
                 return Err(Error::InvalidSignatureFromGovernor);
             }
 
@@ -194,20 +203,29 @@ mod signature_bridge {
             handler_address: AccountId,
             execution_context_address: AccountId,
         ) -> Result<Vec<u8>> {
+            let handler_address_bytes = truncate_and_pad(handler_address.as_ref());
+            let execution_context_address_bytes =
+                truncate_and_pad(execution_context_address.as_ref());
+
             let mut result: Vec<u8> = [
                 resource_id.as_slice(),
                 function_signature.as_slice(),
                 nonce.as_slice(),
                 new_resource_id.as_slice(),
-                handler_address.as_ref(),
-                execution_context_address.as_ref()
+                handler_address_bytes.as_slice(),
+                execution_context_address_bytes.as_slice()
             ]
                 .concat();
+
+            let message = ink_prelude::format!("data is {:?}", result);
+            ink_env::debug_println!("{}", &message);
 
             Ok(result)
         }
 
         fn is_signed_by_governor(&self, data: &[u8], sig: &[u8]) -> bool {
+            let message = ink_prelude::format!("governor is {:?}", &self.governor);
+            ink_env::debug_println!("{}", &message);
             let result = SignatureVerifier::verify(&self.governor, data, sig)
                 .unwrap_or_else(|error| panic!("could not verify due to: {:?}", error));
             result

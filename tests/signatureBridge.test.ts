@@ -8,7 +8,7 @@ import {
     parseHexString,
     hexStringToByteArray,
     toEncodedBinary,
-    genResourceId,
+    genResourceId, signMessage,
 } from "./util";
 import EC from 'elliptic';
 import {bytesToHex} from "@noble/hashes/utils";
@@ -38,12 +38,12 @@ describe("signature-bridge-tests", () => {
     let tokenWrapperContract: any;
     let tokenWrapperHandlerContract: any;
     after(() => {
-        killContractNode(childProcess);
+        //killContractNode(childProcess);
         return api.disconnect();
     });
 
     before(async () => {
-       childProcess = await startContractNode();
+        //childProcess = await startContractNode();
         await api.isReady;
     });
 
@@ -60,6 +60,7 @@ describe("signature-bridge-tests", () => {
             psp22Contract,
             tokenWrapperContract,
             tokenWrapperHandlerContract,
+            privateKey
         } = await setup());
     });
 
@@ -107,9 +108,11 @@ describe("signature-bridge-tests", () => {
         const publicKey = keypair.getPublic('array');
         const privateKey = keypair.getPrivate('hex');
 
+        console.log(`private key ${privateKey}`)
+
         let publicKeyArray =  Array.from(publicKey)
 
-        console.log(`public key arr is ${toHexString(publicKeyArray)}`)
+        console.log(`public key arr is ${publicKeyArray}`)
 
         // signature bridge instantiation
         const sigBridgeContractFactory = await getContractFactory(
@@ -255,7 +258,7 @@ describe("signature-bridge-tests", () => {
         let parsedFunctionSig = JSON.parse(functionSig.output).ok
         console.log(parsedFunctionSig);
 
-        let nonce = [0,0,0,1]
+        let nonce = [0,0,4,24]
 
         let dataResult =
             await signatureBridgeContract.query.constructData(
@@ -268,8 +271,34 @@ describe("signature-bridge-tests", () => {
             );
 
         let data = JSON.parse(dataResult.output).ok;
+        console.log(`private key ${privateKey}`)
 
-        console.log(data)
+        const sig = signMessage(privateKey,hexStringToByteArray(data));
+        console.log(`signed message ${sig}`)
+
+        console.log(hexStringToByteArray(data))
+
+        let handlerAddress = tokenWrapperHandlerContract.address;
+        let executionContextAddress = tokenWrapperContract.address;
+        let newResourceId = resourceId;
+
+        let sigParsed = Array.from(Buffer.from(sig.substring(2, sig.length - 2 ), 'hex'));
+
+        console.log(`sig parsed is ${sigParsed}`)
+
+        await expect(
+            signatureBridgeContract.tx.adminSetResourceWithSignature(
+                {
+                    resourceId,
+                    functionSig,
+                    nonce,
+                    newResourceId,
+                    handlerAddress,
+                    executionContextAddress,
+                    sig
+                }
+            )
+        ).to.be.fulfilled;
     });
 
 });
