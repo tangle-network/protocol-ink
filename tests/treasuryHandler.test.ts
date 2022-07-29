@@ -159,7 +159,7 @@ describe("treasury-handler-tests", () => {
     };
   }
 
-  it("Migrate Bridge", async () => {
+  it.only("Migrate Bridge", async () => {
     let initialBridgeAddress =
       await treasuryHandlerContract.query.getBridgeAddress();
 
@@ -173,7 +173,7 @@ describe("treasury-handler-tests", () => {
     expect(initialBridgeAddress.output).to.not.equal(newBridgeAddress.output);
   });
 
-  it("Set Resource", async () => {
+  it.only("Set Resource", async () => {
     let resourceId = Array.from(genResourceId(psp22Contract.address));
 
     await expect(
@@ -203,7 +203,7 @@ describe("treasury-handler-tests", () => {
     expect(JSON.parse(isContractWhitelistedResult.output).ok).to.be.true;
   });
 
-  it("Execute Proposal for setting handler", async () => {
+  it.only("Execute Proposal for setting handler", async () => {
     // sets random resource
     let resourceId = Array.from(genResourceId(psp22Contract.address));
     await expect(
@@ -238,7 +238,7 @@ describe("treasury-handler-tests", () => {
     ).to.be.fulfilled;
   });
 
-  it("Execute Proposal for rescuing tokens", async () => {
+  it.only("Execute Proposal for rescuing tokens", async () => {
     // sets random resource
     let resourceId = Array.from(genResourceId(psp22Contract.address));
 
@@ -258,7 +258,7 @@ describe("treasury-handler-tests", () => {
 
     let nonce = [0, 0, 4, 24];
 
-    let amountToRescue = [0, 0, 0, 100];
+    let amountToRescue = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100];
 
     let dataResult =
       await treasuryHandlerContract.query.constructDataForRescueTokens(

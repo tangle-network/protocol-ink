@@ -13,7 +13,7 @@ mod treasury_handler {
     use protocol_ink_lib::keccak::Keccak256;
     use protocol_ink_lib::utils::{
         element_encoder, element_encoder_for_eight_bytes, element_encoder_for_four_bytes,
-        element_encoder_for_one_byte,
+        element_encoder_for_one_byte, element_encoder_for_sixteen_bytes,
     };
     use treasury::TreasuryRef;
 
@@ -211,10 +211,11 @@ mod treasury_handler {
                 let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
                 let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
                 let to: [u8; 32] = element_encoder(&arguments[36..68]);
-                let amount_to_rescue_bytes = element_encoder_for_four_bytes(&arguments[68..72]);
+                let amount_to_rescue_bytes: [u8; 16] =
+                    element_encoder_for_sixteen_bytes(&arguments[68..84]);
 
                 let nonce = u32::from_be_bytes(nonce_bytes);
-                let amount_to_rescue = u32::from_be_bytes(amount_to_rescue_bytes);
+                let amount_to_rescue = u128::from_be_bytes(amount_to_rescue_bytes);
 
                 if self
                     .treasury
@@ -321,7 +322,7 @@ mod treasury_handler {
             nonce: [u8; 4],
             token_address: AccountId,
             to: AccountId,
-            amount_to_rescue: [u8; 4],
+            amount_to_rescue: [u8; 16],
         ) -> Result<Vec<u8>> {
             let mut result: Vec<u8> = [
                 resource_id.as_slice(),

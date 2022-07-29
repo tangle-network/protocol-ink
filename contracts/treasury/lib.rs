@@ -129,7 +129,6 @@ mod treasury {
         /// * `nonce` - The nonce to use
         #[ink(message)]
         pub fn set_handler(&mut self, handler: AccountId, nonce: u32) -> Result<()> {
-
             if self.env().caller() != self.treasury_handler {
                 return Err(Error::Unauthorized);
             }
