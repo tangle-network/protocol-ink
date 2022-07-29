@@ -128,7 +128,7 @@ mod token_wrapper_handler {
         ///
         /// * `resource_id` -  The resource id to be mapped to.
         /// * `contract_address` -  The contract address to be mapped to
-        #[ink(message)]
+        #[ink(message, selector = 1)]
         pub fn set_resource(&mut self, resource_id: [u8; 32], contract_address: AccountId) {
             self.resource_id_to_contract_address
                 .insert(resource_id, &contract_address);
@@ -155,7 +155,7 @@ mod token_wrapper_handler {
         ///
         /// * `resource_id` -  The resource id
         /// * `data` - The data to execute
-        #[ink(message)]
+        #[ink(message, selector = 2)]
         pub fn execute_proposal(&mut self, resource_id: [u8; 32], data: Vec<u8>) -> Result<()> {
             // Parse the (proposal)`data`.
             let parsed_resource_id = element_encoder(&data[0..32]);
@@ -255,6 +255,56 @@ mod token_wrapper_handler {
                 return Err(Error::InvalidFunctionSignature);
             }
             Ok(())
+        }
+
+        #[ink(message)]
+        pub fn get_function_signature(
+            &self, function_type: String) -> Result<[u8; 4]>{
+            let function_signature = blake2b_256_4_bytes_output(
+                function_type.as_bytes().to_vec().as_slice()
+            );
+
+            Ok(function_signature)
+        }
+
+        #[ink(message)]
+        pub fn get_set_fee_function_signature(
+            &self) -> Result<[u8; 4]>{
+            let function_signature = blake2b_256_4_bytes_output(
+                b"GovernedTokenWrapper::set_fee".to_vec().as_slice()
+            );
+
+            Ok(function_signature)
+        }
+
+        #[ink(message)]
+        pub fn get_add_token_address_function_signature(
+            &self) -> Result<[u8; 4]>{
+            let function_signature = blake2b_256_4_bytes_output(
+                b"GovernedTokenWrapper::add_token_address".to_vec().as_slice()
+            );
+
+            Ok(function_signature)
+        }
+
+        #[ink(message)]
+        pub fn get_remove_token_address_function_signature(
+            &self) -> Result<[u8; 4]>{
+            let function_signature = blake2b_256_4_bytes_output(
+                b"GovernedTokenWrapper::remove_token_address".to_vec().as_slice()
+            );
+
+            Ok(function_signature)
+        }
+
+        #[ink(message)]
+        pub fn get_set_fee_recipient_function_signature(
+            &self) -> Result<[u8; 4]>{
+            let function_signature = blake2b_256_4_bytes_output(
+                b"GovernedTokenWrapper::set_fee_recipient".to_vec().as_slice()
+            );
+
+            Ok(function_signature)
         }
     }
 }

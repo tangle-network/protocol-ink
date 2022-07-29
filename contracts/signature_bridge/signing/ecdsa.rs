@@ -26,7 +26,10 @@ pub fn recover_ecdsa_pub_key(data: &[u8], signature: &[u8]) -> Result<Vec<u8>, E
         let hash = Keccak256::hash(&data)
             .unwrap_or_else(|error| panic!("could not hash data: {:?}", error));
         let mut output = [0; 33];
-        ink_env::ecdsa_recover(&sig, &hash, &mut output)?;
+        let result = ink_env::ecdsa_recover(&sig, &hash, &mut output);
+        if result.is_err() {
+            return Err(Error::EcdsaRecoveryFailed);
+        }
         return Ok(output.to_vec());
     }
     Err(Error::EcdsaRecoveryFailed)

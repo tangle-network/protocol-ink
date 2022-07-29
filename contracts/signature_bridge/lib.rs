@@ -6,6 +6,9 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod signature_bridge {
+    use ink_env::call::{build_call, Call, Selector};
+    use ink_env::DefaultEnvironment;
+    use ink_env::call::ExecutionInput;
     use super::signing::SignatureVerifier;
     use crate::signing::SigningSystem;
     use ink_prelude::string::String;
@@ -13,8 +16,9 @@ mod signature_bridge {
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use webb_proposals::TypedChainId;
+    use protocol_ink_lib::utils::{element_encoder, truncate_and_pad};
 
-    /// The vanchor result type.
+    /// The signature bridge result type.
     pub type Result<T> = core::result::Result<T, Error>;
 
     /// The token wrapper error types.
@@ -111,11 +115,24 @@ mod signature_bridge {
 
             self.proposal_nonce = resource_params.nonce;
 
-            // TODO: Execute call to specific handler contract such as Token Wrapper Handler, Anchor Handler, Treasury Handler e.t.c
-
+            // makes a low level cross contract call with the use of a selector 1 which represents set_resource contract function
+            build_call::<DefaultEnvironment>()
+                .call_type(Call::new()
+                    .callee(resource_params.handler_address)
+                    .gas_limit(5000))
+                .transferred_value(10)
+                .exec_input(
+                    ExecutionInput::new(Selector::new([0, 0, 0, 1]))
+                        .push_arg(resource_params.resource_id)
+                        .push_arg(resource_params.handler_address)
+                )
+                .returns::<()>()
+                .fire()
+                .unwrap();
             Ok(())
         }
 
+        #[ink(message)]
         pub fn execute_proposal_with_signature(
             &mut self,
             data: Vec<u8>,
@@ -149,27 +166,51 @@ mod signature_bridge {
                 return Err(Error::InvalidResourceId);
             }
 
-            //TODO: Execute the "proposal" in "handler" contract such as Token Wrapper Handler, Anchor Handler, Treasury Handler e.t.c
+            // makes a low level cross contract call with the use of a selector 2 which represents execute_proposal contract function
+            build_call::<DefaultEnvironment>()
+                .call_type(Call::new()
+                    .callee(handler_address.unwrap())
+                    .gas_limit(5000))
+                .transferred_value(10)
+                .exec_input(
+                    ExecutionInput::new(Selector::new([0, 0, 0, 2]))
+                        .push_arg(resource_id)
+                        .push_arg(data)
+                )
+                .returns::<()>()
+                .fire()
+                .unwrap();
 
             Ok(())
         }
 
-        fn is_signed_by_governor(&mut self, data: &[u8], sig: &[u8]) -> bool {
+        #[ink(message)]
+        pub fn construct_data(
+            &self,
+            resource_id: [u8; 32],
+            function_signature: [u8; 4],
+            nonce: [u8; 4],
+            new_resource_id: [u8; 32],
+            handler_address: AccountId,
+            execution_context_address: AccountId,
+        ) -> Result<Vec<u8>> {
+            let mut result: Vec<u8> = [
+                resource_id.as_slice(),
+                function_signature.as_slice(),
+                nonce.as_slice(),
+                new_resource_id.as_slice(),
+                handler_address.as_ref(),
+                execution_context_address.as_ref()
+            ]
+                .concat();
+
+            Ok(result)
+        }
+
+        fn is_signed_by_governor(&self, data: &[u8], sig: &[u8]) -> bool {
             let result = SignatureVerifier::verify(&self.governor, data, sig)
                 .unwrap_or_else(|error| panic!("could not verify due to: {:?}", error));
             result
         }
-    }
-
-    pub fn truncate_and_pad(t: &[u8]) -> Vec<u8> {
-        let mut truncated_bytes = t[..20].to_vec();
-        truncated_bytes.extend_from_slice(&[0u8; 12]);
-        truncated_bytes
-    }
-
-    pub fn element_encoder(v: &[u8]) -> [u8; 32] {
-        let mut output = [0u8; 32];
-        output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
-        output
     }
 }

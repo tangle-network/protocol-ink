@@ -16,7 +16,7 @@ impl SpreadAllocate for VAnchorRef {
     }
 }
 
-#[brush::contract]
+#[openbrush::contract]
 pub mod vanchor {
     use crate::linkable_merkle_tree::{Edge, LinkableMerkleTree};
     use crate::merkle_tree::MerkleTree;
@@ -31,10 +31,9 @@ pub mod vanchor {
     use protocol_ink_lib::utils::element_encoder;
     use protocol_ink_lib::zeroes::zeroes;
     use verifier::vanchor_verifier::VAnchorVerifierRef;
-
-    use brush::contracts::psp22::*;
-    use brush::contracts::traits::psp22::PSP22;
-    use brush::test_utils::*;
+    use openbrush::contracts::psp22::extensions::metadata::*;
+    use openbrush::contracts::traits::psp22::PSP22;
+    use openbrush::traits::Storage;
 
     /// The vanchor result type.
     pub type Result<T> = core::result::Result<T, Error>;
@@ -45,10 +44,10 @@ pub mod vanchor {
     contract's balance below minimum balance.";
 
     #[ink(storage)]
-    #[derive(SpreadAllocate, PSP22Storage)]
+    #[derive(SpreadAllocate, Storage)]
     pub struct VAnchor {
-        #[PSP22StorageField]
-        psp22: PSP22Data,
+        #[storage_field]
+        psp22: psp22::Data,
 
         /// chain id
         pub chain_id: u64,
