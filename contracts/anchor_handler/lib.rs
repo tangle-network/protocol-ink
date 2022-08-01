@@ -209,9 +209,7 @@ mod anchor_handler {
             arguments: &[u8],
         ) -> Result<()> {
             if function_signature
-                == blake2b_256_4_bytes_output(
-                    b"VAnchor::set_handler".to_vec().as_slice(),
-                )
+                == blake2b_256_4_bytes_output(b"VAnchor::set_handler".to_vec().as_slice())
             {
                 let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
                 let token_address: [u8; 32] = element_encoder(&arguments[8..40]);
