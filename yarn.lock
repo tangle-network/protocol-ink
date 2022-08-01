@@ -4854,6 +4854,11 @@ jsprim@^1.2.2:
     json-schema "0.4.0"
     verror "1.10.0"
 
+jsrsasign@^8.0.0:
+  version "8.0.24"
+  resolved "https://registry.yarnpkg.com/jsrsasign/-/jsrsasign-8.0.24.tgz#fc26bac45494caac3dd8f69c1f95847c4bda6c83"
+  integrity sha512-u45jAyusqUpyGbFc2IbHoeE4rSkoBWQgLe/w99temHenX+GyCz4nflU5sjK7ajU1ffZTezl6le7u43Yjr/lkQg==
+
 keccak256@^1.0.6:
   version "1.0.6"
   resolved "https://registry.yarnpkg.com/keccak256/-/keccak256-1.0.6.tgz#dd32fb771558fed51ce4e45a035ae7515573da58"

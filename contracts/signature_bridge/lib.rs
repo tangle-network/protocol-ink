@@ -42,7 +42,7 @@ mod signature_bridge {
     pub struct SignatureBridge {
         governor: Vec<u8>,
         proposal_nonce: u32,
-        chain_id: u64,
+        chain_id: u32,
         counts: Mapping<Vec<u8>, [u8; 32]>,
         resource_id_to_handler_address: Mapping<[u8; 32], AccountId>,
     }
@@ -68,7 +68,7 @@ mod signature_bridge {
 
     impl SignatureBridge {
         #[ink(constructor)]
-        pub fn new(governor: Vec<u8>, proposal_nonce: u32, chain_id: u64) -> Self {
+        pub fn new(governor: Vec<u8>, proposal_nonce: u32, chain_id: u32) -> Self {
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
                 instance.governor = governor;
                 instance.proposal_nonce = proposal_nonce;
@@ -94,7 +94,7 @@ mod signature_bridge {
             data.extend_from_slice(&*execution_context_address_bytes);
 
             let mut sig =  resource_params.sig;
-            sig.pop();
+            //sig.pop();
             let message = ink_prelude::format!("data in resource is {:?}", data);
             ink_env::debug_println!("{}", &message);
 
@@ -165,7 +165,7 @@ mod signature_bridge {
                 TypedChainId::from(u64::from_be_bytes(padded_typed_chain_id_bytes));
             let execution_chain_id_type: u64 = execution_typed_chain.chain_id();
 
-            if TypedChainId::Ink(self.chain_id as u32).chain_id() != execution_chain_id_type {
+            if TypedChainId::Ink(self.chain_id).chain_id() != execution_chain_id_type {
                 return Err(Error::WrongChainExecution);
             }
 

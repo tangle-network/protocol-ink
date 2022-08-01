@@ -28,9 +28,13 @@ pub fn recover_ecdsa_pub_key(data: &[u8], signature: &[u8]) -> Result<Vec<u8>, E
         let mut output = [0; 33];
         let result = ink_env::ecdsa_recover(&sig, &hash, &mut output);
         if result.is_err() {
+            ink_env::debug_println!("result is error");
             return Err(Error::EcdsaRecoveryFailed);
         }
+        let message = ink_prelude::format!("output  is {:?}", output);
+        ink_env::debug_println!("{}",message);
         return Ok(output.to_vec());
     }
+    ink_env::debug_println!("signature length is not 65");
     Err(Error::EcdsaRecoveryFailed)
 }
