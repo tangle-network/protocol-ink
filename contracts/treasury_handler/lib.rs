@@ -3,7 +3,8 @@
 use ink_lang as ink;
 
 #[ink::contract]
-mod anchor_handler {
+mod treasury_handler {
+    use ink_env::hash::Blake2x256;
     use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
@@ -12,17 +13,16 @@ mod anchor_handler {
     use protocol_ink_lib::keccak::Keccak256;
     use protocol_ink_lib::utils::{
         element_encoder, element_encoder_for_eight_bytes, element_encoder_for_four_bytes,
-        element_encoder_for_one_byte,
+        element_encoder_for_one_byte, element_encoder_for_sixteen_bytes,
     };
-    use vanchor::vanchor::TokenWrapperData;
-    use vanchor::VAnchorRef;
+    use treasury::TreasuryRef;
 
-    /// The anchor handler result type.
+    /// The treasury wrapper handler result type.
     pub type Result<T> = core::result::Result<T, Error>;
 
     #[ink(storage)]
     #[derive(SpreadAllocate)]
-    pub struct AnchorHandler {
+    pub struct TreasuryHandler {
         /// Contract address of previously deployed Bridge.
         bridge_address: AccountId,
         /// resourceID => token contract address
@@ -31,37 +31,19 @@ mod anchor_handler {
         contract_address_to_resource_id: Mapping<AccountId, [u8; 32]>,
         /// Execution contract address => is whitelisted
         contract_whitelist: Mapping<AccountId, bool>,
-        /// (src_chain_id, height) -> UpdateRecord
+        /// (src_chain_id, nonce) -> UpdateRecord
         update_records: Mapping<(u64, u64), UpdateRecord>,
-        vanchor: VAnchorRef,
+        treasury: TreasuryRef,
     }
 
     #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
     #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub struct UpdateRecord {
-        pub token_address: AccountId,
-        pub src_chain_id: u64,
+        pub treasury_address: AccountId,
+        pub execution_chain_id: u64,
+        pub nonce: u64,
         pub resource_id: [u8; 32],
-        pub merkle_root: [u8; 32],
-        pub leaf_id: u32,
-    }
-
-    #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
-    #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
-    pub struct VAnchorData {
-        pub max_edges: u32,
-        pub chain_id: u64,
-        pub levels: u32,
-        pub max_deposit_amt: Balance,
-        pub min_withdraw_amt: Balance,
-        pub max_ext_amt: Balance,
-        pub max_fee: Balance,
-        pub tokenwrapper_addr: AccountId,
-        pub handler: AccountId,
-        pub version: u32,
-        pub poseidon_contract_hash: Hash,
-        pub verifier_contract_hash: Hash,
-        pub token_wrapper_contract_hash: Hash,
+        pub update_value: [u8; 32],
     }
 
     /// The token wrapper handler error types.
@@ -72,57 +54,49 @@ mod anchor_handler {
         Unauthorized,
         /// Invalid Resource Id
         InvalidResourceId,
-        /// Invalid Contract Address
-        InvalidContractAddress,
         /// Contract Address Not Whitelisted
         UnWhitelistedContractAddress,
         /// Invalid Function signature
         InvalidFunctionSignature,
         /// No Update Record found
         UpdateRecordNotFound,
+        /// Invalid Contract Address
+        InvalidContractAddress,
+        /// Set Handler Error
+        SetHandlerError,
+        /// Rescue Tokens Error
+        RescueTokensError,
     }
 
-    impl AnchorHandler {
+    impl TreasuryHandler {
+        /// Instantiates the Treasury handler contract
+        ///
+        /// * `bridge_address` -  Contract address of previously deployed Bridge.
+        /// * `initial_resource_ids` - These are the resource ids the contract will initially support
+        /// * `initial_contract_addresses` - These are the the contract addresses that the contract will initially support
+        /// * `version` - contract version
         #[ink(constructor)]
         pub fn new(
             bridge_address: AccountId,
             initial_resource_ids: Vec<[u8; 32]>,
             initial_contract_addresses: Vec<AccountId>,
-            vanchor_contract_hash: Hash,
-            vanchor_data: VAnchorData,
-            token_wrapper_data: TokenWrapperData,
+            version: u32,
+            treasury_contract_hash: Hash,
         ) -> Self {
-            let salt = vanchor_data.version.to_le_bytes();
-
-            let vanchor = VAnchorRef::new(
-                vanchor_data.max_edges,
-                vanchor_data.chain_id,
-                vanchor_data.levels,
-                vanchor_data.max_deposit_amt,
-                vanchor_data.min_withdraw_amt,
-                vanchor_data.max_ext_amt,
-                vanchor_data.max_fee,
-                vanchor_data.tokenwrapper_addr,
-                vanchor_data.handler,
-                token_wrapper_data,
-                vanchor_data.version,
-                vanchor_data.poseidon_contract_hash,
-                vanchor_data.verifier_contract_hash,
-                vanchor_data.token_wrapper_contract_hash,
-            )
-            .endowment(0)
-            .code_hash(vanchor_contract_hash)
-            .salt_bytes(salt)
-            .instantiate()
-            .unwrap_or_else(|error| {
-                panic!(
-                    "failed at instantiating the Token Wrapper contract: {:?}",
-                    error
-                )
-            });
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
-                instance.vanchor = vanchor;
+                let salt = version.to_le_bytes();
+                let treasury = TreasuryRef::new(instance.env().account_id())
+                    .endowment(0)
+                    .code_hash(treasury_contract_hash)
+                    .salt_bytes(salt)
+                    .instantiate()
+                    .unwrap_or_else(|error| {
+                        panic!("failed at instantiating the Treasury contract: {:?}", error)
+                    });
+
                 instance.bridge_address = bridge_address;
+                instance.treasury = treasury;
+
                 if initial_resource_ids.len() != initial_contract_addresses.len() {
                     panic!("initial_resource_ids and initial_contract_addresses len mismatch");
                 }
@@ -141,11 +115,19 @@ mod anchor_handler {
         /// * `resource_id` -  The resource id to be mapped to.
         /// * `contract_address` -  The contract address to be mapped to
         #[ink(message)]
-        pub fn set_resource(&mut self, resource_id: [u8; 32], contract_address: AccountId) {
+        pub fn set_resource(
+            &mut self,
+            resource_id: [u8; 32],
+            contract_address: AccountId,
+        ) -> Result<()> {
             self.resource_id_to_contract_address
                 .insert(resource_id, &contract_address);
             self.contract_address_to_resource_id
                 .insert(contract_address.clone(), &resource_id);
+            self.contract_whitelist
+                .insert(contract_address.clone(), &true);
+
+            Ok(())
         }
 
         /// Sets the bridge address
@@ -153,7 +135,7 @@ mod anchor_handler {
         /// * `bridge_address` -  The bridge address to migrate to
         #[ink(message)]
         pub fn migrate_bridge(&mut self, bridge_address: AccountId) -> Result<()> {
-            if self.env().caller() != bridge_address {
+            if self.env().caller() != self.bridge_address {
                 return Err(Error::Unauthorized);
             }
             self.bridge_address = bridge_address;
@@ -165,7 +147,7 @@ mod anchor_handler {
         ///
         /// * `resource_id` -  The resource id
         /// * `data` - The data to execute
-        #[ink(message)]
+        #[ink(message, payable)]
         pub fn execute_proposal(&mut self, resource_id: [u8; 32], data: Vec<u8>) -> Result<()> {
             // Parse the (proposal)`data`.
             let parsed_resource_id = element_encoder(&data[0..32]);
@@ -194,7 +176,7 @@ mod anchor_handler {
             // extract function signature
             let function_signature = element_encoder_for_four_bytes(&data[32..36]);
             let arguments = &data[36..];
-            self.execute_function_signature(function_signature, arguments);
+            self.execute_function_signature(function_signature, arguments)?;
 
             Ok(())
         }
@@ -209,52 +191,44 @@ mod anchor_handler {
             arguments: &[u8],
         ) -> Result<()> {
             if function_signature
-                == blake2b_256_4_bytes_output(b"VAnchor::set_handler".to_vec().as_slice())
+                == blake2b_256_4_bytes_output(b"Treasury::set_handler".to_vec().as_slice())
             {
-                let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
-                let token_address: [u8; 32] = element_encoder(&arguments[8..40]);
+                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
+                let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
 
-                let nonce = u64::from_be_bytes(nonce_bytes);
+                let nonce = u32::from_be_bytes(nonce_bytes);
 
-                self.vanchor.set_handler(token_address.into(), nonce);
+                if self
+                    .treasury
+                    .set_handler(token_address.into(), nonce)
+                    .is_err()
+                {
+                    return Err(Error::SetHandlerError);
+                }
             } else if function_signature
-                == blake2b_256_4_bytes_output(b"VAnchor::update_edge".to_vec().as_slice())
+                == blake2b_256_4_bytes_output(b"Treasury::rescue_tokens".to_vec().as_slice())
             {
-                let src_chain_id_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
-                let root: [u8; 32] = element_encoder(&arguments[8..40]);
-                let latest_leaf_index_bytes: [u8; 4] =
-                    element_encoder_for_four_bytes(&arguments[40..44]);
-                let target: [u8; 32] = element_encoder(&arguments[44..76]);
+                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
+                let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
+                let to: [u8; 32] = element_encoder(&arguments[36..68]);
+                let amount_to_rescue_bytes: [u8; 16] =
+                    element_encoder_for_sixteen_bytes(&arguments[68..84]);
 
-                let src_chain_id = u64::from_be_bytes(src_chain_id_bytes);
-                let latest_leaf_index = u32::from_be_bytes(latest_leaf_index_bytes);
+                let nonce = u32::from_be_bytes(nonce_bytes);
+                let amount_to_rescue = u128::from_be_bytes(amount_to_rescue_bytes);
 
-                self.vanchor
-                    .update_edge(src_chain_id, root, latest_leaf_index, target);
-            } else if function_signature
-                == blake2b_256_4_bytes_output(
-                    b"VAnchor::configure_max_deposit_limit".to_vec().as_slice(),
-                )
-            {
-                let amount_bytes: [u8; 1] = element_encoder_for_one_byte(&arguments[0..1]);
-
-                let amount = u8::from_be_bytes(amount_bytes);
-
-                self.vanchor.configure_max_deposit_limit(amount.into());
-            } else if function_signature
-                == blake2b_256_4_bytes_output(
-                    b"VAnchor::configure_min_withdrawal_limit"
-                        .to_vec()
-                        .as_slice(),
-                )
-            {
-                let amount_bytes: [u8; 1] = element_encoder_for_one_byte(&arguments[0..1]);
-
-                let amount = u8::from_be_bytes(amount_bytes);
-
-                self.vanchor.configure_min_withdrawal_limit(amount.into());
-            } else {
-                return Err(Error::InvalidFunctionSignature);
+                if self
+                    .treasury
+                    .rescue_tokens(
+                        token_address.into(),
+                        to.into(),
+                        amount_to_rescue.into(),
+                        nonce,
+                    )
+                    .is_err()
+                {
+                    return Err(Error::RescueTokensError);
+                }
             }
             Ok(())
         }
@@ -262,14 +236,14 @@ mod anchor_handler {
         /// Gets update record
         ///
         /// * `src_chain_id` -  The src_chain_id to query
-        /// * `height` - The leaf height to query
+        /// * `nonce` - nonce
         #[ink(message)]
-        pub fn read_update_record(&self, src_chain_id: u64, height: u64) -> Result<UpdateRecord> {
-            if self.update_records.get((src_chain_id, height)).is_none() {
+        pub fn read_update_record(&self, src_chain_id: u64, nonce: u64) -> Result<UpdateRecord> {
+            if self.update_records.get((src_chain_id, nonce)).is_none() {
                 return Err(Error::UpdateRecordNotFound);
             }
 
-            Ok(self.update_records.get((src_chain_id, height)).unwrap())
+            Ok(self.update_records.get((src_chain_id, nonce)).unwrap())
         }
 
         /// Gets bridge address
@@ -319,6 +293,47 @@ mod anchor_handler {
             }
 
             Ok(self.contract_whitelist.get(address).unwrap())
+        }
+
+        #[ink(message)]
+        pub fn construct_data_for_set_handler(
+            &self,
+            resource_id: [u8; 32],
+            function_signature: [u8; 4],
+            nonce: [u8; 4],
+            address: AccountId,
+        ) -> Result<Vec<u8>> {
+            let mut result: Vec<u8> = [
+                resource_id.as_slice(),
+                function_signature.as_slice(),
+                nonce.as_slice(),
+                address.as_ref(),
+            ]
+            .concat();
+
+            Ok(result)
+        }
+
+        #[ink(message)]
+        pub fn construct_data_for_rescue_tokens(
+            &self,
+            resource_id: [u8; 32],
+            function_signature: [u8; 4],
+            nonce: [u8; 4],
+            token_address: AccountId,
+            to: AccountId,
+            amount_to_rescue: [u8; 16],
+        ) -> Result<Vec<u8>> {
+            let mut result: Vec<u8> = [
+                resource_id.as_slice(),
+                function_signature.as_slice(),
+                nonce.as_slice(),
+                token_address.as_ref(),
+                to.as_ref(),
+                amount_to_rescue.as_slice(),
+            ]
+            .concat();
+            Ok(result)
         }
     }
 }

@@ -33,6 +33,15 @@ pub fn element_encoder_for_eight_bytes(v: &[u8]) -> [u8; 8] {
     output
 }
 
+/// Transforms a u8 array to a fixed size array of 16 bytes
+///
+/// * `v` -  u8 array to transform
+pub fn element_encoder_for_sixteen_bytes(v: &[u8]) -> [u8; 16] {
+    let mut output = [0u8; 16];
+    output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
+    output
+}
+
 /// Transforms a u8 array to a fixed size array of 1 byte
 ///
 /// * `v` -  u8 array to transform
@@ -47,4 +56,12 @@ pub fn element_encoder_for_one_byte(v: &[u8]) -> [u8; 1] {
 /// * `account_id` - an address to determine,
 pub fn is_account_id_zero(account_id: AccountId) -> bool {
     account_id == ZERO_ADDRESS.into()
+}
+
+pub fn transform_u32_to_array_of_u8(x: u32) -> [u8; 4] {
+    let b1: u8 = ((x >> 24) & 0xff) as u8;
+    let b2: u8 = ((x >> 16) & 0xff) as u8;
+    let b3: u8 = ((x >> 8) & 0xff) as u8;
+    let b4: u8 = (x & 0xff) as u8;
+    return [b1, b2, b3, b4];
 }
