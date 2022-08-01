@@ -33,6 +33,15 @@ pub fn element_encoder_for_eight_bytes(v: &[u8]) -> [u8; 8] {
     output
 }
 
+/// Transforms a u8 array to a fixed size array of 16 bytes
+///
+/// * `v` -  u8 array to transform
+pub fn element_encoder_for_sixteen_bytes(v: &[u8]) -> [u8; 16] {
+    let mut output = [0u8; 16];
+    output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
+    output
+}
+
 /// Transforms a u8 array to a fixed size array of 1 byte
 ///
 /// * `v` -  u8 array to transform

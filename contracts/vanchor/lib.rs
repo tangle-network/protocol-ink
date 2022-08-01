@@ -318,7 +318,7 @@ pub mod vanchor {
         #[ink(message)]
         pub fn update_vanchor_config(&mut self, max_ext_amt: u128, max_fee: u128) -> Result<()> {
             if self.creator != Self::env().caller() {
-                return Err(Error::UnknownRoot);
+                return Err(Error::Unauthorized);
             }
 
             self.max_ext_amt = max_ext_amt;
@@ -330,7 +330,7 @@ pub mod vanchor {
         #[ink(message)]
         pub fn configure_max_deposit_limit(&mut self, max_deposit_amt: Balance) -> Result<()> {
             if self.creator != Self::env().caller() {
-                return Err(Error::UnknownRoot);
+                return Err(Error::Unauthorized);
             }
 
             self.max_deposit_amt = max_deposit_amt;
@@ -344,7 +344,7 @@ pub mod vanchor {
             min_withdrawal_amt: Balance,
         ) -> Result<()> {
             if self.creator != Self::env().caller() {
-                return Err(Error::UnknownRoot);
+                return Err(Error::Unauthorized);
             }
 
             self.min_withdraw_amt = min_withdrawal_amt;
