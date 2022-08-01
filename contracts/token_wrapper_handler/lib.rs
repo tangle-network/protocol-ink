@@ -48,6 +48,14 @@ mod token_wrapper_handler {
         InvalidFunctionSignature,
         /// Invalid Contract Address
         InvalidContractAddress,
+        /// Set Fee Error
+        SetFeeError,
+        /// Set Fee Recipient Error
+        SetFeeRecipientError,
+        /// Add Token Address Error
+        AddTokenAddressError,
+        /// Remove Token Address Error
+        RemoveTokenAddressError,
     }
 
     // Represents the token wrapper contract instantiation configs/data
@@ -210,7 +218,9 @@ mod token_wrapper_handler {
                 let nonce = u64::from_be_bytes(nonce_bytes);
                 let fee = u8::from_be_bytes(fee_bytes);
 
-                self.token_wrapper.set_fee(fee.into(), nonce);
+                if self.token_wrapper.set_fee(fee.into(), nonce).is_err() {
+                    return Err(Error::SetFeeError);
+                }
             } else if function_signature
                 == blake2b_256_4_bytes_output(
                     b"GovernedTokenWrapper::add_token_address"
@@ -223,8 +233,13 @@ mod token_wrapper_handler {
 
                 let nonce = u64::from_be_bytes(nonce_bytes);
 
-                self.token_wrapper
-                    .add_token_address(token_address.into(), nonce);
+                if self
+                    .token_wrapper
+                    .add_token_address(token_address.into(), nonce)
+                    .is_err()
+                {
+                    return Err(Error::AddTokenAddressError);
+                }
             } else if function_signature
                 == blake2b_256_4_bytes_output(
                     b"GovernedTokenWrapper::remove_token_address"
@@ -237,8 +252,13 @@ mod token_wrapper_handler {
 
                 let nonce = u64::from_be_bytes(nonce_bytes);
 
-                self.token_wrapper
-                    .remove_token_address(token_address.into(), nonce);
+                if self
+                    .token_wrapper
+                    .remove_token_address(token_address.into(), nonce)
+                    .is_err()
+                {
+                    return Err(Error::RemoveTokenAddressError);
+                }
             } else if function_signature
                 == blake2b_256_4_bytes_output(
                     b"GovernedTokenWrapper::set_fee_recipient"
@@ -251,8 +271,13 @@ mod token_wrapper_handler {
 
                 let nonce = u64::from_be_bytes(nonce_bytes);
 
-                self.token_wrapper
-                    .set_fee_recipient(fee_recipient.into(), nonce);
+                if self
+                    .token_wrapper
+                    .set_fee_recipient(fee_recipient.into(), nonce)
+                    .is_err()
+                {
+                    return Err(Error::SetFeeRecipientError);
+                }
             } else {
                 return Err(Error::InvalidFunctionSignature);
             }

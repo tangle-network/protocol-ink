@@ -38,12 +38,12 @@ describe("token-wrapper-handler-tests", () => {
   let tokenWrapperContract: any;
   let childProcess: any;
   after(() => {
-    //killContractNode(childProcess);
+    killContractNode(childProcess);
     return api.disconnect();
   });
 
   before(async () => {
-    //childProcess = await startContractNode();
+    childProcess = await startContractNode();
     await api.isReady;
   });
 
@@ -225,7 +225,7 @@ describe("token-wrapper-handler-tests", () => {
     };
   }
 
-  it.only("Migrate Bridge", async () => {
+  it("Migrate Bridge", async () => {
     let initialBridgeAddress =
       await tokenWrapperHandlerContract.query.getBridgeAddress();
 
@@ -239,7 +239,7 @@ describe("token-wrapper-handler-tests", () => {
     expect(initialBridgeAddress.output).to.not.equal(newBridgeAddress.output);
   });
 
-  it.only("Set Resource", async () => {
+  it("Set Resource", async () => {
     let resourceId = Array.from(genResourceId(psp22Contract.address));
 
     await expect(
@@ -273,7 +273,7 @@ describe("token-wrapper-handler-tests", () => {
     expect(JSON.parse(isContractWhitelistedResult.output).ok).to.be.true;
   });
 
-  it.only("Execute Proposal for setting fee", async () => {
+  it("Execute Proposal for setting fee", async () => {
     // sets random resource
     let resourceId = Array.from(genResourceId(psp22Contract.address));
     await expect(
@@ -317,7 +317,7 @@ describe("token-wrapper-handler-tests", () => {
     ).to.be.fulfilled;
   });
 
-  it.only("Execute Proposal for setting fee recipient", async () => {
+  it("Execute Proposal for setting fee recipient", async () => {
     // sets random resource
     let resourceId = Array.from(genResourceId(psp22Contract.address));
     await expect(
@@ -358,7 +358,7 @@ describe("token-wrapper-handler-tests", () => {
     ).to.be.fulfilled;
   });
 
-  it.only("Execute Proposal for add token address", async () => {
+  it("Execute Proposal for add token address", async () => {
     // sets random resource
     let resourceId = Array.from(genResourceId(psp22Contract.address));
     await expect(
@@ -399,7 +399,7 @@ describe("token-wrapper-handler-tests", () => {
     ).to.be.fulfilled;
   });
 
-  it.only("Execute Proposal for remove token address", async () => {
+  it("Execute Proposal for remove token address", async () => {
     // sets random resource
     let resourceId = Array.from(genResourceId(psp22Contract.address));
     await expect(
