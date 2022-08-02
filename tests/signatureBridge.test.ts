@@ -45,12 +45,12 @@ describe("signature-bridge-tests", () => {
     let pair: any;
     let publicKey: any;
     after(() => {
-        //killContractNode(childProcess);
+        killContractNode(childProcess);
         return api.disconnect();
     });
 
     before(async () => {
-        //childProcess = await startContractNode();
+        childProcess = await startContractNode();
         await api.isReady;
     });
 
@@ -311,6 +311,15 @@ describe("signature-bridge-tests", () => {
         const sig = Array.from(pair.sign(hashDataArray.subarray(1)));
 
         console.log(`signed message ${sig}`)
+
+        // add 27 to last element
+        // @ts-ignore
+        if (sig[sig.length-1] < 27)  {
+            // @ts-ignore
+            sig[sig.length-1] = sig[sig.length-1] + 27;
+        }
+
+        console.log(`signed message mod ${sig}`)
 
         console.log(hexStringToByteArray(data))
 
