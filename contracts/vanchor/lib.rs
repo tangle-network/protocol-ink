@@ -229,7 +229,7 @@ pub mod vanchor {
                         error
                     )
                 });
-            let verifier_16_2 = VAnchorVerifierRef::new(max_edges, 16, 16)
+            /*let verifier_16_2 = VAnchorVerifierRef::new(max_edges, 16, 16)
                 .endowment(0)
                 .code_hash(verifier_contract_hash)
                 .salt_bytes(salt)
@@ -239,7 +239,7 @@ pub mod vanchor {
                         "failed at instantiating the VAnchorVerifier contract: {:?}",
                         error
                     )
-                });
+                });*/
 
             let token_wrapper = GovernedTokenWrapperRef::new(
                 token_wrapper_data.name,
@@ -283,7 +283,7 @@ pub mod vanchor {
 
                 contract.poseidon = poseidon;
                 contract.verifier_2_2 = verifier_2_2;
-                contract.verifier_16_2 = verifier_16_2;
+                //contract.verifier_16_2 = verifier_16_2;
                 contract.token_wrapper = token_wrapper;
 
                 for i in 0..levels {
@@ -302,10 +302,12 @@ pub mod vanchor {
         pub fn set_handler(&mut self, handler: AccountId, nonce: u64) -> Result<()> {
             // only current handler can execute this function
             if self.handler != self.env().caller() {
+                ink_env::debug_println!("uanthourized handler");
                 return Err(Error::Unauthorized);
             }
 
             if nonce <= self.proposal_nonce || self.proposal_nonce + 1048 < nonce {
+                ink_env::debug_println!("invalid nonce");
                 return Err(Error::InvalidNonce);
             }
 
@@ -330,6 +332,7 @@ pub mod vanchor {
         #[ink(message)]
         pub fn configure_max_deposit_limit(&mut self, max_deposit_amt: Balance) -> Result<()> {
             if self.creator != Self::env().caller() {
+                ink_env::debug_println!("not creator");
                 return Err(Error::Unauthorized);
             }
 
@@ -344,6 +347,7 @@ pub mod vanchor {
             min_withdrawal_amt: Balance,
         ) -> Result<()> {
             if self.creator != Self::env().caller() {
+                ink_env::debug_println!("not creator");
                 return Err(Error::Unauthorized);
             }
 

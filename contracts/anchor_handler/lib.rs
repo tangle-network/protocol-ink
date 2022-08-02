@@ -151,6 +151,8 @@ mod anchor_handler {
                 .insert(resource_id, &contract_address);
             self.contract_address_to_resource_id
                 .insert(contract_address.clone(), &resource_id);
+            self.contract_whitelist
+                .insert(contract_address.clone(), &true);
         }
 
         /// Sets the bridge address

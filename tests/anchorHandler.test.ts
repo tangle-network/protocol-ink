@@ -236,7 +236,6 @@ describe("anchor-handler-tests", () => {
                 sender.address,
                 null,
                 null,
-                randomVersion,
                 vAnchorContract.abi.info.source.wasmHash,
                 {
                     maxEdges,
@@ -464,7 +463,7 @@ describe("anchor-handler-tests", () => {
             await anchorHandlerContract.query.constructDataForUpdateEdge(
                 resourceId,
                 parsedFunctionSig,
-                1,
+                [0, 0, 0, 0, 0, 0, 0, 1],
                 [0, 0, 0, 0, 0, 0, 4, 24, 0, 0, 0, 0, 0, 0, 4, 24, 0, 0, 0, 0, 0, 0, 4, 24, 0, 0, 0, 0, 0, 0, 4, 24],
                 [0, 0, 0, 0,],
                 [0, 0, 0, 0, 0, 0, 4, 24, 0, 0, 0, 0, 0, 0, 4, 24, 0, 0, 0, 0, 0, 0, 4, 24, 0, 0, 0, 0, 0, 0, 4, 24],
