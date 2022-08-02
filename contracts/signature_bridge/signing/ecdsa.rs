@@ -23,8 +23,13 @@ pub fn recover_ecdsa_pub_key(data: &[u8], signature: &[u8]) -> Result<Vec<u8>, E
         let mut sig = [0u8; SIGNATURE_LENGTH];
         sig[..SIGNATURE_LENGTH].copy_from_slice(&signature);
 
+        let message = ink_prelude::format!("sig in recover  is {:?}", sig);
+        ink_env::debug_println!("{}",message);
+
         let hash = Keccak256::hash(&data)
             .unwrap_or_else(|error| panic!("could not hash data: {:?}", error));
+        let message = ink_prelude::format!("hash data  is {:?}", hash);
+        ink_env::debug_println!("{}",message);
         let mut output = [0; 33];
         let result = ink_env::ecdsa_recover(&sig, &hash, &mut output);
         if result.is_err() {

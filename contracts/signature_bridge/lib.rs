@@ -16,6 +16,7 @@ mod signature_bridge {
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use webb_proposals::TypedChainId;
+    use protocol_ink_lib::keccak::Keccak256;
     use protocol_ink_lib::utils::{element_encoder, truncate_and_pad};
 
     /// The signature bridge result type.
@@ -221,6 +222,19 @@ mod signature_bridge {
             ink_env::debug_println!("{}", &message);
 
             Ok(result)
+        }
+
+        #[ink(message)]
+        pub fn data_hash(
+            &self,
+            data: Vec<u8>
+        ) -> Result<Vec<u8>> {
+            let hash = Keccak256::hash(&data)
+                .unwrap_or_else(|error| panic!("could not hash data: {:?}", error));
+            let message = ink_prelude::format!("hashed data is {:?}", hash);
+            ink_env::debug_println!("{}", &message);
+
+            Ok(hash.to_vec())
         }
 
         fn is_signed_by_governor(&self, data: &[u8], sig: &[u8]) -> bool {
