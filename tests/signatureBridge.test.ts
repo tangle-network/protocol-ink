@@ -269,7 +269,7 @@ describe("signature-bridge-tests", () => {
         };
     }
 
-    it.only("signature bridge test for token handler set resource", async () => {
+    it("signature bridge test for token handler set resource", async () => {
         let resourceId = Array.from(genResourceId(psp22Contract.address));
 
         let functionSig =

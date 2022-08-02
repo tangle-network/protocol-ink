@@ -228,7 +228,7 @@ pub mod vanchor {
                         error
                     )
                 });
-            let verifier_16_2 = VAnchorVerifierRef::new(max_edges, 16, 16)
+            /*let verifier_16_2 = VAnchorVerifierRef::new(max_edges, 16, 16)
                 .endowment(0)
                 .code_hash(verifier_contract_hash)
                 .salt_bytes(salt)
@@ -238,7 +238,7 @@ pub mod vanchor {
                         "failed at instantiating the VAnchorVerifier contract: {:?}",
                         error
                     )
-                });
+                });*/
 
             let token_wrapper = GovernedTokenWrapperRef::new(
                 token_wrapper_data.name,
@@ -282,7 +282,7 @@ pub mod vanchor {
 
                 contract.poseidon = poseidon;
                 contract.verifier_2_2 = verifier_2_2;
-                contract.verifier_16_2 = verifier_16_2;
+                //contract.verifier_16_2 = verifier_16_2;
                 contract.token_wrapper = token_wrapper;
 
                 for i in 0..levels {
