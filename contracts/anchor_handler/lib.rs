@@ -57,7 +57,6 @@ mod anchor_handler {
         pub handler: AccountId,
         pub version: u32,
         pub poseidon_contract_hash: Hash,
-        pub verifier_contract_hash: Hash,
         pub token_wrapper_contract_hash: Hash,
     }
 
@@ -112,7 +111,6 @@ mod anchor_handler {
                 token_wrapper_data,
                 vanchor_data.version,
                 vanchor_data.poseidon_contract_hash,
-                vanchor_data.verifier_contract_hash,
                 vanchor_data.token_wrapper_contract_hash,
             )
             .endowment(0)
@@ -147,6 +145,12 @@ mod anchor_handler {
         /// * `contract_address` -  The contract address to be mapped to
         #[ink(message)]
         pub fn set_resource(&mut self, resource_id: [u8; 32], contract_address: AccountId) {
+            let message = ink_prelude::format!("caller HANDLER is {:?}", self.env().caller());
+            ink_env::debug_println!("{}",message);
+
+            let message = ink_prelude::format!("contract address is  {:?}", self.env().account_id());
+            ink_env::debug_println!("{}",message);
+
             self.resource_id_to_contract_address
                 .insert(resource_id, &contract_address);
             self.contract_address_to_resource_id
@@ -201,7 +205,7 @@ mod anchor_handler {
             // extract function signature
             let function_signature = element_encoder_for_four_bytes(&data[32..36]);
             let arguments = &data[36..];
-            self.execute_function_signature(function_signature, arguments);
+            self.execute_function_signature(function_signature, arguments)?;
 
             Ok(())
         }

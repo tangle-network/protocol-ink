@@ -36,6 +36,7 @@ describe("anchor-handler-tests", () => {
     let DaveSigner: any;
     let psp22Contract: any;
     let tokenWrapperContract: any;
+    let vAnchorContract: any;
     let childProcess: any;
     after(() => {
         //killContractNode(childProcess);
@@ -59,6 +60,7 @@ describe("anchor-handler-tests", () => {
             DaveSigner,
             psp22Contract,
             tokenWrapperContract,
+            vAnchorContract
         } = await setup());
     });
 
@@ -160,20 +162,7 @@ describe("anchor-handler-tests", () => {
 
         console.log("finished deploying poseidon")
 
-        // VAnchor verifier instantiation
-        const vAnchorVerifierContractFactory = await getContractFactory(
-            "vanchor_verifier",
-            sender.address
-        );
-        const vAnchorVerifierContract = await vAnchorVerifierContractFactory.deploy(
-            "new",
-            2,
-            2,
-            2
-        );
-        console.log(`verifier ${vAnchorVerifierContract.abi.info.source.wasmHash}`)
 
-        console.log("finished deploying verifier")
 
         const randomVersion = Math.floor(Math.random() * 10000);
 
@@ -207,9 +196,10 @@ describe("anchor-handler-tests", () => {
             },
             randomVersion+1,
             poseidonContract.abi.info.source.wasmHash,
-            vAnchorVerifierContract.abi.info.source.wasmHash,
             tokenWrapperContract.abi.info.source.wasmHash
         );
+
+        console.log(`vanchro ${vAnchorContract.abi.info.source.wasmHash}`)
 
         console.log("finished deploying vanchor")
 
@@ -226,10 +216,16 @@ describe("anchor-handler-tests", () => {
         const tokenWrapperContractAddress = tokenWrapperContract.address;
         const senderAddress = sender.address;
         const poseidonContractHash = poseidonContract.abi.info.source.wasmHash;
-        const verifierContractHash =   vAnchorVerifierContract.abi.info.source.wasmHash;
+        //const verifierContractHash =   vAnchorVerifierContract.abi.info.source.wasmHash;
         const tokenWrapperContractHash =   tokenWrapperContract.abi.info.source.wasmHash;
 
+        console.log(`sender address ${senderAddress}`);
+        //console.log(`sender address ${hexToU8a(senderAddress)}`);
+
         //TODO will change Alice address to signature bridge address as soon as signature bridge is ready
+        // @ts-ignore
+        // @ts-ignore
+        // @ts-ignore
         const anchorHandlerContract =
             await anchorHandlerContractFactory.deploy(
                 "new",
@@ -246,10 +242,9 @@ describe("anchor-handler-tests", () => {
                     maxExtAmt,
                     maxFee,
                     tokenWrapperContractAddress,
-                    senderAddress,
+                    handler: sender.address,
                     randomVersion,
                     poseidonContractHash,
-                    verifierContractHash,
                     tokenWrapperContractHash
                 },
                 {
@@ -285,12 +280,13 @@ describe("anchor-handler-tests", () => {
             anchorHandlerContract,
             psp22Contract,
             tokenWrapperContract,
+            vAnchorContract
         };
     }
 
     async function vAnchorContractInitParams() {
 
-        let maxEdges = 30;
+        let maxEdges = 2;
         let chainId = 1;
         let levels = 30;
         let maxDepositAmount = 1000000;
@@ -345,7 +341,7 @@ describe("anchor-handler-tests", () => {
         };
     }
 
-    it.only("Migrate Bridge", async () => {
+    it("Migrate Bridge", async () => {
         let initialBridgeAddress =
             await anchorHandlerContract.query.getBridgeAddress();
 
@@ -359,7 +355,7 @@ describe("anchor-handler-tests", () => {
         expect(initialBridgeAddress.output).to.not.equal(newBridgeAddress.output);
     });
 
-    it.only("Set Resource", async () => {
+    it("Set Resource", async () => {
         let resourceId = Array.from(genResourceId(psp22Contract.address));
 
         await expect(
@@ -394,6 +390,25 @@ describe("anchor-handler-tests", () => {
     });
 
     it.only("Execute Proposal for set handler", async () => {
+
+        let initialHandler =
+            await vAnchorContract.query.handler();
+
+        console.log(`initial handler ${initialHandler.output}`);
+
+        await expect(
+            vAnchorContract.tx.setHandler(
+                anchorHandlerContract.address,
+                1048
+            )
+        ).to.be.fulfilled;
+
+        let newHandler =
+            await vAnchorContract.query.handler();
+
+        console.log(`new handler ${newHandler.output}`);
+
+
         // sets random resource
         let resourceId = Array.from(genResourceId(psp22Contract.address));
         await expect(
@@ -417,7 +432,7 @@ describe("anchor-handler-tests", () => {
 
         let parsedFunctionSig = JSON.parse(functionSig.output).ok;
 
-        let nonce = [0, 0, 0, 0, 0, 0, 4, 24];
+        let nonce = [0, 0, 0, 0, 0, 0, 8, 48];
 
         let dataResult =
             await anchorHandlerContract.query.constructDataForSetHandler(
@@ -435,7 +450,7 @@ describe("anchor-handler-tests", () => {
         ).to.be.fulfilled;
     });
 
-    it.only("Execute Proposal for update edge", async () => {
+    it("Execute Proposal for update edge", async () => {
         // sets random resource
         let resourceId = Array.from(genResourceId(psp22Contract.address));
         await expect(
@@ -477,7 +492,7 @@ describe("anchor-handler-tests", () => {
         ).to.be.fulfilled;
     });
 
-    it.only("Execute Proposal for configure max deposit limit", async () => {
+    it("Execute Proposal for configure max deposit limit", async () => {
         // sets random resource
         let resourceId = Array.from(genResourceId(psp22Contract.address));
         await expect(
@@ -518,7 +533,7 @@ describe("anchor-handler-tests", () => {
         ).to.be.fulfilled;
     });
 
-    it.only("Execute Proposal for configure min withdrawal limit", async () => {
+    it("Execute Proposal for configure min withdrawal limit", async () => {
         // sets random resource
         let resourceId = Array.from(genResourceId(psp22Contract.address));
         await expect(

@@ -1,16 +1,4 @@
-#![cfg_attr(not(feature = "std"), no_std)]
-
-use ink_env::call::FromAccountId;
-use ink_lang as ink;
-use ink_storage::traits::SpreadAllocate;
-
-pub use self::vanchor_verifier::{VAnchorVerifier, VAnchorVerifierRef};
-
-impl SpreadAllocate for VAnchorVerifierRef {
-    fn allocate_spread(_ptr: &mut ink_primitives::KeyPtr) -> Self {
-        FromAccountId::from_account_id([0; 32].into())
-    }
-}
+pub use vanchor_verifier::VAnchorVerifier;
 
 mod verifier {
     use ark_crypto_primitives::{Error, SNARK};
@@ -48,34 +36,32 @@ mod verifier {
     pub type ArkworksVerifierBn254 = ArkworksVerifierGroth16<Bn254>;
 }
 
-#[ink::contract]
+#[allow(clippy::all)]
 pub mod vanchor_verifier {
-    use crate::verifier::ArkworksVerifierBn254;
     use ink_prelude::vec::Vec;
-    use ink_storage::traits::SpreadAllocate;
+    use crate::vanchor_verifier::verifier::ArkworksVerifierBn254;
 
-    #[ink(storage)]
-    #[derive(SpreadAllocate)]
+
     pub struct VAnchorVerifier {
-        vk_bytes: Vec<u8>,
+        pub vk_bytes: Vec<u8>,
     }
 
-    /// The verifier error types.
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+    /// The hash error types.
+    #[derive(Debug)]
     pub enum Error {
         /// Returned if error verifying
         VerifierError,
+
+        /// Invalid Input and Outputs
+        InvalidParams
     }
 
     /// The verifier result type.
-    pub type Result<T> = core::result::Result<T, Error>;
+    //pub type Result<T> = core::result::Result<T, Error>;
 
     impl VAnchorVerifier {
-        /// Constructor that initializes the `bool` value to the given `init_value`.
-        #[ink(constructor)]
-        pub fn new(max_edges: u32, ins: u32, outs: u32) -> Self {
-            let v_anchor_2_2 = [
+        pub fn new(max_edges: u32, ins: u32, outs: u32) -> Result<Vec<u8>, Error> {
+             let v_anchor_2_2 = [
                 149, 229, 101, 88, 100, 4, 250, 96, 247, 71, 232, 13, 37, 96, 25, 0, 58, 59, 170,
                 192, 153, 186, 201, 53, 52, 68, 134, 78, 216, 35, 197, 133, 51, 149, 196, 231, 25,
                 186, 151, 253, 9, 153, 116, 162, 73, 52, 228, 245, 181, 64, 90, 183, 2, 84, 109,
@@ -172,7 +158,7 @@ pub mod vanchor_verifier {
                     191, 180, 183, 179, 211, 197, 112, 53, 159, 235, 38, 201, 242, 92, 168, 190,
                     131, 194, 19,
                 ]
-                .as_slice(),
+                    .as_slice(),
                 (32, 2, 2) => [
                     149, 229, 101, 88, 100, 4, 250, 96, 247, 71, 232, 13, 37, 96, 25, 0, 58, 59,
                     170, 192, 153, 186, 201, 53, 52, 68, 134, 78, 216, 35, 197, 133, 51, 149, 196,
@@ -263,7 +249,7 @@ pub mod vanchor_verifier {
                     59, 166, 46, 83, 253, 213, 86, 80, 197, 73, 205, 167, 247, 175, 208, 156, 140,
                     235, 220, 75, 246, 139, 167, 170, 146, 96, 142, 151, 192, 2, 55, 34,
                 ]
-                .as_slice(),
+                    .as_slice(),
                 (32, 16, 2) => [
                     149, 229, 101, 88, 100, 4, 250, 96, 247, 71, 232, 13, 37, 96, 25, 0, 58, 59,
                     170, 192, 153, 186, 201, 53, 52, 68, 134, 78, 216, 35, 197, 133, 51, 149, 196,
@@ -381,18 +367,18 @@ pub mod vanchor_verifier {
                     17, 75, 44, 12, 151, 188, 123, 104, 72, 7, 96, 203, 156, 109, 73, 215, 96, 119,
                     125, 101, 87, 158, 75, 6,
                 ]
-                .as_slice(),
-                _ => [0 as u8].as_slice(),
+                    .as_slice(),
+                _ => return Err(Error::InvalidParams),
             };
-            Self {
-                vk_bytes: vk_bytes.to_vec(),
-            }
+
+            Ok(vk_bytes.to_vec())
         }
 
-        #[ink(message)]
-        pub fn verify(&self, public_inp_bytes: Vec<u8>, proof_bytes: Vec<u8>) -> Result<bool> {
+        pub fn verify(&self, public_inp_bytes: Vec<u8>, proof_bytes: Vec<u8>) -> Result<bool, Error> {
             ArkworksVerifierBn254::verify(&public_inp_bytes, &proof_bytes, &self.vk_bytes)
                 .map_err(|_| Error::VerifierError)
         }
     }
+
+
 }

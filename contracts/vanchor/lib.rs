@@ -30,7 +30,7 @@ pub mod vanchor {
     use protocol_ink_lib::keccak::Keccak256;
     use protocol_ink_lib::utils::element_encoder;
     use protocol_ink_lib::zeroes::zeroes;
-    use verifier::vanchor_verifier::VAnchorVerifierRef;
+    use protocol_ink_lib::vanchor_verifier::VAnchorVerifier;
 
     use brush::contracts::psp22::*;
     use brush::contracts::traits::psp22::PSP22;
@@ -75,8 +75,8 @@ pub mod vanchor {
         pub used_nullifiers: Mapping<[u8; 32], bool>,
 
         pub poseidon: PoseidonRef,
-        pub verifier_2_2: VAnchorVerifierRef,
-        pub verifier_16_2: VAnchorVerifierRef,
+        pub verifier_2_2: Vec<u8>,
+        pub verifier_16_2: Vec<u8>,
         pub token_wrapper: GovernedTokenWrapperRef,
     }
 
@@ -204,9 +204,9 @@ pub mod vanchor {
             token_wrapper_data: TokenWrapperData,
             version: u32,
             poseidon_contract_hash: Hash,
-            verifier_contract_hash: Hash,
             token_wrapper_contract_hash: Hash,
         ) -> Self {
+            ink_env::debug_println!("Instantiating contract");
             let salt = version.to_le_bytes();
             let poseidon = PoseidonRef::new()
                 .endowment(0)
@@ -217,29 +217,6 @@ pub mod vanchor {
                     ink_env::debug_print!("contract error in poseidon init {:?}", error);
                     panic!("failed at instantiating the Poseidon contract: {:?}", error)
                 });
-
-            let verifier_2_2 = VAnchorVerifierRef::new(max_edges, 2, 2)
-                .endowment(0)
-                .code_hash(verifier_contract_hash)
-                .salt_bytes(salt)
-                .instantiate()
-                .unwrap_or_else(|error| {
-                    panic!(
-                        "failed at instantiating the VAnchorVerifier contract: {:?}",
-                        error
-                    )
-                });
-            /*let verifier_16_2 = VAnchorVerifierRef::new(max_edges, 16, 16)
-                .endowment(0)
-                .code_hash(verifier_contract_hash)
-                .salt_bytes(salt)
-                .instantiate()
-                .unwrap_or_else(|error| {
-                    panic!(
-                        "failed at instantiating the VAnchorVerifier contract: {:?}",
-                        error
-                    )
-                });*/
 
             let token_wrapper = GovernedTokenWrapperRef::new(
                 token_wrapper_data.name,
@@ -264,6 +241,27 @@ pub mod vanchor {
                 )
             });
 
+            let verifier_2_2 = protocol_ink_lib::vanchor_verifier::VAnchorVerifier::new(max_edges,2, 2).unwrap_or_else(|error| {
+                panic!(
+                    "failed at constructing verifier(2,2) for the Vanchor contract: {:?}",
+                    error
+                )
+            });
+
+            let message = ink_prelude::format!("verifier 2 is {:?}", verifier_2_2);
+            ink_env::debug_println!("{}",message);
+
+            let verifier_16_2 = protocol_ink_lib::vanchor_verifier::VAnchorVerifier::new(max_edges,16, 2).unwrap_or_else(|error| {
+                panic!(
+                    "failed at constructing verifier(16,2) for the Vanchor contract: {:?}",
+                    error
+                )
+            });
+
+            let message = ink_prelude::format!("verifier 16 is {:?}", verifier_16_2);
+            ink_env::debug_println!("{}",message);
+
+
             ink_lang::utils::initialize_contract(|contract: &mut VAnchor| {
                 contract.chain_id = chain_id;
                 contract.creator = Self::env().caller();
@@ -283,7 +281,7 @@ pub mod vanchor {
 
                 contract.poseidon = poseidon;
                 contract.verifier_2_2 = verifier_2_2;
-                //contract.verifier_16_2 = verifier_16_2;
+                contract.verifier_16_2 = verifier_16_2;
                 contract.token_wrapper = token_wrapper;
 
                 for i in 0..levels {
@@ -303,6 +301,11 @@ pub mod vanchor {
             // only current handler can execute this function
             if self.handler != self.env().caller() {
                 ink_env::debug_println!("uanthourized handler");
+                let message = ink_prelude::format!("handler is {:?}", self.handler);
+                ink_env::debug_println!("{}",message);
+
+                let message = ink_prelude::format!("caller is {:?}", self.env().caller());
+                ink_env::debug_println!("{}",message);
                 return Err(Error::Unauthorized);
             }
 
@@ -315,6 +318,12 @@ pub mod vanchor {
             self.proposal_nonce = nonce;
 
             Ok(())
+        }
+
+        /// Returns the `governor` value.
+        #[ink(message)]
+        pub fn handler(&self) -> AccountId {
+            self.handler
         }
 
         #[ink(message)]
@@ -790,8 +799,18 @@ pub mod vanchor {
                 proof_data.input_nullifiers.len(),
                 proof_data.output_commitments.len(),
             ) {
-                (2, 2) => self.verifier_2_2.verify(bytes, proof_data.proof),
-                (16, 2) => self.verifier_16_2.verify(bytes, proof_data.proof),
+                (2, 2) => {
+                    let vanchor_verifier = VAnchorVerifier {
+                        vk_bytes: self.verifier_2_2.clone()
+                    };
+                    vanchor_verifier.verify(bytes, proof_data.proof)
+                },
+                (16, 2) => {
+                    let vanchor_verifier = VAnchorVerifier {
+                        vk_bytes: self.verifier_16_2.clone()
+                    };
+                    vanchor_verifier.verify(bytes, proof_data.proof)
+                },
                 _ => Ok(false),
             };
 
