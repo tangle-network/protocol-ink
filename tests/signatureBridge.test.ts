@@ -17,6 +17,10 @@ import {ethers} from "ethers";
 import type { KeypairType } from '@polkadot/util-crypto/types';
 import {Keypair} from "@webb-tools/sdk-core";
 const ec = new EC.ec('secp256k1');
+import { u8aToHex, hexToU8a } from '@polkadot/util';
+import pkg from 'secp256k1';
+import {mnemonicGenerate} from "@polkadot/util-crypto";
+const { ecdsaSign } = pkg;
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
@@ -44,13 +48,14 @@ describe("signature-bridge-tests", () => {
     let keyring: any;
     let pair: any;
     let publicKey: any;
+    let PK1:any;
     after(() => {
-        killContractNode(childProcess);
+        //killContractNode(childProcess);
         return api.disconnect();
     });
 
     before(async () => {
-        childProcess = await startContractNode();
+        //childProcess = await startContractNode();
         await api.isReady;
     });
 
@@ -70,7 +75,8 @@ describe("signature-bridge-tests", () => {
             privateKey,
             keyring,
             pair,
-            publicKey
+            publicKey,
+            PK1
         } = await setup());
     });
 
@@ -114,13 +120,16 @@ describe("signature-bridge-tests", () => {
             DaveSigner
         )
 
-        //let keypair = ec.genKeyPair();
-       // const publicKey = keypair.getPublic('array');
-        //const privateKey = keypair.getPrivate('hex');
-        const keyring = new Keyring({type: 'ecdsa'});
-        const pair =  keyring.addFromUri('//Alice');
-        /* create a pair on the keyring */
-      const publicKey = pair.publicKey;
+        /*let keypair = ec.genKeyPair();
+        const publicKey = keypair.getPublic('array');
+        console.log(`public key ${publicKey}`)
+        const privateKey = keypair.getPrivate('hex');*/
+
+        const mnemonic = mnemonicGenerate();
+        const keyring = new Keyring({type: 'ethereum'});
+        const pair = keyring.addFromUri(mnemonic, { name: 'first pair' }, 'ethereum');
+        //const pair =  keyring.addFromUri('//Alice');
+        const publicKey = pair.publicKey;
 
         console.log(`public key ${publicKey.length}`)
 
@@ -130,6 +139,18 @@ describe("signature-bridge-tests", () => {
         let publicKeyArray =  Array.from(publicKey)
 
         console.log(`public key arr is ${publicKeyArray}`)
+
+        // Governer key
+        /*&const PK1 = u8aToHex(ethers.utils.randomBytes(32));
+        let governorWallet = new ethers.Wallet(PK1);
+        // slice 0x04 from public key
+        let compressedKey = governorWallet._signingKey().compressedPublicKey.slice(4);
+        let publicKey =Array.from(hexToU8a(governorWallet._signingKey().compressedPublicKey));
+        console.log(`public key ${publicKey}`)
+        console.log(`compressed key ${Array.from(hexToU8a(governorWallet._signingKey().compressedPublicKey))}`);
+        console.log(`slice compressed key ${Array.from(hexToU8a(compressedKey))}`);*/
+
+
 
         // signature bridge instantiation
         const sigBridgeContractFactory = await getContractFactory(
@@ -231,6 +252,7 @@ describe("signature-bridge-tests", () => {
             keyring,
             pair,
             publicKey,
+            PK1
         };
     }
 
@@ -304,11 +326,24 @@ describe("signature-bridge-tests", () => {
         console.log(`hashData ${hashDataArray.subarray(1)}`)
 
 
-        //const sig = signMessage(privateKey,hexStringToByteArray(data));
+        const hash = ethers.utils.keccak256(data);
+        const hashedData = ethers.utils.arrayify(hash);
+
+        //const sig = signMessage(privateKey,hashedData);
         //const hash = ethers.utils.keccak256(data);
         //const hashedData = ethers.utils.arrayify(hash);
         //console.log(`hashedData is ${hexStringToByteArray(hash)}`)
-        const sig = Array.from(pair.sign(hashDataArray.subarray(1)));
+
+        const sig = Array.from(pair.sign(data));
+
+        /*let hash = ethers.utils.keccak256(hexStringToByteArray(data));
+        console.log(`hashedData is ${hexStringToByteArray(hash)}`)
+        let msg = ethers.utils.arrayify(hash);
+        console.log(`msg is ${msg}`)
+        // sign the message
+        const sigObj = ecdsaSign(msg, hexToU8a(PK1));
+        // @ts-ignore
+        let sig = new Uint8Array([...sigObj.signature, sigObj.recid]);*/
 
         console.log(`signed message ${sig}`)
 
@@ -316,23 +351,29 @@ describe("signature-bridge-tests", () => {
         // @ts-ignore
         if (sig[sig.length-1] < 27)  {
             // @ts-ignore
-            sig[sig.length-1] = sig[sig.length-1] + 27;
+            //sig[sig.length-1] = sig[sig.length-1] + 27;
         }
 
-        console.log(`signed message mod ${sig}`)
+        //console.log(`signed message mod ${ethers.utils.arrayify(hexStringToByteArray(sig))}`)
 
-        console.log(hexStringToByteArray(data))
+        //console.log(hexStringToByteArray(data))
 
         let handlerAddress = tokenWrapperHandlerContract.address;
         let executionContextAddress = tokenWrapperContract.address;
         let newResourceId = resourceId;
 
-        let isVerified = pair.verify(hashDataArray.subarray(1), sig, publicKey);
+        let isVerified = pair.verify(data, sig, publicKey);
         console.log(`is message verified ${isVerified}`)
 
 //        let sigParsed = Array.from(Buffer.from(sig.substring(2, sig.length - 2 ), 'hex'));
 
        // console.log(`sig parsed is ${sigParsed}`)
+
+
+       /* let pk_key =
+            await signatureBridgeContract.query.recoverPublicKey(sig, hashedData);
+
+        console.log(`pk key is ${JSON.parse(pk_key.output).ok}`)*/
 
         await expect(
             signatureBridgeContract.tx.adminSetResourceWithSignature(

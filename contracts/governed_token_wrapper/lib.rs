@@ -485,6 +485,7 @@ pub mod governed_token_wrapper {
         /// * `nonce` -  The nonce tracking updates to this contract
         #[ink(message)]
         pub fn set_fee(&mut self, fee: Balance, nonce: u64) -> Result<()> {
+            ink_env::debug_println!("set fee in token wrapper resource handler");
             // only contract governor can execute this function
             self.is_governor(self.env().caller())?;
 

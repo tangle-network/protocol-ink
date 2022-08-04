@@ -18,6 +18,8 @@ mod signature_bridge {
     use webb_proposals::TypedChainId;
     use protocol_ink_lib::keccak::Keccak256;
     use protocol_ink_lib::utils::{element_encoder, truncate_and_pad};
+    use ink_env::hash::{Sha2x256, HashOutput};
+    use protocol_ink_lib::blake::blake2b_256_32_bytes_output;
 
     /// The signature bridge result type.
     pub type Result<T> = core::result::Result<T, Error>;
@@ -110,10 +112,22 @@ mod signature_bridge {
             if resource_params.nonce <= self.proposal_nonce
                 || self.proposal_nonce + 1048 < resource_params.nonce
             {
+                ink_env::debug_println!("invalid nonce");
+                let message = ink_prelude::format!("nonce is {:?}", resource_params.nonce);
+                ink_env::debug_println!("{}", &message);
+
+                let message = ink_prelude::format!("nonce in storage is {:?}", self.proposal_nonce);
+                ink_env::debug_println!("{}", &message);
                 return Err(Error::InvalidNonce);
+            } else {
+                ink_env::debug_println!("valid nonce");
             }
 
-            if resource_params.function_sig != [0u8; 4] {
+            if resource_params.function_sig == [0u8; 4] {
+                ink_env::debug_println!("invalid function sig");
+
+                let message = ink_prelude::format!("function sig is {:?}", resource_params.function_sig);
+                ink_env::debug_println!("{}", &message);
                 return Err(Error::InvalidFunctionSig);
             }
 
@@ -125,20 +139,22 @@ mod signature_bridge {
 
             self.proposal_nonce = resource_params.nonce;
 
+            ink_env::debug_println!("making low level call");
+
             // makes a low level cross contract call with the use of a selector 1 which represents set_resource contract function
             build_call::<DefaultEnvironment>()
                 .call_type(Call::new()
                     .callee(resource_params.handler_address)
-                    .gas_limit(5000))
-                .transferred_value(10)
+                    .gas_limit(5000000000))
                 .exec_input(
                     ExecutionInput::new(Selector::new([0, 0, 0, 1]))
                         .push_arg(resource_params.resource_id)
                         .push_arg(resource_params.handler_address)
                 )
                 .returns::<()>()
-                .fire()
-                .unwrap();
+                .fire().unwrap();
+
+
             Ok(())
         }
 
@@ -167,6 +183,12 @@ mod signature_bridge {
             let execution_chain_id_type: u64 = execution_typed_chain.chain_id();
 
             if TypedChainId::Ink(self.chain_id).chain_id() != execution_chain_id_type {
+                let message = ink_prelude::format!("self chain id  is {:?}", TypedChainId::Ink(self.chain_id).chain_id());
+                ink_env::debug_println!("{}", &message);
+
+                let message = ink_prelude::format!("execution_chain_id_type  is {:?}", execution_chain_id_type);
+                ink_env::debug_println!("{}", &message);
+
                 return Err(Error::WrongChainExecution);
             }
 
@@ -180,7 +202,7 @@ mod signature_bridge {
             build_call::<DefaultEnvironment>()
                 .call_type(Call::new()
                     .callee(handler_address.unwrap())
-                    .gas_limit(5000))
+                    .gas_limit(5000000000))
                 .transferred_value(10)
                 .exec_input(
                     ExecutionInput::new(Selector::new([0, 0, 0, 2]))
@@ -225,16 +247,57 @@ mod signature_bridge {
         }
 
         #[ink(message)]
+        pub fn recover_public_key(
+            &self,
+            signature: Vec<u8>,
+            hash: [u8; 32]
+        ) -> Result<Vec<u8>> {
+            if signature.len() == 65 {
+                let mut sig = [0u8; 65];
+                sig.copy_from_slice(&signature);
+
+                let message = ink_prelude::format!("sig recover_pk_key  is {:?}", sig);
+                ink_env::debug_println!("{}",message);
+
+                let message = ink_prelude::format!("public key  is {:?}", self.governor);
+                ink_env::debug_println!("{}",message);
+
+                let mut output = [0; 33];
+                let result = ink_env::ecdsa_recover(&sig, &hash, &mut output);
+                if result.is_err() {
+                    ink_env::debug_println!("result is error");
+
+                }
+                let message = ink_prelude::format!("output recover_pk_key is {:?}", output);
+                ink_env::debug_println!("{}",message);
+
+                return Ok(output.to_vec())
+            }
+            ink_env::debug_println!("signature length is not 65");
+            return Err(Error::InvalidSignatureFromGovernor);
+        }
+
+        #[ink(message)]
         pub fn data_hash(
             &self,
             data: Vec<u8>
         ) -> Result<Vec<u8>> {
+            let mut output = <Sha2x256 as HashOutput>::Type::default();
+            let hash =  ink_env::hash_bytes::<Sha2x256>(&data, &mut output);
+
+            let message = ink_prelude::format!("ink hashed data is {:?}", output);
+            ink_env::debug_println!("{}", &message);
+
             let hash = Keccak256::hash(&data)
                 .unwrap_or_else(|error| panic!("could not hash data: {:?}", error));
             let message = ink_prelude::format!("hashed data is {:?}", hash);
             ink_env::debug_println!("{}", &message);
 
-            Ok(hash.to_vec())
+            let hash = blake2b_256_32_bytes_output(&data);
+            let message = ink_prelude::format!("blake hashed data is {:?}", hash);
+            ink_env::debug_println!("{}", &message);
+
+            Ok(output.to_vec())
         }
 
         fn is_signed_by_governor(&self, data: &[u8], sig: &[u8]) -> bool {

@@ -130,6 +130,8 @@ mod token_wrapper_handler {
         /// * `contract_address` -  The contract address to be mapped to
         #[ink(message, selector = 1)]
         pub fn set_resource(&mut self, resource_id: [u8; 32], contract_address: AccountId) {
+            ink_env::debug_println!("set resource in token wrapper  handler");
+
             self.resource_id_to_contract_address
                 .insert(resource_id, &contract_address);
             self.contract_address_to_resource_id

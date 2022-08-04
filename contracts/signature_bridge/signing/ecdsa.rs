@@ -1,6 +1,6 @@
 use ink_env::Error;
 use ink_prelude::vec::Vec;
-use protocol_ink_lib::keccak::Keccak256;
+use ink_env::hash::{Keccak256, HashOutput};
 
 pub const SIGNATURE_LENGTH: usize = 65;
 
@@ -9,8 +9,9 @@ pub fn validate_ecdsa_signature(data: &[u8], signature: &[u8]) -> bool {
         let mut sig = [0u8; SIGNATURE_LENGTH];
         sig[..SIGNATURE_LENGTH].copy_from_slice(&signature);
 
-        let hash = Keccak256::hash(&data)
-            .unwrap_or_else(|error| panic!("could not hash data: {:?}", error));
+        let mut hash = <Keccak256 as HashOutput>::Type::default();
+        let result =  ink_env::hash_bytes::<Keccak256>(data, &mut hash);
+
         let mut output = [0; 33];
         return ink_env::ecdsa_recover(&sig, &hash, &mut output).is_ok();
     } else {
@@ -26,8 +27,11 @@ pub fn recover_ecdsa_pub_key(data: &[u8], signature: &[u8]) -> Result<Vec<u8>, E
         let message = ink_prelude::format!("sig in recover  is {:?}", sig);
         ink_env::debug_println!("{}",message);
 
-        let hash = Keccak256::hash(&data)
-            .unwrap_or_else(|error| panic!("could not hash data: {:?}", error));
+        let mut hash = <Keccak256 as HashOutput>::Type::default();
+        let result =  ink_env::hash_bytes::<Keccak256>(data, &mut hash);
+
+        /*let hash = Keccak256::hash(&data)
+            .unwrap_or_else(|error| panic!("could not hash data: {:?}", error));*/
         let message = ink_prelude::format!("hash data  is {:?}", hash);
         ink_env::debug_println!("{}",message);
         let mut output = [0; 33];

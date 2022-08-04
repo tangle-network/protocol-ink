@@ -106,10 +106,9 @@ export function toEncodedBinary(obj: any): string {
 }
 
 
-export const signMessage = (privKey: string, data: any) => {
+export const signMessage = (privKey: string, hashedData: any) => {
   const key = ec.keyFromPrivate(privKey.slice(2), 'hex');
-  const hash = ethers.utils.keccak256(data);
-  const hashedData = ethers.utils.arrayify(hash);
+  console.log(`hash in sign message ${hashedData}`)
   let signature = key.sign(hashedData)!;
   let expandedSig = {
     r: '0x' + signature.r.toString('hex'),
