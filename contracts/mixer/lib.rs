@@ -8,14 +8,20 @@ use ink_lang as ink;
 #[ink::contract]
 pub mod mixer {
     use super::*;
+    // use brush::{test_utils::*, contracts::{psp22::*, traits::psp22::PSP22}};
     use ink_prelude::vec::Vec;
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use poseidon::poseidon::PoseidonRef;
     use protocol_ink_lib::keccak::Keccak256;
     use protocol_ink_lib::utils::truncate_and_pad;
+    use protocol_ink_lib::utils::{is_account_id_zero, ZERO_ADDRESS};
     use protocol_ink_lib::zeroes::zeroes;
     use scale::Encode;
     use verifier::MixerVerifierRef;
+
+    use brush::contracts::psp22::*;
+    use brush::contracts::traits::psp22::PSP22;
+    use brush::test_utils::*;
 
     pub const ROOT_HISTORY_SIZE: u32 = 100;
     pub const ERROR_MSG: &'static str =
@@ -24,14 +30,19 @@ pub mod mixer {
     contract's balance below minimum balance.";
 
     #[ink(storage)]
-    #[derive(SpreadAllocate)]
+    #[derive(SpreadAllocate, PSP22Storage)]
     pub struct Mixer {
         deposit_size: Balance,
         merkle_tree: merkle_tree::MerkleTree,
         used_nullifiers: Mapping<[u8; 32], bool>,
         poseidon: PoseidonRef,
         verifier: MixerVerifierRef,
+        #[PSP22StorageField]
+        psp22: PSP22Data,
+        psp22_token_address: Option<AccountId>,
     }
+
+    impl PSP22 for Mixer {}
 
     #[ink(event)]
     pub struct Deposit {
@@ -91,6 +102,7 @@ pub mod mixer {
             levels: u32,
             deposit_size: Balance,
             version: u32,
+            psp22_contract_address: AccountId,
             poseidon_contract_hash: Hash,
             verifier_contract_hash: Hash,
         ) -> Self {
@@ -123,6 +135,7 @@ pub mod mixer {
                 contract.merkle_tree.levels = levels;
                 contract.merkle_tree.current_root_index = 0;
                 contract.merkle_tree.next_index = 0;
+                contract.psp22_token_address = Some(psp22_contract_address);
 
                 for i in 0..levels {
                     contract.merkle_tree.filled_subtrees.insert(i, &zeroes(i));
@@ -145,7 +158,36 @@ pub mod mixer {
         }
 
         #[ink(message, payable)]
-        pub fn deposit(&mut self, commitment: [u8; 32]) -> Result<u32> {
+        pub fn deposit_native(&mut self, commitment: [u8; 32]) -> Result<u32> {
+            ink_env::debug_println!("start native deposit ");
+
+            assert!(
+                self.env().transferred_value() == self.deposit_size,
+                "Deposit size is not correct"
+            );
+
+            ink_env::debug_println!("after transferred value assert");
+
+            let index = self.merkle_tree.insert(self.poseidon.clone(), commitment);
+
+            ink_env::debug_println!("after merkle tree insertion");
+
+            self.env().emit_event(Deposit {
+                from: self.env().caller(),
+                commitment,
+                value: self.env().transferred_value(),
+            });
+
+            ink_env::debug_println!("finished deposit");
+
+            index
+        }
+
+        #[ink(message)]
+        pub fn deposit_psp22(&mut self, commitment: [u8; 32], amount: Balance) -> Result<u32> {
+            if self.psp22_token_address.is_none() {
+                panic!("psp22 token address is not set");
+            }
             assert!(
                 self.env().transferred_value() == self.deposit_size,
                 "Deposit size is not correct"
@@ -156,7 +198,7 @@ pub mod mixer {
             self.env().emit_event(Deposit {
                 from: self.env().caller(),
                 commitment,
-                value: self.env().transferred_value(),
+                value: amount,
             });
 
             index
@@ -217,39 +259,64 @@ pub mod mixer {
             // Send the funds
             // TODO: Support "PSP22"-like tokens and Native token
             // TODO: SPEC this more with Drew and create task/issue
-            if self
-                .env()
-                .transfer(withdraw_params.recipient, actual_amount)
-                .is_err()
-            {
-                panic!("{}", ERROR_MSG);
-            }
-
-            if self
-                .env()
-                .transfer(withdraw_params.relayer, withdraw_params.fee)
-                .is_err()
-            {
-                panic!("{}", ERROR_MSG);
-            }
-
-            if withdraw_params.refund > 0 {
+            if self.psp22_token_address.is_some() {
                 if self
-                    .env()
-                    .transfer(withdraw_params.recipient, withdraw_params.refund)
+                    .transfer_from(
+                        self.psp22_token_address.unwrap(),
+                        withdraw_params.recipient,
+                        actual_amount,
+                        Vec::<u8>::new(),
+                    )
                     .is_err()
                 {
-                    ink_env::debug_println!("refund processing failed");
                     panic!("{}", ERROR_MSG);
                 }
-            }
+                if self
+                    .transfer_from(
+                        self.psp22_token_address.unwrap(),
+                        withdraw_params.relayer,
+                        withdraw_params.fee,
+                        Vec::<u8>::new(),
+                    )
+                    .is_err()
+                {
+                    panic!("{}", ERROR_MSG);
+                }
+            } else {
+                if self
+                    .env()
+                    .transfer(withdraw_params.recipient, actual_amount)
+                    .is_err()
+                {
+                    panic!("{}", ERROR_MSG);
+                }
 
-            self.env().emit_event(Withdraw {
-                recipient: withdraw_params.recipient,
-                relayer: withdraw_params.relayer,
-                fee: withdraw_params.fee,
-                refund: withdraw_params.refund,
-            });
+                if self
+                    .env()
+                    .transfer(withdraw_params.relayer, withdraw_params.fee)
+                    .is_err()
+                {
+                    panic!("{}", ERROR_MSG);
+                }
+
+                if withdraw_params.refund > 0 {
+                    if self
+                        .env()
+                        .transfer(withdraw_params.recipient, withdraw_params.refund)
+                        .is_err()
+                    {
+                        ink_env::debug_println!("refund processing failed");
+                        panic!("{}", ERROR_MSG);
+                    }
+                }
+
+                self.env().emit_event(Withdraw {
+                    recipient: withdraw_params.recipient,
+                    relayer: withdraw_params.relayer,
+                    fee: withdraw_params.fee,
+                    refund: withdraw_params.refund,
+                });
+            }
 
             Ok(())
         }
