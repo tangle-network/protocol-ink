@@ -46,6 +46,16 @@ mod token_wrapper_handler {
         UnWhitelistedContractAddress,
         /// Invalid Function signature
         InvalidFunctionSignature,
+        /// Invalid Contract Address
+        InvalidContractAddress,
+        /// Set Fee Error
+        SetFeeError,
+        /// Set Fee Recipient Error
+        SetFeeRecipientError,
+        /// Add Token Address Error
+        AddTokenAddressError,
+        /// Remove Token Address Error
+        RemoveTokenAddressError,
     }
 
     // Represents the token wrapper contract instantiation configs/data
@@ -145,7 +155,7 @@ mod token_wrapper_handler {
         /// * `bridge_address` -  The bridge address to migrate to
         #[ink(message)]
         pub fn migrate_bridge(&mut self, bridge_address: AccountId) -> Result<()> {
-            if self.env().caller() != bridge_address {
+            if self.env().caller() != self.bridge_address {
                 return Err(Error::Unauthorized);
             }
             self.bridge_address = bridge_address;
@@ -210,7 +220,9 @@ mod token_wrapper_handler {
                 let nonce = u64::from_be_bytes(nonce_bytes);
                 let fee = u8::from_be_bytes(fee_bytes);
 
-                self.token_wrapper.set_fee(fee.into(), nonce);
+                if self.token_wrapper.set_fee(fee.into(), nonce).is_err() {
+                    return Err(Error::SetFeeError);
+                }
             } else if function_signature
                 == blake2b_256_4_bytes_output(
                     b"GovernedTokenWrapper::add_token_address"
@@ -223,8 +235,13 @@ mod token_wrapper_handler {
 
                 let nonce = u64::from_be_bytes(nonce_bytes);
 
-                self.token_wrapper
-                    .add_token_address(token_address.into(), nonce);
+                if self
+                    .token_wrapper
+                    .add_token_address(token_address.into(), nonce)
+                    .is_err()
+                {
+                    return Err(Error::AddTokenAddressError);
+                }
             } else if function_signature
                 == blake2b_256_4_bytes_output(
                     b"GovernedTokenWrapper::remove_token_address"
@@ -237,8 +254,13 @@ mod token_wrapper_handler {
 
                 let nonce = u64::from_be_bytes(nonce_bytes);
 
-                self.token_wrapper
-                    .remove_token_address(token_address.into(), nonce);
+                if self
+                    .token_wrapper
+                    .remove_token_address(token_address.into(), nonce)
+                    .is_err()
+                {
+                    return Err(Error::RemoveTokenAddressError);
+                }
             } else if function_signature
                 == blake2b_256_4_bytes_output(
                     b"GovernedTokenWrapper::set_fee_recipient"
@@ -251,8 +273,13 @@ mod token_wrapper_handler {
 
                 let nonce = u64::from_be_bytes(nonce_bytes);
 
-                self.token_wrapper
-                    .set_fee_recipient(fee_recipient.into(), nonce);
+                if self
+                    .token_wrapper
+                    .set_fee_recipient(fee_recipient.into(), nonce)
+                    .is_err()
+                {
+                    return Err(Error::SetFeeRecipientError);
+                }
             } else {
                 return Err(Error::InvalidFunctionSignature);
             }
@@ -260,53 +287,139 @@ mod token_wrapper_handler {
         }
 
         #[ink(message)]
-        pub fn get_function_signature(
-            &self, function_type: String) -> Result<[u8; 4]>{
+        pub fn get_function_signature(&self, function_type: String) -> Result<[u8; 4]> {
+            let function_signature =
+                blake2b_256_4_bytes_output(function_type.as_bytes().to_vec().as_slice());
+
+            Ok(function_signature)
+        }
+
+        #[ink(message)]
+        pub fn get_set_fee_function_signature(&self) -> Result<[u8; 4]> {
+            let function_signature =
+                blake2b_256_4_bytes_output(b"GovernedTokenWrapper::set_fee".to_vec().as_slice());
+
+            Ok(function_signature)
+        }
+
+        #[ink(message)]
+        pub fn get_add_token_address_function_signature(&self) -> Result<[u8; 4]> {
             let function_signature = blake2b_256_4_bytes_output(
-                function_type.as_bytes().to_vec().as_slice()
+                b"GovernedTokenWrapper::add_token_address"
+                    .to_vec()
+                    .as_slice(),
             );
 
             Ok(function_signature)
         }
 
         #[ink(message)]
-        pub fn get_set_fee_function_signature(
-            &self) -> Result<[u8; 4]>{
+        pub fn get_remove_token_address_function_signature(&self) -> Result<[u8; 4]> {
             let function_signature = blake2b_256_4_bytes_output(
-                b"GovernedTokenWrapper::set_fee".to_vec().as_slice()
+                b"GovernedTokenWrapper::remove_token_address"
+                    .to_vec()
+                    .as_slice(),
             );
 
             Ok(function_signature)
         }
 
         #[ink(message)]
-        pub fn get_add_token_address_function_signature(
-            &self) -> Result<[u8; 4]>{
+        pub fn get_set_fee_recipient_function_signature(&self) -> Result<[u8; 4]> {
             let function_signature = blake2b_256_4_bytes_output(
-                b"GovernedTokenWrapper::add_token_address".to_vec().as_slice()
+                b"GovernedTokenWrapper::set_fee_recipient"
+                    .to_vec()
+                    .as_slice(),
             );
 
             Ok(function_signature)
         }
 
+        /// Gets bridge address
         #[ink(message)]
-        pub fn get_remove_token_address_function_signature(
-            &self) -> Result<[u8; 4]>{
-            let function_signature = blake2b_256_4_bytes_output(
-                b"GovernedTokenWrapper::remove_token_address".to_vec().as_slice()
-            );
+        pub fn get_bridge_address(&self) -> Result<AccountId> {
+            Ok(self.bridge_address)
+        }
 
-            Ok(function_signature)
+        /// Queries contract address
+        ///
+        /// * `resource_id` -  The resource_id to query
+        #[ink(message)]
+        pub fn get_contract_address(&self, resource_id: [u8; 32]) -> Result<AccountId> {
+            if self
+                .resource_id_to_contract_address
+                .get(resource_id)
+                .is_none()
+            {
+                return Err(Error::InvalidResourceId);
+            }
+
+            Ok(self
+                .resource_id_to_contract_address
+                .get(resource_id)
+                .unwrap())
+        }
+
+        /// Queries resource id
+        ///
+        /// * `address` -  The contract address to query
+        #[ink(message)]
+        pub fn get_resource_id(&self, address: AccountId) -> Result<[u8; 32]> {
+            if self.contract_address_to_resource_id.get(address).is_none() {
+                return Err(Error::InvalidContractAddress);
+            }
+
+            Ok(self.contract_address_to_resource_id.get(address).unwrap())
+        }
+
+        /// Queries if contract address is whitelisted
+        ///
+        /// * `address` -  The contract address to query
+        #[ink(message)]
+        pub fn is_contract_address_whitelisted(&self, address: AccountId) -> Result<bool> {
+            if self.contract_whitelist.get(address).is_none() {
+                return Err(Error::UnWhitelistedContractAddress);
+            }
+
+            Ok(self.contract_whitelist.get(address).unwrap())
         }
 
         #[ink(message)]
-        pub fn get_set_fee_recipient_function_signature(
-            &self) -> Result<[u8; 4]>{
-            let function_signature = blake2b_256_4_bytes_output(
-                b"GovernedTokenWrapper::set_fee_recipient".to_vec().as_slice()
-            );
+        pub fn construct_data_for_set_fee(
+            &self,
+            resource_id: [u8; 32],
+            function_signature: [u8; 4],
+            nonce: [u8; 8],
+            fee: [u8; 1],
+        ) -> Result<Vec<u8>> {
+            let mut result: Vec<u8> = [
+                resource_id.as_slice(),
+                function_signature.as_slice(),
+                nonce.as_slice(),
+                fee.as_slice(),
+            ]
+            .concat();
 
-            Ok(function_signature)
+            Ok(result)
+        }
+
+        #[ink(message)]
+        pub fn construct_data(
+            &self,
+            resource_id: [u8; 32],
+            function_signature: [u8; 4],
+            nonce: [u8; 8],
+            fee_recipient: AccountId,
+        ) -> Result<Vec<u8>> {
+            let mut result: Vec<u8> = [
+                resource_id.as_slice(),
+                function_signature.as_slice(),
+                nonce.as_slice(),
+                fee_recipient.as_ref(),
+            ]
+            .concat();
+
+            Ok(result)
         }
     }
 }

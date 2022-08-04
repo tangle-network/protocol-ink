@@ -26,6 +26,7 @@ path = "lib.rs"
 crate-type = [
 	# Used for normal contract Wasm blobs.
 	"cdylib",
+    "rlib",
 ]
 
 [features]
