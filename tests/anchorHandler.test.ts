@@ -410,18 +410,18 @@ describe("anchor-handler-tests", () => {
 
 
         // sets random resource
-        let resourceId = Array.from(genResourceId(psp22Contract.address));
+        let resourceId = Array.from(genResourceId(vAnchorContract.address));
         await expect(
             anchorHandlerContract.tx.setResource(
                 resourceId,
-                psp22Contract.address
+                vAnchorContract.address
             )
         ).to.be.fulfilled;
 
         // validate that resource id exists
         let resourceIdResult =
             await anchorHandlerContract.query.getResourceId(
-                psp22Contract.address
+                vAnchorContract.address
             );
         expect(`0x${toHexString(resourceId)}`).to.equal(
             `${JSON.parse(resourceIdResult.output).ok}`
@@ -432,7 +432,7 @@ describe("anchor-handler-tests", () => {
 
         let parsedFunctionSig = JSON.parse(functionSig.output).ok;
 
-        let nonce = [0, 0, 0, 0, 0, 0, 8, 48];
+        let nonce = [0, 0, 0, 0, 0, 0, 0, 0];
 
         let dataResult =
             await anchorHandlerContract.query.constructDataForSetHandler(

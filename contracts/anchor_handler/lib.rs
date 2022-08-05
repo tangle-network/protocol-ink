@@ -13,6 +13,10 @@ mod anchor_handler {
     use protocol_ink_lib::utils::{element_encoder, element_encoder_for_eight_bytes, element_encoder_for_four_bytes, element_encoder_for_one_byte, element_encoder_for_sixteen_bytes};
     use vanchor::vanchor::TokenWrapperData;
     use vanchor::VAnchorRef;
+    use ink_env::call::{build_call, Call, Selector};
+    use ink_env::DefaultEnvironment;
+    use ink_env::call::ExecutionInput;
+
 
     /// The anchor handler result type.
     pub type Result<T> = core::result::Result<T, Error>;
@@ -205,7 +209,7 @@ mod anchor_handler {
             // extract function signature
             let function_signature = element_encoder_for_four_bytes(&data[32..36]);
             let arguments = &data[36..];
-            self.execute_function_signature(function_signature, arguments)?;
+            self.execute_function_signature(function_signature, arguments, anchor_address.unwrap())?;
 
             Ok(())
         }
@@ -218,6 +222,7 @@ mod anchor_handler {
             &mut self,
             function_signature: [u8; 4],
             arguments: &[u8],
+            anchor_address: AccountId,
         ) -> Result<()> {
             if function_signature
                 == blake2b_256_4_bytes_output(
@@ -225,15 +230,36 @@ mod anchor_handler {
                 )
             {
                 let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
-                let token_address: [u8; 32] = element_encoder(&arguments[8..40]);
+                let token_address_bytes: [u8; 32] = element_encoder(&arguments[8..40]);
 
                 let nonce = u64::from_be_bytes(nonce_bytes);
 
-                if self.vanchor.set_handler(token_address.into(), nonce)
+                let token_address: AccountId = token_address_bytes.into();
+
+                let cross_contract_call = build_call::<DefaultEnvironment>()
+                    .call_type(
+                        Call::new()
+                            .callee(anchor_address)
+                            .gas_limit(50000000000),
+                    )
+                    .exec_input(
+                        ExecutionInput::new(Selector::new([0, 0, 0, 3]))
+                            .push_arg(token_address)
+                            .push_arg(nonce),
+                    )
+                    .returns::<()>()
+                    .fire();
+
+                if cross_contract_call.is_err() {
+                    ink_env::debug_println!("Error occured performing cross contract call");
+                    return Err(Error::SetHandlerError);
+                }
+
+               /* if self.vanchor.set_handler(token_address.into(), nonce)
                     .is_err()
                 {
                     return Err(Error::SetHandlerError);
-                }
+                }*/
             } else if function_signature
                 == blake2b_256_4_bytes_output(b"VAnchor::update_edge".to_vec().as_slice())
             {

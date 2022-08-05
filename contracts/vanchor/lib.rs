@@ -296,7 +296,7 @@ pub mod vanchor {
         ///
         /// * `fee` - The wrapping fee percentage
         /// * `nonce` -  The nonce tracking updates to this contract
-        #[ink(message)]
+        #[ink(message, selector=3)]
         pub fn set_handler(&mut self, handler: AccountId, nonce: u64) -> Result<()> {
             // only current handler can execute this function
             if self.handler != self.env().caller() {
@@ -307,6 +307,16 @@ pub mod vanchor {
                 let message = ink_prelude::format!("caller is {:?}", self.env().caller());
                 ink_env::debug_println!("{}",message);
                 return Err(Error::Unauthorized);
+            } else {
+                ink_env::debug_println!("authourized handler");
+
+                let message = ink_prelude::format!("handler authorized is {:?}", self.handler);
+                ink_env::debug_println!("{}",message);
+
+                let message = ink_prelude::format!("caller authorized is {:?}", self.env().caller());
+                ink_env::debug_println!("{}",message);
+
+                //return Err(Error::Unauthorized);
             }
 
             if nonce <= self.proposal_nonce || self.proposal_nonce + 1048 < nonce {
