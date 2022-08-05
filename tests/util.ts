@@ -1,10 +1,7 @@
 import { ChildProcess, spawn } from "child_process";
 import keccak256 from "keccak256";
-import {BigNumber, BigNumberish, ethers} from "ethers";
-import BN from "bn.js";
-import EC from 'elliptic';
+import { BigNumber, BigNumberish } from "ethers";
 
-const ec = new EC.ec('secp256k1');
 const substrateContractNodePath = "./substrate-contracts-node";
 export async function startContractNode() {
   const startArgs: string[] = [];
@@ -90,11 +87,11 @@ export const getChainIdType = (chainID: number = 1): number => {
 /** BigNumber to hex string of specified length */
 export function toFixedHex(number: BigNumberish, length: number = 32): string {
   let result =
-      "0x" +
-      (number instanceof Buffer
-              ? number.toString("hex")
-              : BigNumber.from(number.toString()).toHexString().replace("0x", "")
-      ).padStart(length * 2, "0");
+    "0x" +
+    (number instanceof Buffer
+      ? number.toString("hex")
+      : BigNumber.from(number.toString()).toHexString().replace("0x", "")
+    ).padStart(length * 2, "0");
   if (result.indexOf("-") > -1) {
     result = "-" + result.replace("-", "");
   }
@@ -104,26 +101,3 @@ export function toFixedHex(number: BigNumberish, length: number = 32): string {
 export function toEncodedBinary(obj: any): string {
   return Buffer.from(JSON.stringify(obj)).toString("base64");
 }
-
-
-export const signMessage = (privKey: string, hashedData: any) => {
-  const key = ec.keyFromPrivate(privKey.slice(2), 'hex');
-  console.log(`hash in sign message ${hashedData}`)
-  let signature = key.sign(hashedData)!;
-  let expandedSig = {
-    r: '0x' + signature.r.toString('hex'),
-    s: '0x' + signature.s.toString('hex'),
-    v: signature.recoveryParam! + 27,
-  }
-  let sig;
-  // Transaction malleability fix if s is too large (Bitcoin allows it, Ethereum rejects it)
-  try {
-    sig = ethers.utils.joinSignature(expandedSig)
-  } catch (e) {
-    expandedSig.s = '0x' + (new BN(ec.curve.n).sub(signature.s)).toString('hex');
-    expandedSig.v = (expandedSig.v === 27) ? 28 : 27;
-    sig = ethers.utils.joinSignature(expandedSig)
-  }
-
-  return sig;
-};

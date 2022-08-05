@@ -25,15 +25,15 @@ pub mod vanchor {
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
+    use openbrush::contracts::psp22::extensions::metadata::*;
+    use openbrush::contracts::traits::psp22::PSP22;
+    use openbrush::traits::Storage;
     use poseidon::poseidon::PoseidonRef;
     use protocol_ink_lib::field_ops::{ArkworksIntoFieldBn254, IntoPrimeField};
     use protocol_ink_lib::keccak::Keccak256;
     use protocol_ink_lib::utils::element_encoder;
     use protocol_ink_lib::zeroes::zeroes;
     use verifier::vanchor_verifier::VAnchorVerifierRef;
-    use openbrush::contracts::psp22::extensions::metadata::*;
-    use openbrush::contracts::traits::psp22::PSP22;
-    use openbrush::traits::Storage;
 
     /// The vanchor result type.
     pub type Result<T> = core::result::Result<T, Error>;
