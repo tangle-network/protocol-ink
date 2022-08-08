@@ -87,11 +87,11 @@ export const getChainIdType = (chainID: number = 1): number => {
 /** BigNumber to hex string of specified length */
 export function toFixedHex(number: BigNumberish, length: number = 32): string {
   let result =
-      "0x" +
-      (number instanceof Buffer
-              ? number.toString("hex")
-              : BigNumber.from(number.toString()).toHexString().replace("0x", "")
-      ).padStart(length * 2, "0");
+    "0x" +
+    (number instanceof Buffer
+      ? number.toString("hex")
+      : BigNumber.from(number.toString()).toHexString().replace("0x", "")
+    ).padStart(length * 2, "0");
   if (result.indexOf("-") > -1) {
     result = "-" + result.replace("-", "");
   }

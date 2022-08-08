@@ -29,8 +29,8 @@ pub mod vanchor {
     use protocol_ink_lib::field_ops::{ArkworksIntoFieldBn254, IntoPrimeField};
     use protocol_ink_lib::keccak::Keccak256;
     use protocol_ink_lib::utils::element_encoder;
-    use protocol_ink_lib::zeroes::zeroes;
     use protocol_ink_lib::vanchor_verifier::VAnchorVerifier;
+    use protocol_ink_lib::zeroes::zeroes;
 
     use brush::contracts::psp22::*;
     use brush::contracts::traits::psp22::PSP22;
@@ -241,26 +241,23 @@ pub mod vanchor {
                 )
             });
 
-            let verifier_2_2 = protocol_ink_lib::vanchor_verifier::VAnchorVerifier::new(max_edges,2, 2).unwrap_or_else(|error| {
-                panic!(
-                    "failed at constructing verifier(2,2) for the Vanchor contract: {:?}",
-                    error
-                )
-            });
+            let verifier_2_2 =
+                protocol_ink_lib::vanchor_verifier::VAnchorVerifier::new(max_edges, 2, 2)
+                    .unwrap_or_else(|error| {
+                        panic!(
+                            "failed at constructing verifier(2,2) for the Vanchor contract: {:?}",
+                            error
+                        )
+                    });
 
-            let message = ink_prelude::format!("verifier 2 is {:?}", verifier_2_2);
-            ink_env::debug_println!("{}",message);
-
-            let verifier_16_2 = protocol_ink_lib::vanchor_verifier::VAnchorVerifier::new(max_edges,16, 2).unwrap_or_else(|error| {
-                panic!(
-                    "failed at constructing verifier(16,2) for the Vanchor contract: {:?}",
-                    error
-                )
-            });
-
-            let message = ink_prelude::format!("verifier 16 is {:?}", verifier_16_2);
-            ink_env::debug_println!("{}",message);
-
+            let verifier_16_2 =
+                protocol_ink_lib::vanchor_verifier::VAnchorVerifier::new(max_edges, 16, 2)
+                    .unwrap_or_else(|error| {
+                        panic!(
+                            "failed at constructing verifier(16,2) for the Vanchor contract: {:?}",
+                            error
+                        )
+                    });
 
             ink_lang::utils::initialize_contract(|contract: &mut VAnchor| {
                 contract.chain_id = chain_id;
@@ -294,33 +291,16 @@ pub mod vanchor {
 
         /// Sets handler address for contract
         ///
-        /// * `fee` - The wrapping fee percentage
+        /// * `handler` - The contract handler to sent
         /// * `nonce` -  The nonce tracking updates to this contract
-        #[ink(message, selector=3)]
+        #[ink(message, selector = 3)]
         pub fn set_handler(&mut self, handler: AccountId, nonce: u64) -> Result<()> {
             // only current handler can execute this function
             if self.handler != self.env().caller() {
-                ink_env::debug_println!("uanthourized handler");
-                let message = ink_prelude::format!("handler is {:?}", self.handler);
-                ink_env::debug_println!("{}",message);
-
-                let message = ink_prelude::format!("caller is {:?}", self.env().caller());
-                ink_env::debug_println!("{}",message);
                 return Err(Error::Unauthorized);
-            } else {
-                ink_env::debug_println!("authourized handler");
-
-                let message = ink_prelude::format!("handler authorized is {:?}", self.handler);
-                ink_env::debug_println!("{}",message);
-
-                let message = ink_prelude::format!("caller authorized is {:?}", self.env().caller());
-                ink_env::debug_println!("{}",message);
-
-                //return Err(Error::Unauthorized);
             }
 
             if nonce <= self.proposal_nonce || self.proposal_nonce + 1048 < nonce {
-                ink_env::debug_println!("invalid nonce");
                 return Err(Error::InvalidNonce);
             }
 
@@ -351,7 +331,6 @@ pub mod vanchor {
         #[ink(message)]
         pub fn configure_max_deposit_limit(&mut self, max_deposit_amt: Balance) -> Result<()> {
             if self.creator != Self::env().caller() {
-                ink_env::debug_println!("not creator");
                 return Err(Error::Unauthorized);
             }
 
@@ -366,7 +345,6 @@ pub mod vanchor {
             min_withdrawal_amt: Balance,
         ) -> Result<()> {
             if self.creator != Self::env().caller() {
-                ink_env::debug_println!("not creator");
                 return Err(Error::Unauthorized);
             }
 
@@ -811,16 +789,16 @@ pub mod vanchor {
             ) {
                 (2, 2) => {
                     let vanchor_verifier = VAnchorVerifier {
-                        vk_bytes: self.verifier_2_2.clone()
+                        vk_bytes: self.verifier_2_2.clone(),
                     };
                     vanchor_verifier.verify(bytes, proof_data.proof)
-                },
+                }
                 (16, 2) => {
                     let vanchor_verifier = VAnchorVerifier {
-                        vk_bytes: self.verifier_16_2.clone()
+                        vk_bytes: self.verifier_16_2.clone(),
                     };
                     vanchor_verifier.verify(bytes, proof_data.proof)
-                },
+                }
                 _ => Ok(false),
             };
 
