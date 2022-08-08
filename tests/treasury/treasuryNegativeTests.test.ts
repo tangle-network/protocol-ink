@@ -140,7 +140,7 @@ describe("treasury-tests", () => {
         };
     }
 
-    it.only("Set Treasury handler With An Unathorized handler", async () => {
+    it("Set Treasury handler With An Unathorized handler", async () => {
         let {
            sender,
             BobSigner
@@ -166,7 +166,7 @@ describe("treasury-tests", () => {
         ).to.be.true;
     });
 
-    it.only("Set Treasury handler With Invalid Nonce", async () => {
+    it("Set Treasury handler With Invalid Nonce", async () => {
         let {
             sender,
             BobSigner
@@ -193,7 +193,7 @@ describe("treasury-tests", () => {
         ).to.be.true;
     });
 
-    it.only("Rescue tokens with invalid address", async () => {
+    it("Rescue tokens with invalid address", async () => {
         let {
             sender,
             BobSigner,
@@ -231,7 +231,7 @@ describe("treasury-tests", () => {
         ).to.be.true;
     });
 
-    it.only("Rescue tokens with unauthorized handler", async () => {
+    it("Rescue tokens with unauthorized handler", async () => {
         let {
             sender,
             BobSigner,
@@ -268,7 +268,7 @@ describe("treasury-tests", () => {
         ).to.be.true;
     });
 
-    it.only("Rescue tokens with invalid amount", async () => {
+    it("Rescue tokens with invalid amount", async () => {
         let {
             sender,
             BobSigner,
@@ -306,7 +306,7 @@ describe("treasury-tests", () => {
         ).to.be.true;
     });
 
-    it.only("Rescue tokens with invalid nonce", async () => {
+    it("Rescue tokens with invalid nonce", async () => {
         let {
             sender,
             BobSigner,
