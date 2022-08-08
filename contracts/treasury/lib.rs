@@ -14,20 +14,21 @@ impl SpreadAllocate for TreasuryRef {
 }
 #[ink::contract]
 mod treasury {
-    use brush::contracts::psp22::*;
-    use brush::contracts::traits::psp22::PSP22;
     use ink_prelude::vec::Vec;
     use ink_storage::{traits::SpreadAllocate, Mapping};
+    use openbrush::contracts::psp22::extensions::metadata::*;
+    use openbrush::contracts::traits::psp22::PSP22;
+    use openbrush::traits::Storage;
     use protocol_ink_lib::utils::{is_account_id_zero, ZERO_ADDRESS};
 
     /// The treasury result type.
     pub type Result<T> = core::result::Result<T, Error>;
 
     #[ink(storage)]
-    #[derive(SpreadAllocate, PSP22Storage)]
+    #[derive(SpreadAllocate, Storage)]
     pub struct Treasury {
-        #[PSP22StorageField]
-        psp22: PSP22Data,
+        #[storage_field]
+        psp22: psp22::Data,
         treasury_handler: AccountId,
         proposal_nonce: u32,
     }
@@ -180,7 +181,7 @@ mod treasury {
             amount: Balance,
         ) -> Result<()> {
             // psp22 call to increase allowance
-            self.psp22.allowances.insert((owner, spender), &amount);
+            self.psp22.allowances.insert(&(&owner, &spender), &amount);
             Ok(())
         }
 

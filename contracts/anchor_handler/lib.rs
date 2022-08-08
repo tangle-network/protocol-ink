@@ -140,7 +140,7 @@ mod anchor_handler {
         ///
         /// * `resource_id` -  The resource id to be mapped to.
         /// * `contract_address` -  The contract address to be mapped to
-        #[ink(message)]
+        #[ink(message, selector = 1)]
         pub fn set_resource(&mut self, resource_id: [u8; 32], contract_address: AccountId) {
             self.resource_id_to_contract_address
                 .insert(resource_id, &contract_address);
@@ -165,7 +165,7 @@ mod anchor_handler {
         ///
         /// * `resource_id` -  The resource id
         /// * `data` - The data to execute
-        #[ink(message)]
+        #[ink(message, selector = 2)]
         pub fn execute_proposal(&mut self, resource_id: [u8; 32], data: Vec<u8>) -> Result<()> {
             // Parse the (proposal)`data`.
             let parsed_resource_id = element_encoder(&data[0..32]);
