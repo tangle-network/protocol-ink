@@ -3,8 +3,8 @@
 use ink_lang as ink;
 
 #[ink::contract]
-mod token_wrapper_handler {
-    use governed_token_wrapper::GovernedTokenWrapperRef;
+mod treasury_handler {
+    use ink_env::hash::Blake2x256;
     use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
@@ -13,12 +13,16 @@ mod token_wrapper_handler {
     use protocol_ink_lib::keccak::Keccak256;
     use protocol_ink_lib::utils::{
         element_encoder, element_encoder_for_eight_bytes, element_encoder_for_four_bytes,
-        element_encoder_for_one_byte,
+        element_encoder_for_one_byte, element_encoder_for_sixteen_bytes,
     };
+    use treasury::TreasuryRef;
+
+    /// The treasury wrapper handler result type.
+    pub type Result<T> = core::result::Result<T, Error>;
 
     #[ink(storage)]
     #[derive(SpreadAllocate)]
-    pub struct TokenWrapperHandler {
+    pub struct TreasuryHandler {
         /// Contract address of previously deployed Bridge.
         bridge_address: AccountId,
         /// resourceID => token contract address
@@ -27,12 +31,20 @@ mod token_wrapper_handler {
         contract_address_to_resource_id: Mapping<AccountId, [u8; 32]>,
         /// Execution contract address => is whitelisted
         contract_whitelist: Mapping<AccountId, bool>,
-
-        pub token_wrapper: GovernedTokenWrapperRef,
+        /// (src_chain_id, nonce) -> UpdateRecord
+        update_records: Mapping<(u64, u64), UpdateRecord>,
+        treasury: TreasuryRef,
     }
 
-    /// The token wrapper handler result type.
-    pub type Result<T> = core::result::Result<T, Error>;
+    #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
+    #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
+    pub struct UpdateRecord {
+        pub treasury_address: AccountId,
+        pub execution_chain_id: u64,
+        pub nonce: u64,
+        pub resource_id: [u8; 32],
+        pub update_value: [u8; 32],
+    }
 
     /// The token wrapper handler error types.
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -46,80 +58,44 @@ mod token_wrapper_handler {
         UnWhitelistedContractAddress,
         /// Invalid Function signature
         InvalidFunctionSignature,
+        /// No Update Record found
+        UpdateRecordNotFound,
         /// Invalid Contract Address
         InvalidContractAddress,
-        /// Set Fee Error
-        SetFeeError,
-        /// Set Fee Recipient Error
-        SetFeeRecipientError,
-        /// Add Token Address Error
-        AddTokenAddressError,
-        /// Remove Token Address Error
-        RemoveTokenAddressError,
+        /// Set Handler Error
+        SetHandlerError,
+        /// Rescue Tokens Error
+        RescueTokensError,
     }
 
-    // Represents the token wrapper contract instantiation configs/data
-    #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
-    #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
-    pub struct TokenWrapperData {
-        pub name: Option<String>,
-        pub symbol: Option<String>,
-        pub decimal: u8,
-        pub governor: AccountId,
-        pub fee_recipient: AccountId,
-        pub fee_percentage: Balance,
-        pub is_native_allowed: bool,
-        pub wrapping_limit: Balance,
-        pub proposal_nonce: u64,
-        pub total_supply: Balance,
-    }
-
-    impl TokenWrapperHandler {
-        /// Instantiates the Token wrapper handler contract
+    impl TreasuryHandler {
+        /// Instantiates the Treasury handler contract
         ///
         /// * `bridge_address` -  Contract address of previously deployed Bridge.
         /// * `initial_resource_ids` - These are the resource ids the contract will initially support
         /// * `initial_contract_addresses` - These are the the contract addresses that the contract will initially support
         /// * `version` - contract version
-        /// * `token_wrapper_contract_hash` - The hash representation of the token wrapper contract
-        /// * `token_wrapper_data` - token wrapper instantiation data/config
         #[ink(constructor)]
         pub fn new(
             bridge_address: AccountId,
             initial_resource_ids: Vec<[u8; 32]>,
             initial_contract_addresses: Vec<AccountId>,
             version: u32,
-            token_wrapper_contract_hash: Hash,
-            token_wrapper_data: TokenWrapperData,
+            treasury_contract_hash: Hash,
         ) -> Self {
-            let salt = version.to_le_bytes();
-
-            let token_wrapper = GovernedTokenWrapperRef::new(
-                token_wrapper_data.name,
-                token_wrapper_data.symbol,
-                token_wrapper_data.decimal,
-                token_wrapper_data.governor,
-                token_wrapper_data.fee_recipient,
-                token_wrapper_data.fee_percentage,
-                token_wrapper_data.is_native_allowed,
-                token_wrapper_data.wrapping_limit,
-                token_wrapper_data.proposal_nonce,
-                token_wrapper_data.total_supply,
-            )
-            .endowment(0)
-            .code_hash(token_wrapper_contract_hash)
-            .salt_bytes(salt)
-            .instantiate()
-            .unwrap_or_else(|error| {
-                panic!(
-                    "failed at instantiating the Token Wrapper contract: {:?}",
-                    error
-                )
-            });
-
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
+                let salt = version.to_le_bytes();
+                let treasury = TreasuryRef::new(instance.env().account_id())
+                    .endowment(0)
+                    .code_hash(treasury_contract_hash)
+                    .salt_bytes(salt)
+                    .instantiate()
+                    .unwrap_or_else(|error| {
+                        panic!("failed at instantiating the Treasury contract: {:?}", error)
+                    });
+
                 instance.bridge_address = bridge_address;
-                instance.token_wrapper = token_wrapper;
+                instance.treasury = treasury;
 
                 if initial_resource_ids.len() != initial_contract_addresses.len() {
                     panic!("initial_resource_ids and initial_contract_addresses len mismatch");
@@ -138,14 +114,20 @@ mod token_wrapper_handler {
         ///
         /// * `resource_id` -  The resource id to be mapped to.
         /// * `contract_address` -  The contract address to be mapped to
-        #[ink(message, selector = 1)]
-        pub fn set_resource(&mut self, resource_id: [u8; 32], contract_address: AccountId) {
+        #[ink(message)]
+        pub fn set_resource(
+            &mut self,
+            resource_id: [u8; 32],
+            contract_address: AccountId,
+        ) -> Result<()> {
             self.resource_id_to_contract_address
                 .insert(resource_id, &contract_address);
             self.contract_address_to_resource_id
                 .insert(contract_address.clone(), &resource_id);
             self.contract_whitelist
                 .insert(contract_address.clone(), &true);
+
+            Ok(())
         }
 
         /// Sets the bridge address
@@ -165,7 +147,7 @@ mod token_wrapper_handler {
         ///
         /// * `resource_id` -  The resource id
         /// * `data` - The data to execute
-        #[ink(message, selector = 2)]
+        #[ink(message, payable)]
         pub fn execute_proposal(&mut self, resource_id: [u8; 32], data: Vec<u8>) -> Result<()> {
             // Parse the (proposal)`data`.
             let parsed_resource_id = element_encoder(&data[0..32]);
@@ -178,14 +160,13 @@ mod token_wrapper_handler {
                 return Err(Error::InvalidResourceId);
             }
 
-            let token_wrapper_address = self.resource_id_to_contract_address.get(resource_id);
+            let anchor_address = self.resource_id_to_contract_address.get(resource_id);
 
-            if token_wrapper_address.is_none() {
+            if anchor_address.is_none() {
                 return Err(Error::InvalidResourceId);
             }
 
-            let is_contract_whitelisted =
-                self.contract_whitelist.get(token_wrapper_address.unwrap());
+            let is_contract_whitelisted = self.contract_whitelist.get(anchor_address.unwrap());
 
             // check if contract address is whitelisted
             if is_contract_whitelisted.is_none() || !is_contract_whitelisted.unwrap() {
@@ -195,142 +176,74 @@ mod token_wrapper_handler {
             // extract function signature
             let function_signature = element_encoder_for_four_bytes(&data[32..36]);
             let arguments = &data[36..];
-            self.execute_function_signature(function_signature, arguments);
+            self.execute_function_signature(function_signature, arguments)?;
 
             Ok(())
         }
 
         /// Executes the function signature
         ///
-        /// * `function_signature` -  The signature to be interpreted and executed on the token-wrapper contract
-        /// * `arguments` - The function arguments to be passed to respective functions in the token-wrapper contract
+        /// * `function_signature` -  The signature to be interpreted and executed on the vanchor contract
+        /// * `arguments` - The function arguments to be passed to respective functions in the vanchor contract
         pub fn execute_function_signature(
             &mut self,
             function_signature: [u8; 4],
             arguments: &[u8],
         ) -> Result<()> {
             if function_signature
-                == blake2b_256_4_bytes_output(b"GovernedTokenWrapper::set_fee".to_vec().as_slice())
+                == blake2b_256_4_bytes_output(b"Treasury::set_handler".to_vec().as_slice())
             {
-                let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
-                let fee_bytes: [u8; 1] = element_encoder_for_one_byte(&arguments[8..9]);
+                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
+                let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
 
-                let nonce = u64::from_be_bytes(nonce_bytes);
-                let fee = u8::from_be_bytes(fee_bytes);
-
-                if self.token_wrapper.set_fee(fee.into(), nonce).is_err() {
-                    return Err(Error::SetFeeError);
-                }
-            } else if function_signature
-                == blake2b_256_4_bytes_output(
-                    b"GovernedTokenWrapper::add_token_address"
-                        .to_vec()
-                        .as_slice(),
-                )
-            {
-                let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
-                let token_address: [u8; 32] = element_encoder(&arguments[8..40]);
-
-                let nonce = u64::from_be_bytes(nonce_bytes);
+                let nonce = u32::from_be_bytes(nonce_bytes);
 
                 if self
-                    .token_wrapper
-                    .add_token_address(token_address.into(), nonce)
+                    .treasury
+                    .set_handler(token_address.into(), nonce)
                     .is_err()
                 {
-                    return Err(Error::AddTokenAddressError);
+                    return Err(Error::SetHandlerError);
                 }
             } else if function_signature
-                == blake2b_256_4_bytes_output(
-                    b"GovernedTokenWrapper::remove_token_address"
-                        .to_vec()
-                        .as_slice(),
-                )
+                == blake2b_256_4_bytes_output(b"Treasury::rescue_tokens".to_vec().as_slice())
             {
-                let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
-                let token_address: [u8; 32] = element_encoder(&arguments[8..40]);
+                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
+                let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
+                let to: [u8; 32] = element_encoder(&arguments[36..68]);
+                let amount_to_rescue_bytes: [u8; 16] =
+                    element_encoder_for_sixteen_bytes(&arguments[68..84]);
 
-                let nonce = u64::from_be_bytes(nonce_bytes);
+                let nonce = u32::from_be_bytes(nonce_bytes);
+                let amount_to_rescue = u128::from_be_bytes(amount_to_rescue_bytes);
 
                 if self
-                    .token_wrapper
-                    .remove_token_address(token_address.into(), nonce)
+                    .treasury
+                    .rescue_tokens(
+                        token_address.into(),
+                        to.into(),
+                        amount_to_rescue.into(),
+                        nonce,
+                    )
                     .is_err()
                 {
-                    return Err(Error::RemoveTokenAddressError);
+                    return Err(Error::RescueTokensError);
                 }
-            } else if function_signature
-                == blake2b_256_4_bytes_output(
-                    b"GovernedTokenWrapper::set_fee_recipient"
-                        .to_vec()
-                        .as_slice(),
-                )
-            {
-                let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
-                let fee_recipient: [u8; 32] = element_encoder(&arguments[8..40]);
-
-                let nonce = u64::from_be_bytes(nonce_bytes);
-
-                if self
-                    .token_wrapper
-                    .set_fee_recipient(fee_recipient.into(), nonce)
-                    .is_err()
-                {
-                    return Err(Error::SetFeeRecipientError);
-                }
-            } else {
-                return Err(Error::InvalidFunctionSignature);
             }
             Ok(())
         }
 
+        /// Gets update record
+        ///
+        /// * `src_chain_id` -  The src_chain_id to query
+        /// * `nonce` - nonce
         #[ink(message)]
-        pub fn get_function_signature(&self, function_type: String) -> Result<[u8; 4]> {
-            let function_signature =
-                blake2b_256_4_bytes_output(function_type.as_bytes().to_vec().as_slice());
+        pub fn read_update_record(&self, src_chain_id: u64, nonce: u64) -> Result<UpdateRecord> {
+            if self.update_records.get((src_chain_id, nonce)).is_none() {
+                return Err(Error::UpdateRecordNotFound);
+            }
 
-            Ok(function_signature)
-        }
-
-        #[ink(message)]
-        pub fn get_set_fee_function_signature(&self) -> Result<[u8; 4]> {
-            let function_signature =
-                blake2b_256_4_bytes_output(b"GovernedTokenWrapper::set_fee".to_vec().as_slice());
-
-            Ok(function_signature)
-        }
-
-        #[ink(message)]
-        pub fn get_add_token_address_function_signature(&self) -> Result<[u8; 4]> {
-            let function_signature = blake2b_256_4_bytes_output(
-                b"GovernedTokenWrapper::add_token_address"
-                    .to_vec()
-                    .as_slice(),
-            );
-
-            Ok(function_signature)
-        }
-
-        #[ink(message)]
-        pub fn get_remove_token_address_function_signature(&self) -> Result<[u8; 4]> {
-            let function_signature = blake2b_256_4_bytes_output(
-                b"GovernedTokenWrapper::remove_token_address"
-                    .to_vec()
-                    .as_slice(),
-            );
-
-            Ok(function_signature)
-        }
-
-        #[ink(message)]
-        pub fn get_set_fee_recipient_function_signature(&self) -> Result<[u8; 4]> {
-            let function_signature = blake2b_256_4_bytes_output(
-                b"GovernedTokenWrapper::set_fee_recipient"
-                    .to_vec()
-                    .as_slice(),
-            );
-
-            Ok(function_signature)
+            Ok(self.update_records.get((src_chain_id, nonce)).unwrap())
         }
 
         /// Gets bridge address
@@ -383,18 +296,18 @@ mod token_wrapper_handler {
         }
 
         #[ink(message)]
-        pub fn construct_data_for_set_fee(
+        pub fn construct_data_for_set_handler(
             &self,
             resource_id: [u8; 32],
             function_signature: [u8; 4],
-            nonce: [u8; 8],
-            fee: [u8; 1],
+            nonce: [u8; 4],
+            address: AccountId,
         ) -> Result<Vec<u8>> {
             let mut result: Vec<u8> = [
                 resource_id.as_slice(),
                 function_signature.as_slice(),
                 nonce.as_slice(),
-                fee.as_slice(),
+                address.as_ref(),
             ]
             .concat();
 
@@ -402,21 +315,24 @@ mod token_wrapper_handler {
         }
 
         #[ink(message)]
-        pub fn construct_data(
+        pub fn construct_data_for_rescue_tokens(
             &self,
             resource_id: [u8; 32],
             function_signature: [u8; 4],
-            nonce: [u8; 8],
-            fee_recipient: AccountId,
+            nonce: [u8; 4],
+            token_address: AccountId,
+            to: AccountId,
+            amount_to_rescue: [u8; 16],
         ) -> Result<Vec<u8>> {
             let mut result: Vec<u8> = [
                 resource_id.as_slice(),
                 function_signature.as_slice(),
                 nonce.as_slice(),
-                fee_recipient.as_ref(),
+                token_address.as_ref(),
+                to.as_ref(),
+                amount_to_rescue.as_slice(),
             ]
             .concat();
-
             Ok(result)
         }
     }

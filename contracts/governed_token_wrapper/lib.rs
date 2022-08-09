@@ -12,15 +12,15 @@ impl SpreadAllocate for GovernedTokenWrapperRef {
     }
 }
 
-#[brush::contract]
+#[openbrush::contract]
 pub mod governed_token_wrapper {
-    use brush::contracts::psp22::extensions::burnable::*;
-    use brush::contracts::psp22::extensions::metadata::*;
-    use brush::contracts::psp22::extensions::mintable::*;
-    use brush::contracts::psp22::extensions::wrapper::*;
-    use brush::contracts::psp22::*;
-    use brush::contracts::traits::psp22::PSP22;
-    use brush::test_utils::*;
+    use openbrush::contracts::psp22::extensions::burnable::*;
+    use openbrush::contracts::psp22::extensions::metadata::*;
+    use openbrush::contracts::psp22::extensions::mintable::*;
+    use openbrush::contracts::psp22::extensions::wrapper::*;
+    use openbrush::contracts::traits::psp22::PSP22;
+    use openbrush::traits::Storage;
+
     use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
@@ -36,14 +36,14 @@ pub mod governed_token_wrapper {
 
     /// The contract storage
     #[ink(storage)]
-    #[derive(SpreadAllocate, PSP22Storage, PSP22WrapperStorage, PSP22MetadataStorage)]
+    #[derive(Default, SpreadAllocate, Storage)]
     pub struct GovernedTokenWrapper {
-        #[PSP22StorageField]
-        psp22: PSP22Data,
-        #[PSP22MetadataStorageField]
-        metadata: PSP22MetadataData,
-        #[PSP22WrapperStorageField]
-        wrapper: PSP22WrapperData,
+        #[storage_field]
+        psp22: psp22::Data,
+        #[storage_field]
+        metadata: metadata::Data,
+        #[storage_field]
+        wrapper: wrapper::Data,
 
         /// The contract governor
         governor: AccountId,
@@ -884,7 +884,7 @@ pub mod governed_token_wrapper {
             amount: Balance,
         ) -> Result<()> {
             // psp22 call to increase allowance
-            self.psp22.allowances.insert((owner, spender), &amount);
+            self.psp22.allowances.insert(&(&owner, &spender), &amount);
             Ok(())
         }
 

@@ -1,5 +1,5 @@
 [package]
-name = "token_wrapper_handler"
+name = "treasury_handler"
 version = "0.1.0"
 authors = ["Webb Developers"]
 edition = "2021"
@@ -15,12 +15,12 @@ ink_prelude = { version = "~3.3.0",  default-features = false }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
 
-governed_token_wrapper = { path = "../governed_token_wrapper", default-features = false, features = ["ink-as-dependency"] }
+treasury = { path = "../treasury", default-features = false, features = ["ink-as-dependency"] }
 
 protocol-ink-lib = {path = "../../protocol-ink-lib"}
 
 [lib]
-name = "token_wrapper_handler"
+name = "treasury_handler"
 path = "lib.rs"
 crate-type = [
 	# Used for normal contract Wasm blobs.
@@ -37,6 +37,7 @@ std = [
     "scale/std",
     "scale-info/std",
 
-    "governed_token_wrapper/std",
+    "treasury/std",
 ]
 ink-as-dependency = []
+
