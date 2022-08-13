@@ -162,26 +162,18 @@ pub mod mixer {
 
         #[ink(message, payable)]
         pub fn deposit_native(&mut self, commitment: [u8; 32]) -> Result<u32> {
-            ink_env::debug_println!("start native deposit ");
-
             assert!(
                 self.env().transferred_value() == self.deposit_size,
                 "Deposit size is not correct"
             );
 
-            ink_env::debug_println!("after transferred value assert");
-
             let index = self.merkle_tree.insert(self.poseidon.clone(), commitment);
-
-            ink_env::debug_println!("after merkle tree insertion");
 
             self.env().emit_event(Deposit {
                 from: self.env().caller(),
                 commitment,
                 value: self.env().transferred_value(),
             });
-
-            ink_env::debug_println!("finished deposit");
 
             index
         }
