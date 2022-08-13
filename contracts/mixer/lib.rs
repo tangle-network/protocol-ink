@@ -8,7 +8,6 @@ use ink_lang as ink;
 #[ink::contract]
 pub mod mixer {
     use super::*;
-    // use brush::{test_utils::*, contracts::{psp22::*, traits::psp22::PSP22}};
     use ink_prelude::vec::Vec;
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use poseidon::poseidon::PoseidonRef;
@@ -18,9 +17,9 @@ pub mod mixer {
     use scale::Encode;
     use verifier::MixerVerifierRef;
 
-    use brush::contracts::psp22::*;
-    use brush::contracts::traits::psp22::PSP22;
-    use brush::test_utils::*;
+    use openbrush::contracts::psp22::*;
+    use openbrush::contracts::traits::psp22::PSP22;
+    use openbrush::traits::Storage;
 
     pub const ROOT_HISTORY_SIZE: u32 = 100;
     pub const ERROR_MSG: &'static str =
@@ -29,15 +28,15 @@ pub mod mixer {
     contract's balance below minimum balance.";
 
     #[ink(storage)]
-    #[derive(SpreadAllocate, PSP22Storage)]
+    #[derive(SpreadAllocate, Storage)]
     pub struct Mixer {
         deposit_size: Balance,
         merkle_tree: merkle_tree::MerkleTree,
         used_nullifiers: Mapping<[u8; 32], bool>,
         poseidon: PoseidonRef,
         verifier: MixerVerifierRef,
-        #[PSP22StorageField]
-        psp22: PSP22Data,
+        #[storage_field]
+        psp22: psp22::Data,
         psp22_token_address: Option<AccountId>,
     }
 
@@ -366,7 +365,7 @@ pub mod mixer {
             amount: Balance,
         ) -> Result<()> {
             // psp22 call to increase allowance
-            self.psp22.allowances.insert((owner, spender), &amount);
+            self.psp22.allowances.insert(&(&owner, &spender), &amount);
             Ok(())
         }
 
