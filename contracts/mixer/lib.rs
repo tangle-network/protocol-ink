@@ -13,8 +13,7 @@ pub mod mixer {
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use poseidon::poseidon::PoseidonRef;
     use protocol_ink_lib::keccak::Keccak256;
-    use protocol_ink_lib::utils::truncate_and_pad;
-    use protocol_ink_lib::utils::{is_account_id_zero, ZERO_ADDRESS};
+    use protocol_ink_lib::utils::{is_account_id_zero, truncate_and_pad};
     use protocol_ink_lib::zeroes::zeroes;
     use scale::Encode;
     use verifier::MixerVerifierRef;
@@ -79,6 +78,10 @@ pub mod mixer {
         NullifierKnown,
         /// Invalid Withdraw Proof
         InvalidWithdrawProof,
+        /// TransferError
+        TransferError,
+        /// PSP22 allowance error
+        PSP22AllowanceError,
     }
 
     /// The mixer result type.
@@ -261,10 +264,9 @@ pub mod mixer {
                 .insert(withdraw_params.nullifier_hash, &true);
 
             let actual_amount = self.deposit_size - withdraw_params.fee;
-            // Send the funds
-            // TODO: Support "PSP22"-like tokens and Native token
-            // TODO: SPEC this more with Drew and create task/issue
-            if self.psp22_token_address.is_some() {
+
+            // Handle transfers for native and PSP22 tokens
+            if !is_account_id_zero(self.psp22_token_address.unwrap()) {
                 if self
                     .transfer_from(
                         self.psp22_token_address.unwrap(),
@@ -310,7 +312,6 @@ pub mod mixer {
                         .transfer(withdraw_params.recipient, withdraw_params.refund)
                         .is_err()
                     {
-                        ink_env::debug_println!("refund processing failed");
                         panic!("{}", ERROR_MSG);
                     }
                 }
@@ -348,10 +349,64 @@ pub mod mixer {
             self.used_nullifiers.get(&nullifier).unwrap_or(false)
         }
 
-        /// Returns native contract balance
+        /// Returns psp22 contract balance
         #[ink(message)]
         pub fn native_contract_balance(&self) -> Balance {
             self.env().balance()
+        }
+
+        /// Returns psp22 contract balance
+        #[ink(message)]
+        pub fn psp22_contract_balance(&self) -> Balance {
+            self.balance_of(self.psp22_token_address.unwrap())
+        }
+
+        /// sets the psp22 allowance for the spender(spend on behalf of owner)
+        ///
+        /// * `owner` - owner's address
+        /// * `spender` - spender's address
+        /// * `amount` - amount to spend
+        #[ink(message)]
+        pub fn set_psp22_allowance_for_owner(
+            &mut self,
+            owner: AccountId,
+            spender: AccountId,
+            amount: Balance,
+        ) -> Result<()> {
+            // psp22 call to increase allowance
+            self.psp22.allowances.insert((owner, spender), &amount);
+            Ok(())
+        }
+
+        /// Gets the psp22 allowance for the spender(spend on behalf of owner)
+        ///
+        /// * `owner` - owner's address
+        /// * `spender` - spender's address
+        #[ink(message)]
+        pub fn get_psp22_allowance(&self, owner: AccountId, spender: AccountId) -> Balance {
+            self.allowance(owner, spender)
+        }
+
+        /// Insert's psp22 token for an address
+        ///
+        /// * `account_id` - address to transfer to
+        /// * `amount` - amount to transfer
+        #[ink(message)]
+        pub fn insert_psp22_balance(
+            &mut self,
+            account_id: AccountId,
+            amount: Balance,
+        ) -> Result<()> {
+            self.psp22.balances.insert(&account_id, &amount);
+            Ok(())
+        }
+
+        /// Returns psp22 balance for an address
+        ///
+        /// * `address` - The address to check
+        #[ink(message)]
+        pub fn psp22_balance(&self, address: AccountId) -> Balance {
+            self.balance_of(address)
         }
     }
 }
