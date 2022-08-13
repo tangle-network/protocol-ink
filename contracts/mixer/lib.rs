@@ -188,12 +188,17 @@ pub mod mixer {
             if self.psp22_token_address.is_none() {
                 panic!("psp22 token address is not set");
             }
-            assert!(
-                self.env().transferred_value() == self.deposit_size,
-                "Deposit size is not correct"
-            );
+
+            assert!(amount == self.deposit_size, "Deposit size is not correct");
 
             let index = self.merkle_tree.insert(self.poseidon.clone(), commitment);
+
+            if self
+                .transfer(self.psp22_token_address.unwrap(), amount, Vec::<u8>::new())
+                .is_err()
+            {
+                return Err(Error::TransferError);
+            }
 
             self.env().emit_event(Deposit {
                 from: self.env().caller(),
