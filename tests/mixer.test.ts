@@ -96,7 +96,7 @@ describe("mixer", () => {
     return { sender, Alice, BobSigner };
   }
 
-  it.only("Test deposit and withdraw functionality for native tokens", async () => {
+  it("Test deposit and withdraw functionality for native tokens", async () => {
     const { sender, BobSigner } = await setup();
 
     // Poseidon instantiation
@@ -185,12 +185,10 @@ describe("mixer", () => {
     proof.publicInputs.forEach(function (val) {
       pub += val;
     });
-    console.log("deposiing");
     const depositFunction = await mixerContract.tx.depositNative(commitment, {
       value: depositSize,
     });
     expect(depositFunction).to.be.ok;
-    console.log("finished depositing");
 
     const sendFundToContract = await mixerContract.tx.sendFundToContract({
       value: depositSize + depositSize,
@@ -239,7 +237,7 @@ describe("mixer", () => {
     );
     const psp22Contract = await psp22ContractFactory.deploy(
       "new",
-      10000,
+      200000,
       0,
       0,
       1
@@ -257,7 +255,7 @@ describe("mixer", () => {
     // Mixer instantiation
     const randomVersion = Math.floor(Math.random() * 10000);
     const levels = 30;
-    const depositSize = 100000000;
+    const depositSize = 100_000_000;
     const mixerContractFactory = await getContractFactory(
       "mixer",
       sender.address
@@ -267,7 +265,7 @@ describe("mixer", () => {
       levels,
       depositSize,
       randomVersion,
-      null,
+      psp22Contract.address,
       poseidonContract.abi.info.source.wasmHash,
       mixerVerifierContract.abi.info.source.wasmHash
     );
@@ -325,9 +323,19 @@ describe("mixer", () => {
       pub += val;
     });
 
-    const depositFunction = await mixerContract.tx.depositPsp22(commitment, {
-      value: depositSize,
-    });
+    // insert balance for Alice(sender)
+    let insertBalanceFunction = await mixerContract.tx.insertPsp22Balance(
+      sender.address,
+      10_000_000_000
+    );
+    expect(insertBalanceFunction).to.be.ok;
+
+    let senderBalance = await mixerContract.query.psp22Balance(sender.address);
+
+    const depositFunction = await mixerContract.tx.depositPsp22(
+      commitment,
+      depositSize
+    );
     expect(depositFunction).to.be.ok;
 
     const sendFundToContract = await mixerContract.tx.sendFundToContract({
@@ -336,7 +344,24 @@ describe("mixer", () => {
     expect(sendFundToContract).to.be.ok;
 
     let contractBalanceBeforeWithdraw =
-      await mixerContract.query.nativeContractBalance();
+      await mixerContract.query.psp22ContractBalance();
+
+    // Set the PSP22 contract allowance
+    let allowedAmount = 1000000000;
+    const setAllowanceResult = await mixerContract.tx.setPsp22AllowanceForOwner(
+      psp22Contract.address,
+      sender.address,
+      allowedAmount
+    );
+    expect(setAllowanceResult).to.be.ok;
+
+    let allowanceSet = await mixerContract.query.getPsp22Allowance(
+      sender.address,
+      mixerContract.address
+    );
+
+    // Verify that the PSP22 allowance is set
+    expect(Number(allowanceSet.output) === allowedAmount);
 
     const withdrawFunction = await mixerContract.tx.withdraw({
       proof_bytes,
@@ -350,8 +375,7 @@ describe("mixer", () => {
     expect(withdrawFunction).to.be.ok;
 
     let contractBalanceAfterWithdraw =
-      await mixerContract.query.nativeContractBalance();
-
+      await mixerContract.query.psp22ContractBalance();
     // Expect contract balance to be lower after withdrawal
     // @ts-ignore
     expect(
