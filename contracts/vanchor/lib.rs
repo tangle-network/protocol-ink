@@ -3,6 +3,8 @@
 
 mod linkable_merkle_tree;
 mod merkle_tree;
+mod test_util;
+
 use ink_env::call::FromAccountId;
 use ink_storage::traits::SpreadAllocate;
 
@@ -34,6 +36,15 @@ pub mod vanchor {
     use protocol_ink_lib::utils::element_encoder;
     use protocol_ink_lib::vanchor_verifier::VAnchorVerifier;
     use protocol_ink_lib::zeroes::zeroes;
+
+    use ink_env::hash::{HashOutput, Keccak256 as inkKeccak256};
+
+
+    use ark_ff::PrimeField;
+    use ark_ff::BigInteger;
+    use arkworks_setups::Curve;
+
+
 
     /// The vanchor result type.
     pub type Result<T> = core::result::Result<T, Error>;
@@ -102,7 +113,7 @@ pub mod vanchor {
     pub struct ExtData {
         pub recipient: AccountId,
         pub relayer: AccountId,
-        pub ext_amount: String, // Still `String` since represents `i128` value
+        pub ext_amount: i128, // Still `String` since represents `i128` value
         pub fee: u128,
         pub encrypted_output1: [u8; 32],
         pub encrypted_output2: [u8; 32],
@@ -387,7 +398,7 @@ pub mod vanchor {
             self.validate_proof(proof_data.clone(), ext_data.clone());
 
             let ext_data_fee: u128 = ext_data.fee.clone();
-            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let ext_amt: i128 = ext_data.ext_amount.clone();
             let abs_ext_amt = ext_amt.unsigned_abs();
 
             let is_withdraw = ext_amt.is_negative();
@@ -431,7 +442,7 @@ pub mod vanchor {
             ext_data: ExtData,
         ) -> Result<()> {
             let ext_data_fee: u128 = ext_data.fee.clone();
-            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let ext_amt: i128 = ext_data.ext_amount.clone();
             let abs_ext_amt = ext_amt.unsigned_abs();
 
             let amount_to_wrap = self
@@ -498,7 +509,7 @@ pub mod vanchor {
             recv_token_amt: Balance,
         ) -> Result<()> {
             let ext_data_fee: u128 = ext_data.fee.clone();
-            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let ext_amt: i128 = ext_data.ext_amount.clone();
             let abs_ext_amt = ext_amt.unsigned_abs();
 
             // Only non-"TokenWrapper" Cw20 token contract can execute this message.
@@ -565,7 +576,7 @@ pub mod vanchor {
             self.validate_proof(proof_data.clone(), ext_data.clone());
 
             let ext_data_fee: u128 = ext_data.fee.clone();
-            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let ext_amt: i128 = ext_data.ext_amount.clone();
             let abs_ext_amt = ext_amt.unsigned_abs();
 
             if ext_amt.is_positive() {
@@ -617,7 +628,7 @@ pub mod vanchor {
             self.validate_proof(proof_data.clone(), ext_data.clone());
 
             let ext_data_fee: u128 = ext_data.fee.clone();
-            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let ext_amt: i128 = ext_data.ext_amount.clone();
             let abs_ext_amt = ext_amt.unsigned_abs();
 
             if ext_amt.is_positive() {
@@ -695,9 +706,107 @@ pub mod vanchor {
                 .map_err(|_| Error::UnWrappingError)
         }
 
+        #[ink(message)]
+        pub fn construct_data(
+            &mut self,
+            chain_id: u64,
+            recipient: AccountId,
+            relayer: AccountId,
+            levels: u32,
+            pk_bytes: Vec<u8>
+        ) -> Result<(ExtData, ProofData)> {
+            let ext_amount = 10_i128;
+            let fee = 0_u128;
+
+            let public_amount = 10_i128;
+
+            let chain_type = [4, 0];
+            let chain_id = &self
+                .compute_chain_id_type(chain_id.clone(), &chain_type);
+            let in_chain_ids = [chain_id.clone(); 2];
+            let in_amounts = [0, 0];
+            let in_indices = [0, 1];
+            let out_chain_ids = [chain_id.clone(); 2];
+            let out_amounts = [10, 0];
+
+            let in_utxos = crate::test_util::setup_utxos_2_2_2(in_chain_ids, in_amounts, Some(in_indices));
+            // We are adding indices to out utxos, since they will be used as an input utxos in next transaction
+            let out_utxos =
+                crate::test_util::setup_utxos_2_2_2(out_chain_ids, out_amounts, Some(in_indices));
+
+            let output1 = out_utxos[0].commitment.into_repr().to_bytes_le();
+            let output2 = out_utxos[1].commitment.into_repr().to_bytes_le();
+
+            let ext_data = ExtData {
+                recipient: recipient,
+                relayer: relayer,
+                ext_amount: ext_amount,
+                fee: fee,
+                encrypted_output1: element_encoder(&output1),
+                encrypted_output2: element_encoder(&output2),
+            };
+
+            let ext_data_hash = self.hash_ext_data(ext_data.clone(), ext_amount, fee);
+
+            let custom_roots = Some([zeroes(levels), zeroes(levels)].map(|x| x.to_vec()));
+            let (proof, public_inputs) = crate::test_util::setup_zk_circuit_2_2_2(
+                public_amount,
+                chain_id.clone(),
+                ext_data_hash.to_vec(),
+                in_utxos,
+                out_utxos,
+                custom_roots,
+                pk_bytes,
+            );
+
+            // Deconstructing public inputs
+            let (_chain_id, public_amount, root_set, nullifiers, commitments, ext_data_hash) =
+                crate::test_util::deconstruct_public_inputs_el_2_2_2(&public_inputs);
+
+            // Constructing proof data
+            let root_set = root_set.into_iter().map(|v| v.0).collect();
+            let nullifiers = nullifiers.into_iter().map(|v| v.0).collect();
+            let commitments = commitments.into_iter().map(|v| v.0).collect();
+            let proof_data = ProofData {
+                proof: proof,
+                public_amount: public_amount.0,
+                roots: root_set,
+                input_nullifiers: nullifiers,
+                output_commitments: commitments,
+                ext_data_hash: ext_data_hash.0,
+            };
+
+
+
+            Ok((ext_data, proof_data))
+
+        }
+
+        fn hash_ext_data( &mut self, ext_data: ExtData, ext_amount: i128, fee: u128) -> [u8; 32] {
+            let mut ext_data_args = Vec::new();
+            let recipient_bytes = element_encoder(ext_data.recipient.as_ref());
+            let relayer_bytes = element_encoder(ext_data.relayer.as_ref());
+            let fee_bytes = element_encoder(&fee.to_le_bytes());
+            let ext_amt_bytes = element_encoder(&ext_amount.to_le_bytes());
+            ext_data_args.extend_from_slice(&recipient_bytes);
+            ext_data_args.extend_from_slice(&relayer_bytes);
+            ext_data_args.extend_from_slice(&ext_amt_bytes);
+            ext_data_args.extend_from_slice(&fee_bytes);
+            ext_data_args.extend_from_slice(&ext_data.encrypted_output1);
+            ext_data_args.extend_from_slice(&ext_data.encrypted_output2);
+
+            let mut hash = <inkKeccak256 as HashOutput>::Type::default();
+            ink_env::hash_bytes::<inkKeccak256>(ext_data_args.as_slice(), &mut hash);
+
+           hash
+        }
+
+
+
+
         fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result<()> {
             let ext_data_fee: u128 = ext_data.fee;
-            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let ext_amt: i128 = ext_data.ext_amount.clone();
 
             // Validation 1. Double check the number of roots.
             if self.linkable_tree.max_edges != proof_data.roots.len() as u32 {
