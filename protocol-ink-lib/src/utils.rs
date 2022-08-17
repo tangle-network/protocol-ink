@@ -51,6 +51,15 @@ pub fn element_encoder_for_one_byte(v: &[u8]) -> [u8; 1] {
     output
 }
 
+/// Transforms a u8 array to a fixed size array of 2 bytes
+///
+/// * `v` -  u8 array to transform
+pub fn element_encoder_for_two_bytes(v: &[u8]) -> [u8; 2] {
+    let mut output = [0u8; 2];
+    output.iter_mut().zip(v).for_each(|(b1, b2)| *b1 = *b2);
+    output
+}
+
 /// Determines if an account is zero token address
 ///
 /// * `account_id` - an address to determine,

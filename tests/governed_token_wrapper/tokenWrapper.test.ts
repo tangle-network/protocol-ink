@@ -39,7 +39,7 @@ describe("token-wrapper", () => {
   });
 
   before(async () => {
-   childProcess =  await startContractNode();
+    childProcess =  await startContractNode();
     await api.isReady;
   });
 
@@ -647,7 +647,7 @@ describe("token-wrapper", () => {
       0,
       0,
       9_000_000_000,
-      1,
+      100,
       newFeeRecipient
     );
     expect(updateConfigFunction).to.be.ok;

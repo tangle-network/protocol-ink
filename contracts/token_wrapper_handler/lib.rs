@@ -13,7 +13,7 @@ mod token_wrapper_handler {
     use protocol_ink_lib::keccak::Keccak256;
     use protocol_ink_lib::utils::{
         element_encoder, element_encoder_for_eight_bytes, element_encoder_for_four_bytes,
-        element_encoder_for_one_byte,
+        element_encoder_for_one_byte, element_encoder_for_two_bytes,
     };
 
     #[ink(storage)]
@@ -213,10 +213,10 @@ mod token_wrapper_handler {
                 == blake2b_256_4_bytes_output(b"GovernedTokenWrapper::set_fee".to_vec().as_slice())
             {
                 let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
-                let fee_bytes: [u8; 1] = element_encoder_for_one_byte(&arguments[8..9]);
+                let fee_bytes: [u8; 2] = element_encoder_for_two_bytes(&arguments[8..10]);
 
                 let nonce = u64::from_be_bytes(nonce_bytes);
-                let fee = u8::from_be_bytes(fee_bytes);
+                let fee = u16::from_be_bytes(fee_bytes);
 
                 if self.token_wrapper.set_fee(fee.into(), nonce).is_err() {
                     return Err(Error::SetFeeError);
@@ -388,7 +388,7 @@ mod token_wrapper_handler {
             resource_id: [u8; 32],
             function_signature: [u8; 4],
             nonce: [u8; 8],
-            fee: [u8; 1],
+            fee: [u8; 2],
         ) -> Result<Vec<u8>> {
             let mut result: Vec<u8> = [
                 resource_id.as_slice(),

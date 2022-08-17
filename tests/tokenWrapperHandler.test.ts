@@ -299,7 +299,7 @@ describe("token-wrapper-handler-tests", () => {
 
     let nonce = [0, 0, 0, 0, 0, 0, 0, 1];
 
-    let amount = [100];
+    let amount = [0, 100];
 
     let dataResult =
       await tokenWrapperHandlerContract.query.constructDataForSetFee(

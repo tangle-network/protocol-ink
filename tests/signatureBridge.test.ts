@@ -338,7 +338,7 @@ describe("signature-bridge-tests", () => {
         resourceId,
         parsedFunctionSig,
         [0, 0, 0, 0, 0, 0, 0, 1],
-        [100]
+        [0, 100]
       );
 
     let tokenWrapperData = JSON.parse(tokenWrapperDataResult.output).ok;

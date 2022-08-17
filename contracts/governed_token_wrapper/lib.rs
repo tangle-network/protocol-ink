@@ -729,7 +729,7 @@ pub mod governed_token_wrapper {
         pub fn get_fee_from_amount(&mut self, amount_to_wrap: Balance) -> Balance {
             amount_to_wrap
                 .saturating_mul(self.fee_percentage)
-                .saturating_div(100)
+                .saturating_div(10000)
         }
 
         /// Calculates the amount to be wrapped
@@ -738,8 +738,8 @@ pub mod governed_token_wrapper {
         #[ink(message)]
         pub fn get_amount_to_wrap(&mut self, deposit: Balance) -> Result<Balance> {
             let amount_to_wrap = deposit
-                .saturating_mul(100)
-                .saturating_div(100 - self.fee_percentage);
+                .saturating_mul(10000)
+                .saturating_div(10000 - self.fee_percentage);
 
             Ok(amount_to_wrap)
         }
