@@ -10,12 +10,12 @@ import {
     toEncodedBinary,
     genResourceId,
 } from "./util";
-import { hexToU8a } from "@polkadot/util";
+import {hexToU8a, u8aToHex} from "@polkadot/util";
 import { createType } from "@polkadot/types";
 import keccak256 from "keccak256";
 import { BigNumber, BigNumberish } from "ethers";
 import { registry } from "@subsocial/types";
-import { naclEncrypt, randomAsU8a } from '@polkadot/util-crypto';
+import {decodeAddress, naclEncrypt, randomAsU8a} from '@polkadot/util-crypto';
 import child from "child_process";
 import path from "path";
 import fs from 'fs';
@@ -274,7 +274,10 @@ describe("vanchor-tests", () => {
         };
     }
 
-    /*it("Transact Deposit", async () => {
+    it.only("Transact Deposit Test", async () => {
+        const {
+            levels,
+        } = await vAnchorContractInitParams();
         const chainId = '2199023256632';
         const outputChainId = BigInt(chainId);
         const secret = randomAsU8a();
@@ -329,49 +332,56 @@ describe("vanchor-tests", () => {
         const extAmount = currencyToUnitI128(10);
         const fee = 0;
 
-
-        await expect(anchorHandlerContract.tx.transactDeposit(BobSigner.address)).to
-            .be.fulfilled;
-
-    });*/
-
-    it.only("Transact Deposit", async () => {
-
-        const gitRoot = child
-            .execSync('git rev-parse --show-toplevel')
-            .toString()
-            .trim();
-
-        const pkPath = path.join(
-            // tests path
-            gitRoot,
-            'tests',
-            'protocol-substrate-fixtures',
-            'vanchor',
-            'bn254',
-            'x5',
-            '2-2-2',
-            'proving_key_uncompressed.bin'
-        );
-        const pk_hex = fs.readFileSync(pkPath).toString('hex');
-        const pk = hexToU8a(pk_hex);
-        const provingKey = fs.readFileSync(pkPath);
-
-
-        const {
-            maxEdges,
-            chainId,
-            levels,
-            maxDepositAmount,
-            minWithdrwalAmount,
-            maxExtAmt,
-            maxFee,
-        } = await vAnchorContractInitParams();
-
-        let data = await expect(anchorHandlerContract.query.constructData(3620629146, BobSigner.address, EveSigner.address, levels, provingKey));
-
+        let rootsResult = await vAnchorContract.query.customRootsFor2(levels);
         // @ts-ignore
-        console.log(`data is ${data.output}`)
+        console.log(`roots are ${rootsResult.output}`);
+        // @ts-ignore
+        let roots = rootsResult.output;
+
+        const rootsSet = [hexToU8a(roots[0].toString().replace('0x', '')), hexToU8a(roots[1].toString().replace('0x', ''))];
+        const decodedAddress = decodeAddress(address);
+        const { encrypted: comEnc1 } = naclEncrypt(output1.commitment, secret);
+        const { encrypted: comEnc2 } = naclEncrypt(output2.commitment, secret);
+
+        const setup: ProvingManagerSetupInput<'vanchor'> = {
+            chainId: outputChainId.toString(),
+            indices: [0, 0],
+            inputNotes: notes,
+            leavesMap: leavesMap,
+            output: [output1, output2],
+            encryptedCommitments: [comEnc1, comEnc2],
+            provingKey: pk,
+            publicAmount: String(publicAmount),
+            roots: rootsSet,
+            relayer: decodedAddress,
+            recipient: decodedAddress,
+            extAmount: extAmount.toString(),
+            fee: fee.toString(),
+        };
+
+        const data = (await provingManager.prove('vanchor', setup)) as VAnchorProof;
+        const extData = {
+            recipient: address,
+            relayer: address,
+            extAmount: extAmount,
+            fee,
+            encryptedOutput1: u8aToHex(comEnc1),
+            encryptedOutput2: u8aToHex(comEnc2),
+        };
+
+        let proofData = {
+            proof: `0x${data.proof}`,
+            publicAmount: data.publicAmount,
+            roots: rootsSet,
+            inputNullifiers: data.inputUtxos.map((input) => `0x${input.nullifier}`),
+            outputCommitments: data.outputNotes.map((note) =>
+                u8aToHex(note.note.getLeafCommitment())
+            ),
+            extDataHash: data.extDataHash,
+        };
+
+        await expect(vAnchorContract.tx.transactDeposit(proofData, extData, tokenWrapperContract.address, extAmount)).to
+            .be.fulfilled;
 
     });
 });
