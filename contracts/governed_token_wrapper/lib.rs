@@ -25,7 +25,9 @@ pub mod governed_token_wrapper {
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
-    use protocol_ink_lib::utils::{is_account_id_zero, ZERO_ADDRESS};
+    use protocol_ink_lib::utils::{
+        is_account_id_zero, WRAPPING_FEE_CALC_DENOMINATOR, ZERO_ADDRESS,
+    };
 
     /// The vanchor result type.
     pub type Result<T> = core::result::Result<T, Error>;
@@ -729,7 +731,7 @@ pub mod governed_token_wrapper {
         pub fn get_fee_from_amount(&mut self, amount_to_wrap: Balance) -> Balance {
             amount_to_wrap
                 .saturating_mul(self.fee_percentage)
-                .saturating_div(10000)
+                .saturating_div(WRAPPING_FEE_CALC_DENOMINATOR.into())
         }
 
         /// Calculates the amount to be wrapped
@@ -737,9 +739,10 @@ pub mod governed_token_wrapper {
         /// * `amount_to_wrap` - The amount to wrap
         #[ink(message)]
         pub fn get_amount_to_wrap(&mut self, deposit: Balance) -> Result<Balance> {
+            let wrapping_fee_denom: Balance = WRAPPING_FEE_CALC_DENOMINATOR.into();
             let amount_to_wrap = deposit
-                .saturating_mul(10000)
-                .saturating_div(10000 - self.fee_percentage);
+                .saturating_mul(WRAPPING_FEE_CALC_DENOMINATOR.into())
+                .saturating_div(wrapping_fee_denom - self.fee_percentage);
 
             Ok(amount_to_wrap)
         }

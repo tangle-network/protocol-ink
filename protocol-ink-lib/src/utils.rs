@@ -2,6 +2,7 @@ use ink_env::AccountId;
 use ink_prelude::vec::Vec;
 
 pub const ZERO_ADDRESS: [u8; 32] = [0; 32];
+pub const WRAPPING_FEE_CALC_DENOMINATOR: u16 = 10_000_u16;
 
 pub fn truncate_and_pad(t: &[u8]) -> Vec<u8> {
     let mut truncated_bytes = t[..20].to_vec();
