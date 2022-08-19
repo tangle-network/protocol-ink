@@ -26,6 +26,10 @@ import {
     Utxo,
     VAnchorProof,
 } from '@webb-tools/sdk-core';
+import {hex} from "@scure/base";
+
+import {bytesToHex} from "@noble/hashes/utils";
+
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;
@@ -221,11 +225,11 @@ describe("vanchor-tests", () => {
 
     async function vAnchorContractInitParams() {
         let maxEdges = 2;
-        let chainId = 3620629146;
+        let chainId = 2199023256632;
         let levels = 30;
         let maxDepositAmount = 400;
         let minWithdrwalAmount = 0;
-        let maxExtAmt = 200;
+        let maxExtAmt = currencyToUnitI128(20);
         let maxFee = 100;
 
         return {
@@ -300,6 +304,8 @@ describe("vanchor-tests", () => {
         const pk_hex = fs.readFileSync(pkPath).toString('hex');
         const pk = hexToU8a(pk_hex);
 
+        console.log(`output chain id ${outputChainId.toString()}`)
+
         // Creating two empty vanchor notes
         const note1 = await generateVAnchorNote(
             0,
@@ -335,6 +341,7 @@ describe("vanchor-tests", () => {
         let rootsResult = await vAnchorContract.query.customRootsFor2(levels);
         // @ts-ignore
         console.log(`roots are ${rootsResult.output}`);
+        console.log(`root is ${hexToU8a(rootsResult.output[0].toString())}`);
         // @ts-ignore
         let roots = rootsResult.output;
 
@@ -360,6 +367,14 @@ describe("vanchor-tests", () => {
         };
 
         const data = (await provingManager.prove('vanchor', setup)) as VAnchorProof;
+        console.log(`data is ${data}`);
+
+        console.log(`ext data hash is ${data.extDataHash}`);
+
+        console.log(`public inputs is ${data.publicInputs}`);
+
+        console.log(`proof is ${data.proof}`);
+
         const extData = {
             recipient: address,
             relayer: address,
@@ -380,8 +395,50 @@ describe("vanchor-tests", () => {
             extDataHash: data.extDataHash,
         };
 
+
+
+
+        let input: Uint8Array = new Uint8Array(data.publicInputs.length);
+        let myArrays = []
+        for (let inp in data.publicInputs) {
+            // @ts-ignore
+            //input = input.set(hexToU8a('0x'+data.publicInputs[inp]));
+            // @ts-ignore
+            console.log(hexToU8a('0x'+data.publicInputs[inp]));
+            // @ts-ignore
+            myArrays.push(Array.from(hexToU8a('0x'+data.publicInputs[inp])));
+        }
+
+        // Get the total length of all arrays.
+        let length = 0;
+        myArrays.forEach(item => {
+            // @ts-ignore
+            length += item.length;
+        });
+
+// Create a new array with total length and merge all source arrays.
+        let mergedArray = new Uint8Array(length);
+        let offset = 0;
+        myArrays.forEach(item => {
+            mergedArray.set(item, offset);
+            // @ts-ignore
+            offset = item.length;
+        });
+
+// Should print an array with length 90788 (5x 16384 + 8868 your source arrays)
+        console.log(`mergedArray is ${mergedArray}`);
+
+        // @ts-ignore
+        console.log(`input is ${myArrays}`);
+        console.log(`input is ${myArrays.slice(1, myArrays.length)}`);
+        console.log(`hex input is ${toHexString(myArrays.slice(1, myArrays.length))}`);
+
+        /*let proofVerificationResult = await vAnchorContract.query.verifyProofOnChain(myArrays, `0x${data.proof}`);
+        // @ts-ignore
+        console.log(`roots are ${proofVerificationResult.output}`);*/
+
         await expect(vAnchorContract.tx.transactDeposit(proofData, extData, tokenWrapperContract.address, extAmount)).to
-            .be.fulfilled;
+          .be.fulfilled;
 
     });
 });

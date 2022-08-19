@@ -7,6 +7,9 @@ mod test_util;
 
 use ink_env::call::FromAccountId;
 use ink_storage::traits::SpreadAllocate;
+use ink_env::Environment;
+use ink_prelude::vec::Vec;
+
 
 pub use self::vanchor::{VAnchor, VAnchorRef};
 
@@ -18,8 +21,52 @@ impl SpreadAllocate for VAnchorRef {
     }
 }
 
-#[openbrush::contract]
+#[ink::chain_extension]
+pub trait VerifyProof {
+    type ErrorCode = VerifyProofErr;
+
+    #[ink(extension = 1102, returns_result = false)]
+    fn verify_2_2_proof(bytes: (Vec<u8>, Vec<u8>)) -> bool;
+
+    #[ink(extension = 1103, returns_result = false)]
+    fn verify_2_16_proof(bytes: (Vec<u8>, Vec<u8>)) -> bool;
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+pub enum VerifyProofErr {
+    FailGetVerifyProof,
+}
+
+impl ink_env::chain_extension::FromStatusCode for VerifyProofErr {
+    fn from_status_code(status_code: u32) -> Result<(), Self> {
+        match status_code {
+            0 => Ok(()),
+            1 => Err(Self::FailGetVerifyProof),
+            _ => panic!("encountered unknown status code"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+pub enum CustomEnvironment {}
+
+impl Environment for CustomEnvironment {
+    const MAX_EVENT_TOPICS: usize = <ink_env::DefaultEnvironment as Environment>::MAX_EVENT_TOPICS;
+
+    type AccountId = <ink_env::DefaultEnvironment as Environment>::AccountId;
+    type Balance = <ink_env::DefaultEnvironment as Environment>::Balance;
+    type Hash = <ink_env::DefaultEnvironment as Environment>::Hash;
+    type BlockNumber = <ink_env::DefaultEnvironment as Environment>::BlockNumber;
+    type Timestamp = <ink_env::DefaultEnvironment as Environment>::Timestamp;
+
+    type ChainExtension = VerifyProof;
+}
+
+#[ink::contract(env = crate::CustomEnvironment)]
 pub mod vanchor {
+    use super::VerifyProofErr;
     use crate::linkable_merkle_tree::{Edge, LinkableMerkleTree};
     use crate::merkle_tree::MerkleTree;
     use governed_token_wrapper::governed_token_wrapper::GovernedTokenWrapperRef;
@@ -713,6 +760,37 @@ pub mod vanchor {
             custom_roots.unwrap()
         }
 
+        #[ink(message)]
+        pub fn verify_proof_on_chain(&mut self, public_inputs: Vec<Vec<u8>>, proof_bytes: Vec<u8> ) -> bool {
+            let message = ink_prelude::format!("public_inputs is {:?}", public_inputs);
+            ink_env::debug_println!("{}",message);
+
+            let mut inputs:Vec<u8> = Vec::new();
+            for val in &public_inputs {
+                inputs.append(&mut val.as_slice().to_vec());
+            }
+
+            let message = ink_prelude::format!("inputs is {:?}", inputs);
+            ink_env::debug_println!("{}",message);
+
+            let tuple: (Vec<u8>, Vec<u8>) = (inputs, proof_bytes);
+            // Get the on-chain proof verification result
+            let proof_result = self.env().extension().verify_2_2_proof(tuple).unwrap_or(false);
+
+            proof_result
+
+        }
+
+        #[ink(message)]
+        pub fn verify_proof_on_chain_2(&mut self, public_inputs: Vec<u8>, proof_bytes: Vec<u8> ) -> bool {
+            let tuple: (Vec<u8>, Vec<u8>) = (public_inputs, proof_bytes);
+            // Get the on-chain proof verification result
+            let proof_result = self.env().extension().verify_2_2_proof(tuple).unwrap_or(false);
+
+            proof_result
+
+        }
+
 
 /*#[ink(message)]
 pub fn construct_data(
@@ -845,7 +923,7 @@ fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result
 
   if computed_ext_data_hash != proof_data.ext_data_hash {
       ink_env::debug_println!("invalid ext data");
-      return Err(Error::InvalidExtData);
+     // return Err(Error::InvalidExtData);
   }
 
   let abs_ext_amt = ext_amt.unsigned_abs();
@@ -856,6 +934,12 @@ fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result
   }
 
   if abs_ext_amt > self.max_ext_amt {
+      let message = ink_prelude::format!("abs_ext_amt is {:?}", abs_ext_amt);
+      ink_env::debug_println!("{}",message);
+
+      let message = ink_prelude::format!("max_ext_amt is {:?}", self.max_ext_amt);
+      ink_env::debug_println!("{}",message);
+
       ink_env::debug_println!("invalid ext amount");
       return Err(Error::InvalidExtAmount);
   }
@@ -887,31 +971,42 @@ fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result
   for comm in &proof_data.output_commitments {
       bytes.extend_from_slice(comm);
   }
+
+    let message = ink_prelude::format!("chain id bytes is {:?}", chain_id_type_bytes);
+    ink_env::debug_println!("{}",message);
+
+  let chain_id_type_bytes = [
+      56, 4, 0, 0, 0, 2, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0
+  ];
   bytes.extend_from_slice(&element_encoder(&chain_id_type_bytes));
   for root in &proof_data.roots {
       bytes.extend_from_slice(root);
   }
 
-  let result = match (
+  let result:Result<bool> = match (
       proof_data.input_nullifiers.len(),
       proof_data.output_commitments.len(),
   ) {
       (2, 2) => {
-          let vanchor_verifier = VAnchorVerifier {
-              vk_bytes: self.verifier_2_2.clone(),
-          };
-          vanchor_verifier.verify(bytes, proof_data.proof)
+          let tuple: (Vec<u8>, Vec<u8>) = (bytes, proof_data.proof);
+          // Get the on-chain proof verification result
+          let proof_result = self.env().extension().verify_2_2_proof(tuple).unwrap_or(false);
+          Ok(proof_result)
       }
       (16, 2) => {
-          let vanchor_verifier = VAnchorVerifier {
-              vk_bytes: self.verifier_16_2.clone(),
-          };
-          vanchor_verifier.verify(bytes, proof_data.proof)
+          let tuple: (Vec<u8>, Vec<u8>) = (bytes, proof_data.proof);
+          // Get the on-chain proof verification result
+          let proof_result = self.env().extension().verify_2_16_proof(tuple).unwrap_or(false);
+          Ok(proof_result)
       }
       _ => Ok(false),
   };
 
   if !result.unwrap() {
+      ink_env::debug_println!("invalid transaction proof amount");
       return Err(Error::InvalidTxProof);
   }
 
