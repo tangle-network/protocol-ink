@@ -451,12 +451,15 @@ pub mod vanchor {
             let is_withdraw = ext_amt.is_negative();
 
             if is_withdraw {
+                ink_env::debug_println!("invalid execution entry");
                 return Err(Error::InvalidExecutionEntry);
             } else {
                 if abs_ext_amt > self.max_deposit_amt {
+                    ink_env::debug_println!("invalid deposit amount");
                     return Err(Error::InvalidDepositAmount);
                 };
                 if abs_ext_amt != recv_token_amt {
+                    ink_env::debug_println!("insufficient funds");
                     return Err(Error::InsufficientFunds);
                 };
             }
@@ -474,6 +477,7 @@ pub mod vanchor {
                     )
                     .is_err()
                 {
+                    ink_env::debug_println!("transfer error");
                     return Err(Error::TransferError);
                 }
             }
@@ -955,12 +959,24 @@ fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result
       return Err(Error::InvalidPublicAmount);
   }
 
+  let computed_chain_id_type =   &self
+        .compute_chain_id_type(self.chain_id, &INK_CHAIN_TYPE);
+
+    let message = ink_prelude::format!("computed chain id type is {:?}", computed_chain_id_type);
+    ink_env::debug_println!("{}",message);
+
+  let computed_chain_id_type_bytes= computed_chain_id_type.to_le_bytes();
+
+    let message = ink_prelude::format!("computed chain id type bytes is {:?}", computed_chain_id_type_bytes);
+    ink_env::debug_println!("{}",message);
+
   // Construct public inputs
   let chain_id_type_bytes = element_encoder(
-      &self
-          .compute_chain_id_type(self.chain_id, &INK_CHAIN_TYPE)
-          .to_le_bytes(),
+      &computed_chain_id_type_bytes
   );
+
+    let message = ink_prelude::format!(" chain id type bytes is {:?}", chain_id_type_bytes);
+    ink_env::debug_println!("{}",message);
 
   let mut bytes = Vec::new();
   bytes.extend_from_slice(&proof_data.public_amount);
@@ -975,12 +991,12 @@ fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result
     let message = ink_prelude::format!("chain id bytes is {:?}", chain_id_type_bytes);
     ink_env::debug_println!("{}",message);
 
-  let chain_id_type_bytes = [
+  /*let chain_id_type_bytes = [
       56, 4, 0, 0, 0, 2, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0
-  ];
+  ];*/
   bytes.extend_from_slice(&element_encoder(&chain_id_type_bytes));
   for root in &proof_data.roots {
       bytes.extend_from_slice(root);

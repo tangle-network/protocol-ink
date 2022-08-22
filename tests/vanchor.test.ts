@@ -225,9 +225,9 @@ describe("vanchor-tests", () => {
 
     async function vAnchorContractInitParams() {
         let maxEdges = 2;
-        let chainId = 2199023256632;
+        let chainId = 3620629146;
         let levels = 30;
-        let maxDepositAmount = 400;
+        let maxDepositAmount = currencyToUnitI128(20);;
         let minWithdrwalAmount = 0;
         let maxExtAmt = currencyToUnitI128(20);
         let maxFee = 100;
@@ -282,7 +282,7 @@ describe("vanchor-tests", () => {
         const {
             levels,
         } = await vAnchorContractInitParams();
-        const chainId = '2199023256632';
+        const chainId = '4400637202135';
         const outputChainId = BigInt(chainId);
         const secret = randomAsU8a();
         const gitRoot = child
