@@ -130,7 +130,7 @@ pub mod vanchor {
         pub fee_percentage: Balance,
         pub is_native_allowed: bool,
         pub wrapping_limit: Balance,
-        pub proposal_nonce: u64,
+        pub proposal_nonce: u32,
         pub total_supply: Balance,
     }
 

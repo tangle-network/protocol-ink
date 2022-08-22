@@ -70,7 +70,7 @@ mod token_wrapper_handler {
         pub fee_percentage: Balance,
         pub is_native_allowed: bool,
         pub wrapping_limit: Balance,
-        pub proposal_nonce: u64,
+        pub proposal_nonce: u32,
         pub total_supply: Balance,
     }
 
@@ -212,10 +212,10 @@ mod token_wrapper_handler {
             if function_signature
                 == blake2b_256_4_bytes_output(b"GovernedTokenWrapper::set_fee".to_vec().as_slice())
             {
-                let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
-                let fee_bytes: [u8; 2] = element_encoder_for_two_bytes(&arguments[8..10]);
+                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
+                let fee_bytes: [u8; 2] = element_encoder_for_two_bytes(&arguments[4..6]);
 
-                let nonce = u64::from_be_bytes(nonce_bytes);
+                let nonce = u32::from_be_bytes(nonce_bytes);
                 let fee = u16::from_be_bytes(fee_bytes);
 
                 if self.token_wrapper.set_fee(fee.into(), nonce).is_err() {
@@ -228,10 +228,10 @@ mod token_wrapper_handler {
                         .as_slice(),
                 )
             {
-                let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
-                let token_address: [u8; 32] = element_encoder(&arguments[8..40]);
+                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
+                let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
 
-                let nonce = u64::from_be_bytes(nonce_bytes);
+                let nonce = u32::from_be_bytes(nonce_bytes);
 
                 if self
                     .token_wrapper
@@ -247,10 +247,10 @@ mod token_wrapper_handler {
                         .as_slice(),
                 )
             {
-                let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
-                let token_address: [u8; 32] = element_encoder(&arguments[8..40]);
+                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
+                let token_address: [u8; 32] = element_encoder(&arguments[4..36]);
 
-                let nonce = u64::from_be_bytes(nonce_bytes);
+                let nonce = u32::from_be_bytes(nonce_bytes);
 
                 if self
                     .token_wrapper
@@ -266,10 +266,10 @@ mod token_wrapper_handler {
                         .as_slice(),
                 )
             {
-                let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
-                let fee_recipient: [u8; 32] = element_encoder(&arguments[8..40]);
+                let nonce_bytes: [u8; 4] = element_encoder_for_four_bytes(&arguments[0..4]);
+                let fee_recipient: [u8; 32] = element_encoder(&arguments[4..36]);
 
-                let nonce = u64::from_be_bytes(nonce_bytes);
+                let nonce = u32::from_be_bytes(nonce_bytes);
 
                 if self
                     .token_wrapper
@@ -387,14 +387,14 @@ mod token_wrapper_handler {
             &self,
             resource_id: [u8; 32],
             function_signature: [u8; 4],
-            nonce: [u8; 8],
-            fee: [u8; 2],
+            nonce: u32,
+            fee: u16,
         ) -> Result<Vec<u8>> {
             let mut result: Vec<u8> = [
                 resource_id.as_slice(),
                 function_signature.as_slice(),
-                nonce.as_slice(),
-                fee.as_slice(),
+                &nonce.to_be_bytes(),
+                &fee.to_be_bytes(),
             ]
             .concat();
 
@@ -406,14 +406,14 @@ mod token_wrapper_handler {
             &self,
             resource_id: [u8; 32],
             function_signature: [u8; 4],
-            nonce: [u8; 8],
+            nonce: u32,
             fee_recipient: AccountId,
         ) -> Result<Vec<u8>> {
             let mut result: Vec<u8> = [
                 resource_id.as_slice(),
                 function_signature.as_slice(),
-                nonce.as_slice(),
-                fee_recipient.as_ref(),
+                &nonce.to_be_bytes(),
+                &fee_recipient.as_ref(),
             ]
             .concat();
 

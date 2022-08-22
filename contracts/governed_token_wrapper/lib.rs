@@ -58,7 +58,7 @@ pub mod governed_token_wrapper {
         /// The contract wrapping limit
         wrapping_limit: Balance,
         /// The nonce for adding/removing address
-        proposal_nonce: u64,
+        proposal_nonce: u32,
         /// Map of token addresses
         tokens: Mapping<AccountId, bool>,
         /// Map of historical token addresses
@@ -164,7 +164,7 @@ pub mod governed_token_wrapper {
             fee_percentage: Balance,
             is_native_allowed: bool,
             wrapping_limit: Balance,
-            proposal_nonce: u64,
+            proposal_nonce: u32,
             total_supply: Balance,
         ) -> Self {
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
@@ -384,7 +384,7 @@ pub mod governed_token_wrapper {
         /// * `token_address` - The address of the token to be added
         /// * `nonce` -  The nonce tracking updates to this contract
         #[ink(message)]
-        pub fn add_token_address(&mut self, token_address: AccountId, nonce: u64) -> Result<()> {
+        pub fn add_token_address(&mut self, token_address: AccountId, nonce: u32) -> Result<()> {
             // only contract governor can execute this function
             self.is_governor(self.env().caller())?;
 
@@ -416,7 +416,7 @@ pub mod governed_token_wrapper {
         /// * `token_address`:  The address of the token to be added
         /// * `nonce`: The nonce tracking updates to this contract
         #[ink(message)]
-        pub fn remove_token_address(&mut self, token_address: AccountId, nonce: u64) -> Result<()> {
+        pub fn remove_token_address(&mut self, token_address: AccountId, nonce: u32) -> Result<()> {
             self.is_governor(self.env().caller())?;
 
             // check if token address already exists
@@ -486,7 +486,7 @@ pub mod governed_token_wrapper {
         /// * `fee` - The wrapping fee percentage
         /// * `nonce` -  The nonce tracking updates to this contract
         #[ink(message)]
-        pub fn set_fee(&mut self, fee: Balance, nonce: u64) -> Result<()> {
+        pub fn set_fee(&mut self, fee: Balance, nonce: u32) -> Result<()> {
             // only contract governor can execute this function
             self.is_governor(self.env().caller())?;
 
@@ -509,7 +509,7 @@ pub mod governed_token_wrapper {
         /// * `fee_recipient` - The address to receive wrapping fee
         /// * `nonce` -  The nonce tracking updates to this contract
         #[ink(message)]
-        pub fn set_fee_recipient(&mut self, fee_recipient: AccountId, nonce: u64) -> Result<()> {
+        pub fn set_fee_recipient(&mut self, fee_recipient: AccountId, nonce: u32) -> Result<()> {
             // only contract governor can execute this function
             self.is_governor(self.env().caller())?;
 
@@ -796,7 +796,7 @@ pub mod governed_token_wrapper {
 
         /// Returns the `proposal_nonce` value.
         #[ink(message)]
-        pub fn nonce(&self) -> u64 {
+        pub fn nonce(&self) -> u32 {
             self.proposal_nonce
         }
 

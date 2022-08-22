@@ -31,7 +31,7 @@ export default {
     },
   },
   mocha: {
-    timeout: 2000000,
+    timeout: 10000,
   },
   docker: {
     sudo: false,
