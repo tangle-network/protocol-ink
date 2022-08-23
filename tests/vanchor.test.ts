@@ -408,7 +408,7 @@ describe("vanchor-tests", () => {
 
         await vAnchorContract.query.printOnly(hexDecodedAddress, hexAmount, hexFee);
 
-        encodeExtData(hexDecodedAddress, hexAmount, hexFee, comEnc1, comEnc2);
+        //encodeExtData(hexDecodedAddress, hexAmount, hexFee, comEnc1, comEnc2);
 
         let input: Uint8Array = new Uint8Array(data.publicInputs.length);
         let myArrays = []

@@ -952,8 +952,8 @@ fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result
     ink_env::debug_println!("{}",message);
 
   ext_data_args.extend_from_slice(&recipient_bytes);
+    ext_data_args.extend_from_slice(&relayer_bytes);
     ext_data_args.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 24, 78, 114, 160, 0]);
-  ext_data_args.extend_from_slice(&relayer_bytes);
   ext_data_args.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
   ext_data_args.extend_from_slice(&ext_data.encrypted_output1);
   ext_data_args.extend_from_slice(&ext_data.encrypted_output2);
