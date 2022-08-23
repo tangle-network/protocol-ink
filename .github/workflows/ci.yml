@@ -93,7 +93,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --git https://github.com/paritytech/cargo-contract.git
+          args: --git https://github.com/paritytech/cargo-contract.git --locked
 
       - name: Output versions
         run: |
