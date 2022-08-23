@@ -99,7 +99,7 @@ jobs:
         run: |
           wasm-opt --version
           cargo -vV
-          cargo contract --version
+          cargo contract --version --locked
 
       - name: Submodule Update
         run: git submodule update --init --recursive
