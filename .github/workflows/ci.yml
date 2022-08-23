@@ -87,13 +87,13 @@ jobs:
       - name: Rustup component
         run: rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
 
-      #- name: Install Cargo contract
-      #  run: cargo install cargo-contract --force
-      - name: Install `cargo-contract` `master`
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --git https://github.com/paritytech/cargo-contract.git
+      - name: Install Cargo contract
+        run: cargo install cargo-contract --locked
+      #- name: Install `cargo-contract` `master`
+      #  uses: actions-rs/cargo@v1
+      #  with:
+      #    command: install
+      #    args: --git https://github.com/paritytech/cargo-contract.git
 
       - name: Output versions
         run: |
