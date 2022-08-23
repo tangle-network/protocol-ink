@@ -85,7 +85,7 @@ describe("mixer", () => {
     return { sender, Alice, BobSigner };
   }
 
-  it("Test deposit and withdraw functionality", async () => {
+  it.only("Test deposit and withdraw functionality", async () => {
     const { sender, BobSigner } = await setup();
 
     // Poseidon instantiation
