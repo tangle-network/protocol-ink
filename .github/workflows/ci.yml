@@ -89,11 +89,6 @@ jobs:
 
       - name: Install Cargo contract
         run: cargo install cargo-contract --locked
-      #- name: Install `cargo-contract` `master`
-      #  uses: actions-rs/cargo@v1
-      #  with:
-      #    command: install
-      #    args: --git https://github.com/paritytech/cargo-contract.git
 
       - name: Output versions
         run: |

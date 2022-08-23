@@ -5,7 +5,7 @@ import { BigNumber, BigNumberish } from "ethers";
 const substrateContractNodePath = "./substrate-contracts-node";
 export async function startContractNode() {
   const startArgs: string[] = [];
-  startArgs.push("--dev", "--tmp", "-lruntime=debug");
+  startArgs.push("--dev", "--tmp", "-lerror,runtime::contracts=debug");
   let ls = spawn(substrateContractNodePath, startArgs);
 
   ls.stdout.on("data", (data) => {
