@@ -8,7 +8,7 @@ import {
     parseHexString,
     hexStringToByteArray,
     toEncodedBinary,
-    genResourceId,
+    genResourceId, encodeExtData,
 } from "./util";
 import {hexToU8a, u8aToHex} from "@polkadot/util";
 import { createType } from "@polkadot/types";
@@ -396,13 +396,19 @@ describe("vanchor-tests", () => {
             extDataHash: data.extDataHash,
         };
 
-        console.log(`ext data address ${toFixedHex(decodedAddress, 20)}`)
-        console.log(`ext amount address ${toFixedHex(extAmount)}`)
-        console.log(`fee data address ${toFixedHex(fee)}`)
+        const hexDecodedAddress = toFixedHex(decodedAddress, 20);
+        const hexAmount = toFixedHex(extAmount);
+        const hexFee = toFixedHex(fee);
+
+        console.log(`ext data address ${hexDecodedAddress}`)
+        console.log(`ext amount address ${hexAmount}`)
+        console.log(`fee data address ${hexFee}`)
         console.log(`encrypted output 1 ${comEnc1}`)
         console.log(`encrypted output 2 ${comEnc2}`)
 
-        await vAnchorContract.query.printOnly(toFixedHex(decodedAddress, 20), toFixedHex(extAmount), toFixedHex(fee));
+        await vAnchorContract.query.printOnly(hexDecodedAddress, hexAmount, hexFee);
+
+        encodeExtData(hexDecodedAddress, hexAmount, hexFee, comEnc1, comEnc2);
 
         let input: Uint8Array = new Uint8Array(data.publicInputs.length);
         let myArrays = []
