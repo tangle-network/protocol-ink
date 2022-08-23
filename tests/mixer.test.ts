@@ -174,10 +174,14 @@ describe("mixer", () => {
       pub += val;
     });
 
+    console.log("starting deposit")
+
     const depositFunction = await mixerContract.tx.deposit(commitment, {
       value: depositSize,
     });
     expect(depositFunction).to.be.ok;
+
+    console.log("finisehed depositing")
 
     const sendFundToContract = await mixerContract.tx.sendFundToContract({
       value: depositSize + depositSize,
@@ -187,6 +191,7 @@ describe("mixer", () => {
     let contractBalanceBeforeWithdraw =
       await mixerContract.query.nativeContractBalance();
 
+    console.log("starting withdraw")
     const withdrawFunction = await mixerContract.tx.withdraw({
       proof_bytes,
       root,
@@ -197,6 +202,7 @@ describe("mixer", () => {
       refund,
     });
     expect(withdrawFunction).to.be.ok;
+    console.log("finisehd withdraw")
 
     let contractBalanceAfterWithdraw =
       await mixerContract.query.nativeContractBalance();
