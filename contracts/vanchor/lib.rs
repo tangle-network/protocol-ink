@@ -936,10 +936,12 @@ fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result
     let message = ink_prelude::format!("relayer bytes encoder is {:?}", relayer_bytes);
     ink_env::debug_println!("{}",message);
 
-  let fee_bytes = element_encoder(&ext_data_fee.to_be_bytes());
+  let mut fee_bytes = element_encoder(&ext_data_fee.to_le_bytes());
+    fee_bytes.reverse();
     let message = ink_prelude::format!("fee bytes encoder is {:?}", fee_bytes);
     ink_env::debug_println!("{}",message);
-  let ext_amt_bytes = element_encoder(&ext_amt.to_be_bytes());
+  let mut ext_amt_bytes = element_encoder(&ext_amt.to_le_bytes());
+    ext_amt_bytes.reverse();
     let message = ink_prelude::format!("ext amt bytes encoder is {:?}", ext_amt_bytes);
     ink_env::debug_println!("{}",message);
 
