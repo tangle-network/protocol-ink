@@ -951,6 +951,10 @@ fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result
     let message = ink_prelude::format!("encrypted_output2 is {:?}", &ext_data.encrypted_output2);
     ink_env::debug_println!("{}",message);
 
+   // let recipient_token = Token::Bytes(recipient_bytes.to_vec());
+    //let message = ink_prelude::format!("recipient in token is {:?}", &recipient_token);
+    //ink_env::debug_println!("{}",message);
+
   ext_data_args.extend_from_slice(&recipient_bytes);
     ext_data_args.extend_from_slice(&relayer_bytes);
     ext_data_args.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 24, 78, 114, 160, 0]);
@@ -961,6 +965,12 @@ fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result
   let computed_ext_data_hash =
       Keccak256::hash(&ext_data_args).map_err(|_| Error::HashError)?;
     let message = ink_prelude::format!("computed_ext_data_hash is {:?}", computed_ext_data_hash);
+    ink_env::debug_println!("{}",message);
+
+    let mut ink_hash = <inkKeccak256 as HashOutput>::Type::default();
+    let result = ink_env::hash_bytes::<inkKeccak256>(&ext_data_args, &mut ink_hash);
+
+    let message = ink_prelude::format!("ink hash is {:?}", ink_hash);
     ink_env::debug_println!("{}",message);
 
     let message = ink_prelude::format!("proof_data.ext_data_hash is {:?}", proof_data.ext_data_hash);

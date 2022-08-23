@@ -35,6 +35,8 @@ governed_token_wrapper = { path = "../governed_token_wrapper", default-features 
 
 protocol-ink-lib = {path = "../../protocol-ink-lib"}
 
+ethabi = { version = "15.0.0", default-features = false }
+
 [lib]
 name = "vanchor"
 path = "lib.rs"
