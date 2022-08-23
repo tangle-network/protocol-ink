@@ -24,7 +24,7 @@ import {
     ProvingManagerSetupInput,
     ArkworksProvingManager,
     Utxo,
-    VAnchorProof,
+    VAnchorProof, toFixedHex,
 } from '@webb-tools/sdk-core';
 import {hex} from "@scure/base";
 
@@ -347,6 +347,7 @@ describe("vanchor-tests", () => {
 
         const rootsSet = [hexToU8a(roots[0].toString().replace('0x', '')), hexToU8a(roots[1].toString().replace('0x', ''))];
         const decodedAddress = decodeAddress(address);
+        console.log(`ext amount ${extAmount.toString()}`)
         const { encrypted: comEnc1 } = naclEncrypt(output1.commitment, secret);
         const { encrypted: comEnc2 } = naclEncrypt(output2.commitment, secret);
 
@@ -395,8 +396,13 @@ describe("vanchor-tests", () => {
             extDataHash: data.extDataHash,
         };
 
+        console.log(`ext data address ${toFixedHex(decodedAddress, 20)}`)
+        console.log(`ext amount address ${toFixedHex(extAmount)}`)
+        console.log(`fee data address ${toFixedHex(fee)}`)
+        console.log(`encrypted output 1 ${comEnc1}`)
+        console.log(`encrypted output 2 ${comEnc2}`)
 
-
+        await vAnchorContract.query.printOnly(toFixedHex(decodedAddress, 20), toFixedHex(extAmount), toFixedHex(fee));
 
         let input: Uint8Array = new Uint8Array(data.publicInputs.length);
         let myArrays = []

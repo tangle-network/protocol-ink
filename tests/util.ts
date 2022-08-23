@@ -101,3 +101,4 @@ export function toFixedHex(number: BigNumberish, length: number = 32): string {
 export function toEncodedBinary(obj: any): string {
   return Buffer.from(JSON.stringify(obj)).toString("base64");
 }
+

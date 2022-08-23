@@ -80,7 +80,7 @@ pub mod vanchor {
     use poseidon::poseidon::PoseidonRef;
     use protocol_ink_lib::field_ops::{ArkworksIntoFieldBn254, IntoPrimeField};
     use protocol_ink_lib::keccak::Keccak256;
-    use protocol_ink_lib::utils::element_encoder;
+    use protocol_ink_lib::utils::{element_encoder, truncate_and_pad};
     use protocol_ink_lib::vanchor_verifier::VAnchorVerifier;
     use protocol_ink_lib::zeroes::zeroes;
 
@@ -162,8 +162,8 @@ pub mod vanchor {
         pub relayer: AccountId,
         pub ext_amount: i128, // Still `String` since represents `i128` value
         pub fee: u128,
-        pub encrypted_output1: [u8; 32],
-        pub encrypted_output2: [u8; 32],
+        pub encrypted_output1: Vec<u8>,
+        pub encrypted_output2: Vec<u8>,
     }
 
     #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
@@ -795,6 +795,22 @@ pub mod vanchor {
 
         }
 
+        #[ink(message)]
+        pub fn print_only(&mut self, sender: Vec<u8>, ext_amount: Vec<u8>, fee: Vec<u8> ) -> bool {
+
+            let message = ink_prelude::format!("print only sender {:?}", sender);
+            ink_env::debug_println!("{}",message);
+
+            let message = ink_prelude::format!("print only ext_amount {:?}", ext_amount);
+            ink_env::debug_println!("{}",message);
+
+            let message = ink_prelude::format!("print only fee {:?}", fee);
+            ink_env::debug_println!("{}",message);
+
+            true
+
+        }
+
 
 /*#[ink(message)]
 pub fn construct_data(
@@ -906,14 +922,37 @@ fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result
   // Compute hash of abi encoded ext_data, reduced into field from config
   // Ensure that the passed external data hash matches the computed one
   let mut ext_data_args = Vec::new();
-  let recipient_bytes =ext_data.recipient.as_ref();
-  let relayer_bytes =ext_data.relayer.as_ref();
-  let fee_bytes = element_encoder(&ext_data_fee.to_le_bytes());
-  let ext_amt_bytes = element_encoder(&ext_amt.to_le_bytes());
+    let recipient_bytes = truncate_and_pad(ext_data.recipient.as_ref());
+    let message = ink_prelude::format!("recipient bytes truncate is {:?}", recipient_bytes);
+    ink_env::debug_println!("{}",message);
+    let relayer_bytes = truncate_and_pad(ext_data.relayer.as_ref());
+    let message = ink_prelude::format!("relayer bytes truncate is {:?}", recipient_bytes);
+    ink_env::debug_println!("{}",message);
+
+    let recipient_bytes = element_encoder(ext_data.recipient.as_ref());
+    let message = ink_prelude::format!("recipient bytes encoder is {:?}", recipient_bytes);
+    ink_env::debug_println!("{}",message);
+    let relayer_bytes = element_encoder(ext_data.relayer.as_ref());
+    let message = ink_prelude::format!("relayer bytes encoder is {:?}", relayer_bytes);
+    ink_env::debug_println!("{}",message);
+
+  let fee_bytes = element_encoder(&ext_data_fee.to_be_bytes());
+    let message = ink_prelude::format!("fee bytes encoder is {:?}", fee_bytes);
+    ink_env::debug_println!("{}",message);
+  let ext_amt_bytes = element_encoder(&ext_amt.to_be_bytes());
+    let message = ink_prelude::format!("ext amt bytes encoder is {:?}", ext_amt_bytes);
+    ink_env::debug_println!("{}",message);
+
+    let message = ink_prelude::format!("encrypted_output1 is {:?}", &ext_data.encrypted_output1);
+    ink_env::debug_println!("{}",message);
+
+    let message = ink_prelude::format!("encrypted_output2 is {:?}", &ext_data.encrypted_output2);
+    ink_env::debug_println!("{}",message);
+
   ext_data_args.extend_from_slice(&recipient_bytes);
+    ext_data_args.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 24, 78, 114, 160, 0]);
   ext_data_args.extend_from_slice(&relayer_bytes);
-  ext_data_args.extend_from_slice(&ext_amt_bytes);
-  ext_data_args.extend_from_slice(&fee_bytes);
+  ext_data_args.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
   ext_data_args.extend_from_slice(&ext_data.encrypted_output1);
   ext_data_args.extend_from_slice(&ext_data.encrypted_output2);
 
