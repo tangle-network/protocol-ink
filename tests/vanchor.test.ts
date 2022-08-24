@@ -225,8 +225,8 @@ describe("vanchor-tests", () => {
 
     async function vAnchorContractInitParams() {
         let maxEdges = 2;
-        let chainId = 3620629146;
-        let levels = 30;
+        let chainId = 1;
+        let levels = 15;
         let maxDepositAmount = currencyToUnitI128(20);;
         let minWithdrwalAmount = 0;
         let maxExtAmt = currencyToUnitI128(20);
@@ -335,7 +335,7 @@ describe("vanchor-tests", () => {
         const leavesMap: any = {};
 
         const address = sender.address;
-        const extAmount = currencyToUnitI128(10);
+        const extAmount = 10;
         const fee = 0;
 
         let rootsResult = await vAnchorContract.query.customRootsFor2(levels);

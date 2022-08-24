@@ -32,10 +32,14 @@ ark-serialize = { version = "^0.3.0", default-features = false }
 
 poseidon = { path = "../poseidon", default-features = false, features = ["ink-as-dependency"] }
 governed_token_wrapper = { path = "../governed_token_wrapper", default-features = false, features = ["ink-as-dependency"] }
+webb-proposals = { version = "0.3.7", default-features = false, features = ["scale", "substrate"] }
 
 protocol-ink-lib = {path = "../../protocol-ink-lib"}
 
+#js-sys = "0.3"
 ethabi = { version = "15.0.0", default-features = false }
+#wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+tiny-keccak="2.0.2"
 
 [lib]
 name = "vanchor"
@@ -57,6 +61,7 @@ std = [
 
     "poseidon/std",
     "governed_token_wrapper/std",
+    "webb-proposals/std",
 
     "openbrush/std",
 ]

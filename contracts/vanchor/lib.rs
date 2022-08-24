@@ -4,6 +4,7 @@
 mod linkable_merkle_tree;
 mod merkle_tree;
 mod test_util;
+mod ext_data;
 
 use ink_env::call::FromAccountId;
 use ink_storage::traits::SpreadAllocate;
@@ -83,6 +84,7 @@ pub mod vanchor {
     use protocol_ink_lib::utils::{element_encoder, truncate_and_pad};
     use protocol_ink_lib::vanchor_verifier::VAnchorVerifier;
     use protocol_ink_lib::zeroes::zeroes;
+    use crate::ext_data::ExtData as ExternData;
 
     use ink_env::hash::{HashOutput, Keccak256 as inkKeccak256};
 
@@ -90,7 +92,8 @@ pub mod vanchor {
     use ark_ff::PrimeField;
     use ark_ff::BigInteger;
     use arkworks_setups::Curve;
-
+    use ethabi::Token;
+    use webb_proposals::TypedChainId;
 
 
     /// The vanchor result type.
@@ -108,7 +111,7 @@ pub mod vanchor {
         psp22: psp22::Data,
 
         /// chain id
-        pub chain_id: u64,
+        pub chain_id: u32,
         /// ERC20 token address
         pub creator: AccountId,
         /// The merkle tree
@@ -250,7 +253,7 @@ pub mod vanchor {
         #[ink(constructor)]
         pub fn new(
             max_edges: u32,
-            chain_id: u64,
+            chain_id: u32,
             levels: u32,
             max_deposit_amt: Balance,
             min_withdraw_amt: Balance,
@@ -921,64 +924,35 @@ fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result
 
   // Compute hash of abi encoded ext_data, reduced into field from config
   // Ensure that the passed external data hash matches the computed one
-  let mut ext_data_args = Vec::new();
-    let recipient_bytes = truncate_and_pad(ext_data.recipient.as_ref());
-    let message = ink_prelude::format!("recipient bytes truncate is {:?}", recipient_bytes);
-    ink_env::debug_println!("{}",message);
-    let relayer_bytes = truncate_and_pad(ext_data.relayer.as_ref());
-    let message = ink_prelude::format!("relayer bytes truncate is {:?}", recipient_bytes);
-    ink_env::debug_println!("{}",message);
 
     let recipient_bytes = element_encoder(ext_data.recipient.as_ref());
-    let message = ink_prelude::format!("recipient bytes encoder is {:?}", recipient_bytes);
-    ink_env::debug_println!("{}",message);
     let relayer_bytes = element_encoder(ext_data.relayer.as_ref());
-    let message = ink_prelude::format!("relayer bytes encoder is {:?}", relayer_bytes);
+
+
+    let recipient = Token::Bytes(recipient_bytes.to_vec());
+    let message = ink_prelude::format!("recipient token bytes is {:?}", recipient.into_bytes());
     ink_env::debug_println!("{}",message);
 
-  let mut fee_bytes = element_encoder(&ext_data_fee.to_le_bytes());
-    fee_bytes.reverse();
-    let message = ink_prelude::format!("fee bytes encoder is {:?}", fee_bytes);
-    ink_env::debug_println!("{}",message);
-  let mut ext_amt_bytes = element_encoder(&ext_amt.to_le_bytes());
-    ext_amt_bytes.reverse();
-    let message = ink_prelude::format!("ext amt bytes encoder is {:?}", ext_amt_bytes);
-    ink_env::debug_println!("{}",message);
+    let extern_data: ExternData = ExternData {
+        recipient: recipient_bytes.to_vec(),
+        relayer: relayer_bytes.to_vec(),
+        ext_amount: ext_data.ext_amount,
+        fee: ext_data.fee,
+        encrypted_output1: ext_data.encrypted_output1,
+        encrypted_output2: ext_data.encrypted_output2
+    };
 
-    let message = ink_prelude::format!("encrypted_output1 is {:?}", &ext_data.encrypted_output1);
-    ink_env::debug_println!("{}",message);
+    let extern_data_hash = extern_data.get_encode();
 
-    let message = ink_prelude::format!("encrypted_output2 is {:?}", &ext_data.encrypted_output2);
-    ink_env::debug_println!("{}",message);
-
-   // let recipient_token = Token::Bytes(recipient_bytes.to_vec());
-    //let message = ink_prelude::format!("recipient in token is {:?}", &recipient_token);
-    //ink_env::debug_println!("{}",message);
-
-  ext_data_args.extend_from_slice(&recipient_bytes);
-    ext_data_args.extend_from_slice(&relayer_bytes);
-    ext_data_args.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 24, 78, 114, 160, 0]);
-  ext_data_args.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-  ext_data_args.extend_from_slice(&ext_data.encrypted_output1);
-  ext_data_args.extend_from_slice(&ext_data.encrypted_output2);
-
-  let computed_ext_data_hash =
-      Keccak256::hash(&ext_data_args).map_err(|_| Error::HashError)?;
-    let message = ink_prelude::format!("computed_ext_data_hash is {:?}", computed_ext_data_hash);
-    ink_env::debug_println!("{}",message);
-
-    let mut ink_hash = <inkKeccak256 as HashOutput>::Type::default();
-    let result = ink_env::hash_bytes::<inkKeccak256>(&ext_data_args, &mut ink_hash);
-
-    let message = ink_prelude::format!("ink hash is {:?}", ink_hash);
+    let message = ink_prelude::format!("extern_data_hash is {:?}", extern_data_hash);
     ink_env::debug_println!("{}",message);
 
     let message = ink_prelude::format!("proof_data.ext_data_hash is {:?}", proof_data.ext_data_hash);
     ink_env::debug_println!("{}",message);
 
-  if computed_ext_data_hash != proof_data.ext_data_hash {
+  if extern_data_hash != proof_data.ext_data_hash {
       ink_env::debug_println!("invalid ext data");
-     // return Err(Error::InvalidExtData);
+      return Err(Error::InvalidExtData);
   }
 
   let abs_ext_amt = ext_amt.unsigned_abs();
@@ -1010,8 +984,13 @@ fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result
       return Err(Error::InvalidPublicAmount);
   }
 
+    let computed_chain_id_type = TypedChainId::Ink(self.chain_id).chain_id();
+
+    let message = ink_prelude::format!("computed chain id type webb-rs is {:?}", computed_chain_id_type);
+    ink_env::debug_println!("{}",message);
+
   let computed_chain_id_type =   &self
-        .compute_chain_id_type(self.chain_id, &INK_CHAIN_TYPE);
+        .compute_chain_id_type(self.chain_id as u64, &INK_CHAIN_TYPE);
 
     let message = ink_prelude::format!("computed chain id type is {:?}", computed_chain_id_type);
     ink_env::debug_println!("{}",message);
@@ -1042,12 +1021,6 @@ fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result
     let message = ink_prelude::format!("chain id bytes is {:?}", chain_id_type_bytes);
     ink_env::debug_println!("{}",message);
 
-  /*let chain_id_type_bytes = [
-      56, 4, 0, 0, 0, 2, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0
-  ];*/
   bytes.extend_from_slice(&element_encoder(&chain_id_type_bytes));
   for root in &proof_data.roots {
       bytes.extend_from_slice(root);
