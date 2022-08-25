@@ -226,7 +226,7 @@ describe("vanchor-tests", () => {
     async function vAnchorContractInitParams() {
         let maxEdges = 2;
         let chainId = 1;
-        let levels = 15;
+        let levels = 10;
         let maxDepositAmount = currencyToUnitI128(20);;
         let minWithdrwalAmount = 0;
         let maxExtAmt = currencyToUnitI128(20);
@@ -282,7 +282,7 @@ describe("vanchor-tests", () => {
         const {
             levels,
         } = await vAnchorContractInitParams();
-        const chainId = '4400637202135';
+        const chainId = '6597069766657';
         const outputChainId = BigInt(chainId);
         const secret = randomAsU8a();
         const gitRoot = child
@@ -303,8 +303,6 @@ describe("vanchor-tests", () => {
         );
         const pk_hex = fs.readFileSync(pkPath).toString('hex');
         const pk = hexToU8a(pk_hex);
-
-        console.log(`output chain id ${outputChainId.toString()}`)
 
         // Creating two empty vanchor notes
         const note1 = await generateVAnchorNote(
@@ -335,7 +333,7 @@ describe("vanchor-tests", () => {
         const leavesMap: any = {};
 
         const address = sender.address;
-        const extAmount = 10;
+        const extAmount = currencyToUnitI128(10);
         const fee = 0;
 
         let rootsResult = await vAnchorContract.query.customRootsFor2(levels);
@@ -368,13 +366,6 @@ describe("vanchor-tests", () => {
         };
 
         const data = (await provingManager.prove('vanchor', setup)) as VAnchorProof;
-        console.log(`data is ${data}`);
-
-        console.log(`ext data hash is ${data.extDataHash}`);
-
-        console.log(`public inputs is ${data.publicInputs}`);
-
-        console.log(`proof is ${data.proof}`);
 
         const extData = {
             recipient: address,
@@ -396,61 +387,124 @@ describe("vanchor-tests", () => {
             extDataHash: data.extDataHash,
         };
 
-        const hexDecodedAddress = toFixedHex(decodedAddress, 20);
-        const hexAmount = toFixedHex(extAmount);
-        const hexFee = toFixedHex(fee);
-
-        console.log(`ext data address ${hexDecodedAddress}`)
-        console.log(`ext amount address ${hexAmount}`)
-        console.log(`fee data address ${hexFee}`)
-        console.log(`encrypted output 1 ${comEnc1}`)
-        console.log(`encrypted output 2 ${comEnc2}`)
-
-        await vAnchorContract.query.printOnly(hexDecodedAddress, hexAmount, hexFee);
-
-        //encodeExtData(hexDecodedAddress, hexAmount, hexFee, comEnc1, comEnc2);
-
-        let input: Uint8Array = new Uint8Array(data.publicInputs.length);
-        let myArrays = []
-        for (let inp in data.publicInputs) {
-            // @ts-ignore
-            //input = input.set(hexToU8a('0x'+data.publicInputs[inp]));
-            // @ts-ignore
-            console.log(hexToU8a('0x'+data.publicInputs[inp]));
-            // @ts-ignore
-            myArrays.push(Array.from(hexToU8a('0x'+data.publicInputs[inp])));
-        }
-
-        // Get the total length of all arrays.
-        let length = 0;
-        myArrays.forEach(item => {
-            // @ts-ignore
-            length += item.length;
-        });
-
-// Create a new array with total length and merge all source arrays.
-        let mergedArray = new Uint8Array(length);
-        let offset = 0;
-        myArrays.forEach(item => {
-            mergedArray.set(item, offset);
-            // @ts-ignore
-            offset = item.length;
-        });
-
-// Should print an array with length 90788 (5x 16384 + 8868 your source arrays)
-        console.log(`mergedArray is ${mergedArray}`);
-
-        // @ts-ignore
-        console.log(`input is ${myArrays}`);
-        console.log(`input is ${myArrays.slice(1, myArrays.length)}`);
-        console.log(`hex input is ${toHexString(myArrays.slice(1, myArrays.length))}`);
-
-        /*let proofVerificationResult = await vAnchorContract.query.verifyProofOnChain(myArrays, `0x${data.proof}`);
-        // @ts-ignore
-        console.log(`roots are ${proofVerificationResult.output}`);*/
-
         await expect(vAnchorContract.tx.transactDeposit(proofData, extData, tokenWrapperContract.address, extAmount)).to
           .be.fulfilled;
+
+
+    });
+
+    it.only("Transact Withdrawal Test", async () => {
+        const {
+            levels,
+        } = await vAnchorContractInitParams();
+        const chainId = '6597069766657';
+        const outputChainId = BigInt(chainId);
+        const secret = randomAsU8a();
+        const gitRoot = child
+            .execSync('git rev-parse --show-toplevel')
+            .toString()
+            .trim();
+
+        const pkPath = path.join(
+            // tests path
+            gitRoot,
+            'tests',
+            'protocol-substrate-fixtures',
+            'vanchor',
+            'bn254',
+            'x5',
+            '2-2-2',
+            'proving_key_uncompressed.bin'
+        );
+        const pk_hex = fs.readFileSync(pkPath).toString('hex');
+        const pk = hexToU8a(pk_hex);
+
+        // Creating two empty vanchor notes
+        const note1 = await generateVAnchorNote(
+            0,
+            Number(outputChainId.toString()),
+            Number(outputChainId.toString()),
+            0
+        );
+        const note2 = await note1.getDefaultUtxoNote();
+        const publicAmount = currencyToUnitI128(10);
+        const notes = [note1, note2];
+        // Output UTXOs configs
+        const output1 = await Utxo.generateUtxo({
+            curve: 'Bn254',
+            backend: 'Arkworks',
+            amount: publicAmount.toString(),
+            chainId,
+        });
+        const output2 = await Utxo.generateUtxo({
+            curve: 'Bn254',
+            backend: 'Arkworks',
+            amount: '0',
+            chainId,
+        });
+
+        // Configure a new proving manager with direct call
+        const provingManager = new ArkworksProvingManager(null);
+        const leavesMap: any = {};
+
+        const address = sender.address;
+        const extAmount = currencyToUnitI128(10);
+        const fee = 0;
+
+        let rootsResult = await vAnchorContract.query.customRootsFor2(levels);
+        // @ts-ignore
+        console.log(`roots are ${rootsResult.output}`);
+        console.log(`root is ${hexToU8a(rootsResult.output[0].toString())}`);
+        // @ts-ignore
+        let roots = rootsResult.output;
+
+        const rootsSet = [hexToU8a(roots[0].toString().replace('0x', '')), hexToU8a(roots[1].toString().replace('0x', ''))];
+        const decodedAddress = decodeAddress(address);
+        console.log(`ext amount ${extAmount.toString()}`)
+        const { encrypted: comEnc1 } = naclEncrypt(output1.commitment, secret);
+        const { encrypted: comEnc2 } = naclEncrypt(output2.commitment, secret);
+
+        const setup: ProvingManagerSetupInput<'vanchor'> = {
+            chainId: outputChainId.toString(),
+            indices: [0, 0],
+            inputNotes: notes,
+            leavesMap: leavesMap,
+            output: [output1, output2],
+            encryptedCommitments: [comEnc1, comEnc2],
+            provingKey: pk,
+            publicAmount: String(publicAmount),
+            roots: rootsSet,
+            relayer: decodedAddress,
+            recipient: decodedAddress,
+            extAmount: extAmount.toString(),
+            fee: fee.toString(),
+        };
+
+        const data = (await provingManager.prove('vanchor', setup)) as VAnchorProof;
+
+        const extData = {
+            recipient: address,
+            relayer: address,
+            extAmount: extAmount,
+            fee,
+            encryptedOutput1: u8aToHex(comEnc1),
+            encryptedOutput2: u8aToHex(comEnc2),
+        };
+
+        let proofData = {
+            proof: `0x${data.proof}`,
+            publicAmount: data.publicAmount,
+            roots: rootsSet,
+            inputNullifiers: data.inputUtxos.map((input) => `0x${input.nullifier}`),
+            outputCommitments: data.outputNotes.map((note) =>
+                u8aToHex(note.note.getLeafCommitment())
+            ),
+            extDataHash: data.extDataHash,
+        };
+
+
+        await expect(vAnchorContract.tx.transactWithdraw(proofData, extData)).to
+            .be.fulfilled;
 
     });
 });

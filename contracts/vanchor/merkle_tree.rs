@@ -36,18 +36,13 @@ impl MerkleTree {
     pub fn insert(&mut self, hasher: PoseidonRef, leaf: [u8; 32]) -> vanchor::Result<u32> {
         let next_index = self.next_index;
 
-        let message = ink_prelude::format!("next index is {:?}", next_index);
-        ink_env::debug_println!("{}",message);
-
         let message = ink_prelude::format!("pow is {:?}", 2u32.pow(self.levels as u32));
-        ink_env::debug_println!("{}",message);
+        ink_env::debug_println!("{}", message);
 
         assert!(
             next_index != 2u32.pow(self.levels as u32),
             "Merkle tree is full"
         );
-
-        ink_env::debug_println!("did not panic");
 
         let mut current_index = next_index;
         let mut current_level_hash = leaf;
@@ -56,7 +51,7 @@ impl MerkleTree {
 
         for i in 0..self.levels {
             let message = ink_prelude::format!("in loop {:?}", i);
-            ink_env::debug_println!("{}",message);
+            ink_env::debug_println!("{}", message);
 
             if current_index % 2 == 0 {
                 left = current_level_hash;
@@ -69,24 +64,15 @@ impl MerkleTree {
 
             current_level_hash = self.hash_left_right(hasher.clone(), left, right)?;
             current_index = current_index / 2;
-            ink_env::debug_println!("finished loop");
         }
 
         let new_root_index = (self.current_root_index + 1) % ROOT_HISTORY_SIZE;
 
-        let message = ink_prelude::format!("new_root_index is {:?}", new_root_index);
-        ink_env::debug_println!("{}",message);
-
-        let message = ink_prelude::format!("current_level_hash is {:?}", current_level_hash);
-        ink_env::debug_println!("{}",message);
-
         self.current_root_index = new_root_index;
         self.roots.insert(new_root_index, &current_level_hash);
-        ink_env::debug_println!("finished inserting roots");
         self.next_index = next_index + 1;
 
-        let message = ink_prelude::format!("next index is {:?}", next_index);
-        ink_env::debug_println!("{}",message);
+        ink_env::debug_println!("{}", message);
 
         ink_env::debug_println!("finished insertion");
         Ok(next_index)

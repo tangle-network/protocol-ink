@@ -1,7 +1,7 @@
 use ark_ff::{BigInteger, PrimeField};
 use ark_std::test_rng as thread_rng;
-use ark_std::vec::Vec;
 use ark_std::vec;
+use ark_std::vec::Vec;
 use arkworks_native_gadgets::poseidon::Poseidon;
 use arkworks_setups::{
     common::{setup_params, setup_tree_and_create_path},
@@ -11,8 +11,6 @@ use arkworks_setups::{
 };
 
 use ark_std::collections::BTreeMap;
-
-
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 pub struct Element(pub [u8; 32]);
@@ -34,10 +32,10 @@ type Bn254Fr = ark_bn254::Fr;
 type Bn254 = ark_bn254::Bn254;
 
 type VAnchorProver_Bn254_30_2x2 =
-VAnchorR1CSProver<Bn254, TREE_DEPTH, ANCHOR_CT, NUM_UTXOS, NUM_UTXOS>;
+    VAnchorR1CSProver<Bn254, TREE_DEPTH, ANCHOR_CT, NUM_UTXOS, NUM_UTXOS>;
 
 type VAnchorProver_Bn254_30_16x2 =
-VAnchorR1CSProver<Bn254, TREE_DEPTH, ANCHOR_CT, NUM_IN_UTXOS_16_2, NUM_OUT_UTXOS_16_2>;
+    VAnchorR1CSProver<Bn254, TREE_DEPTH, ANCHOR_CT, NUM_IN_UTXOS_16_2, NUM_OUT_UTXOS_16_2>;
 
 const TREE_DEPTH: usize = 30;
 const DEFAULT_LEAF: [u8; 32] = [0u8; 32];
@@ -56,7 +54,7 @@ pub fn setup_environment_2_2_2(curve: Curve) -> (Vec<u8>, Vec<u8>) {
             let vk_bytes = include_bytes!(
                 "../../../protocol-substrate-fixtures/vanchor/bn254/x5/2-2-2/verifying_key.bin"
             )
-                .to_vec();
+            .to_vec();
 
             // finally return the provingkey bytes
             (pk_bytes, vk_bytes)
@@ -77,7 +75,7 @@ pub fn setup_environment_2_16_2(curve: Curve) -> (Vec<u8>, Vec<u8>) {
             let vk_bytes = include_bytes!(
                 "../../../protocol-substrate-fixtures/vanchor/bn254/x5/2-16-2/verifying_key.bin"
             )
-                .to_vec();
+            .to_vec();
 
             // finally return the provingkey bytes
             (pk_bytes, vk_bytes)
@@ -110,7 +108,7 @@ pub fn setup_utxos_2_2_2(
         indices[0],
         rng,
     )
-        .unwrap();
+    .unwrap();
     let utxo2 = VAnchorProver_Bn254_30_2x2::create_random_utxo(
         curve,
         chain_ids[1],
@@ -118,12 +116,11 @@ pub fn setup_utxos_2_2_2(
         indices[1],
         rng,
     )
-        .unwrap();
+    .unwrap();
     let in_utxos = [utxo1, utxo2];
 
     in_utxos
 }
-
 
 pub fn setup_zk_circuit_2_2_2(
     // Metadata inputs
@@ -163,7 +160,7 @@ pub fn setup_zk_circuit_2_2_2(
             0,
             &DEFAULT_LEAF,
         )
-            .unwrap();
+        .unwrap();
         [(); ANCHOR_CT].map(|_| tree.root().into_repr().to_bytes_le())
     };
 
@@ -181,7 +178,7 @@ pub fn setup_zk_circuit_2_2_2(
         DEFAULT_LEAF,
         rng,
     )
-        .unwrap();
+    .unwrap();
 
     let pub_ins = vanchor_proof
         .public_inputs_raw
@@ -191,7 +188,6 @@ pub fn setup_zk_circuit_2_2_2(
 
     (vanchor_proof.proof, pub_ins)
 }
-
 
 pub fn deconstruct_public_inputs_2_2_2(
     public_inputs: &Vec<Bn254Fr>,
