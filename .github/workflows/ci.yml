@@ -87,8 +87,8 @@ jobs:
         run: rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
 
       #- name: Install Cargo contract
+      #  run: cargo install cargo-contract --force
       - name: Install `cargo-contract` `master`
-        run: cargo install cargo-contract --force --locked
         uses: actions-rs/cargo@v1
         with:
           command: install
