@@ -12,7 +12,7 @@ jobs:
       - uses: dsaltares/fetch-gh-release-asset@master
         with:
           repo: 'webb-tools/substrate-contracts-node'
-          version: 'tags/v25'
+          version: 'tags/v29'
           file: "substrate-contracts-node"
           target: "substrate-contracts-node"
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -87,19 +87,14 @@ jobs:
       - name: Rustup component
         run: rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
 
-      #- name: Install Cargo contract
-      #  run: cargo install cargo-contract --force
-      - name: Install `cargo-contract` `master`
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --git https://github.com/paritytech/cargo-contract.git
+      - name: Install Cargo contract
+        run: cargo install cargo-contract --locked
 
       - name: Output versions
         run: |
           wasm-opt --version
           cargo -vV
-          cargo contract --version
+          cargo contract --version --locked
 
       - name: Submodule Update
         run: git submodule update --init --recursive

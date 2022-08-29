@@ -4,6 +4,9 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod anchor_handler {
+    use ink_env::call::ExecutionInput;
+    use ink_env::call::{build_call, Call, Selector};
+    use ink_env::DefaultEnvironment;
     use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
@@ -12,7 +15,7 @@ mod anchor_handler {
     use protocol_ink_lib::keccak::Keccak256;
     use protocol_ink_lib::utils::{
         element_encoder, element_encoder_for_eight_bytes, element_encoder_for_four_bytes,
-        element_encoder_for_one_byte,
+        element_encoder_for_one_byte, element_encoder_for_sixteen_bytes,
     };
     use vanchor::vanchor::TokenWrapperData;
     use vanchor::VAnchorRef;
@@ -60,7 +63,6 @@ mod anchor_handler {
         pub handler: AccountId,
         pub version: u32,
         pub poseidon_contract_hash: Hash,
-        pub verifier_contract_hash: Hash,
         pub token_wrapper_contract_hash: Hash,
     }
 
@@ -80,6 +82,14 @@ mod anchor_handler {
         InvalidFunctionSignature,
         /// No Update Record found
         UpdateRecordNotFound,
+        /// Configure max deposit limit error
+        ConfigureMaxDepositLimitError,
+        /// Configure max withdrawal limit error
+        ConfigureMinWithdrawalLimitError,
+        /// Update Edge error
+        UpdateEdgeError,
+        /// Set Handler Error
+        SetHandlerError,
     }
 
     impl AnchorHandler {
@@ -107,7 +117,6 @@ mod anchor_handler {
                 token_wrapper_data,
                 vanchor_data.version,
                 vanchor_data.poseidon_contract_hash,
-                vanchor_data.verifier_contract_hash,
                 vanchor_data.token_wrapper_contract_hash,
             )
             .endowment(0)
@@ -142,10 +151,19 @@ mod anchor_handler {
         /// * `contract_address` -  The contract address to be mapped to
         #[ink(message, selector = 1)]
         pub fn set_resource(&mut self, resource_id: [u8; 32], contract_address: AccountId) {
+            let message = ink_prelude::format!("caller HANDLER is {:?}", self.env().caller());
+            ink_env::debug_println!("{}", message);
+
+            let message =
+                ink_prelude::format!("contract address is  {:?}", self.env().account_id());
+            ink_env::debug_println!("{}", message);
+
             self.resource_id_to_contract_address
                 .insert(resource_id, &contract_address);
             self.contract_address_to_resource_id
                 .insert(contract_address.clone(), &resource_id);
+            self.contract_whitelist
+                .insert(contract_address.clone(), &true);
         }
 
         /// Sets the bridge address
@@ -153,7 +171,7 @@ mod anchor_handler {
         /// * `bridge_address` -  The bridge address to migrate to
         #[ink(message)]
         pub fn migrate_bridge(&mut self, bridge_address: AccountId) -> Result<()> {
-            if self.env().caller() != bridge_address {
+            if self.env().caller() != self.bridge_address {
                 return Err(Error::Unauthorized);
             }
             self.bridge_address = bridge_address;
@@ -194,7 +212,11 @@ mod anchor_handler {
             // extract function signature
             let function_signature = element_encoder_for_four_bytes(&data[32..36]);
             let arguments = &data[36..];
-            self.execute_function_signature(function_signature, arguments);
+            self.execute_function_signature(
+                function_signature,
+                arguments,
+                anchor_address.unwrap(),
+            )?;
 
             Ok(())
         }
@@ -207,16 +229,32 @@ mod anchor_handler {
             &mut self,
             function_signature: [u8; 4],
             arguments: &[u8],
+            anchor_address: AccountId,
         ) -> Result<()> {
             if function_signature
                 == blake2b_256_4_bytes_output(b"VAnchor::set_handler".to_vec().as_slice())
             {
                 let nonce_bytes: [u8; 8] = element_encoder_for_eight_bytes(&arguments[0..8]);
-                let token_address: [u8; 32] = element_encoder(&arguments[8..40]);
+                let token_address_bytes: [u8; 32] = element_encoder(&arguments[8..40]);
 
                 let nonce = u64::from_be_bytes(nonce_bytes);
 
-                self.vanchor.set_handler(token_address.into(), nonce);
+                let token_address: AccountId = token_address_bytes.into();
+
+                let cross_contract_call = build_call::<DefaultEnvironment>()
+                    .call_type(Call::new().callee(anchor_address).gas_limit(50000000000))
+                    .exec_input(
+                        ExecutionInput::new(Selector::new([0, 0, 0, 3]))
+                            .push_arg(token_address)
+                            .push_arg(nonce),
+                    )
+                    .returns::<()>()
+                    .fire();
+
+                if cross_contract_call.is_err() {
+                    ink_env::debug_println!("Error occured performing cross contract call");
+                    return Err(Error::SetHandlerError);
+                }
             } else if function_signature
                 == blake2b_256_4_bytes_output(b"VAnchor::update_edge".to_vec().as_slice())
             {
@@ -229,18 +267,29 @@ mod anchor_handler {
                 let src_chain_id = u64::from_be_bytes(src_chain_id_bytes);
                 let latest_leaf_index = u32::from_be_bytes(latest_leaf_index_bytes);
 
-                self.vanchor
-                    .update_edge(src_chain_id, root, latest_leaf_index, target);
+                if self
+                    .vanchor
+                    .update_edge(src_chain_id, root, latest_leaf_index, target)
+                    .is_err()
+                {
+                    return Err(Error::UpdateEdgeError);
+                }
             } else if function_signature
                 == blake2b_256_4_bytes_output(
                     b"VAnchor::configure_max_deposit_limit".to_vec().as_slice(),
                 )
             {
-                let amount_bytes: [u8; 1] = element_encoder_for_one_byte(&arguments[0..1]);
+                let amount_bytes: [u8; 16] = element_encoder_for_sixteen_bytes(&arguments[0..16]);
 
-                let amount = u8::from_be_bytes(amount_bytes);
+                let amount = u128::from_be_bytes(amount_bytes);
 
-                self.vanchor.configure_max_deposit_limit(amount.into());
+                if self
+                    .vanchor
+                    .configure_max_deposit_limit(amount.into())
+                    .is_err()
+                {
+                    return Err(Error::ConfigureMaxDepositLimitError);
+                }
             } else if function_signature
                 == blake2b_256_4_bytes_output(
                     b"VAnchor::configure_min_withdrawal_limit"
@@ -248,11 +297,17 @@ mod anchor_handler {
                         .as_slice(),
                 )
             {
-                let amount_bytes: [u8; 1] = element_encoder_for_one_byte(&arguments[0..1]);
+                let amount_bytes: [u8; 16] = element_encoder_for_sixteen_bytes(&arguments[0..16]);
 
-                let amount = u8::from_be_bytes(amount_bytes);
+                let amount = u128::from_be_bytes(amount_bytes);
 
-                self.vanchor.configure_min_withdrawal_limit(amount.into());
+                if self
+                    .vanchor
+                    .configure_min_withdrawal_limit(amount.into())
+                    .is_err()
+                {
+                    return Err(Error::ConfigureMinWithdrawalLimitError);
+                }
             } else {
                 return Err(Error::InvalidFunctionSignature);
             }
@@ -319,6 +374,109 @@ mod anchor_handler {
             }
 
             Ok(self.contract_whitelist.get(address).unwrap())
+        }
+
+        #[ink(message)]
+        pub fn get_function_signature(&self, function_type: String) -> Result<[u8; 4]> {
+            let function_signature =
+                blake2b_256_4_bytes_output(function_type.as_bytes().to_vec().as_slice());
+
+            Ok(function_signature)
+        }
+
+        #[ink(message)]
+        pub fn get_set_handler_function_signature(&self) -> Result<[u8; 4]> {
+            let function_signature =
+                blake2b_256_4_bytes_output(b"VAnchor::set_handler".to_vec().as_slice());
+
+            Ok(function_signature)
+        }
+
+        #[ink(message)]
+        pub fn get_update_edge_function_signature(&self) -> Result<[u8; 4]> {
+            let function_signature =
+                blake2b_256_4_bytes_output(b"VAnchor::update_edge".to_vec().as_slice());
+
+            Ok(function_signature)
+        }
+
+        #[ink(message)]
+        pub fn get_configure_max_deposit_limit_function_signature(&self) -> Result<[u8; 4]> {
+            let function_signature = blake2b_256_4_bytes_output(
+                b"VAnchor::configure_max_deposit_limit".to_vec().as_slice(),
+            );
+
+            Ok(function_signature)
+        }
+
+        #[ink(message)]
+        pub fn get_configure_min_withdrawal_limit_function_signature(&self) -> Result<[u8; 4]> {
+            let function_signature = blake2b_256_4_bytes_output(
+                b"VAnchor::configure_min_withdrawal_limit"
+                    .to_vec()
+                    .as_slice(),
+            );
+
+            Ok(function_signature)
+        }
+
+        #[ink(message)]
+        pub fn construct_data_for_set_handler(
+            &self,
+            resource_id: [u8; 32],
+            function_signature: [u8; 4],
+            nonce: [u8; 8],
+            handler: AccountId,
+        ) -> Result<Vec<u8>> {
+            let mut result: Vec<u8> = [
+                resource_id.as_slice(),
+                function_signature.as_slice(),
+                nonce.as_slice(),
+                handler.as_ref(),
+            ]
+            .concat();
+
+            Ok(result)
+        }
+
+        #[ink(message)]
+        pub fn construct_data_for_update_edge(
+            &self,
+            resource_id: [u8; 32],
+            function_signature: [u8; 4],
+            src_chain_id: [u8; 8],
+            root: [u8; 32],
+            last_leaf_index: [u8; 4],
+            target: [u8; 32],
+        ) -> Result<Vec<u8>> {
+            let mut result: Vec<u8> = [
+                resource_id.as_slice(),
+                function_signature.as_slice(),
+                src_chain_id.as_slice(),
+                root.as_slice(),
+                last_leaf_index.as_slice(),
+                target.as_slice(),
+            ]
+            .concat();
+
+            Ok(result)
+        }
+
+        #[ink(message)]
+        pub fn construct_data_for_limit_amount(
+            &self,
+            resource_id: [u8; 32],
+            function_signature: [u8; 4],
+            amount: [u8; 16],
+        ) -> Result<Vec<u8>> {
+            let mut result: Vec<u8> = [
+                resource_id.as_slice(),
+                function_signature.as_slice(),
+                amount.as_slice(),
+            ]
+            .concat();
+
+            Ok(result)
         }
     }
 }

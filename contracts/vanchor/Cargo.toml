@@ -19,7 +19,6 @@ scale-info = { version = "2", default-features = false, features = ["derive"], o
 openbrush = { tag = "v2.2.0", git = "https://github.com/Supercolony-net/openbrush-contracts", default-features = false, features = ["psp22"] }
 
 
-verifier = { package = "vanchor_verifier", path = "vanchor_verifier", default-features = false, features = ["ink-as-dependency"] }
 poseidon = { path = "../poseidon", default-features = false, features = ["ink-as-dependency"] }
 governed_token_wrapper = { path = "../governed_token_wrapper", default-features = false, features = ["ink-as-dependency"] }
 
@@ -44,7 +43,6 @@ std = [
     "scale-info/std",
 
     "poseidon/std",
-    "verifier/std",
     "governed_token_wrapper/std",
 
     "openbrush/std",

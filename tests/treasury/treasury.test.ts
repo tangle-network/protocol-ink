@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { artifacts, network, patract } from "redspot";
 import BN from "bn.js";
-import { killContractNode, startContractNode } from "./util";
+import { killContractNode, startContractNode } from "../util";
 
 const { getContractFactory, getRandomSigner } = patract;
 const { api, getAddresses, getSigners } = network;

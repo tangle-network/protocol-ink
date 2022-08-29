@@ -25,9 +25,9 @@ export function normalizeBalance(balance: number): BN {
   );
 }
 
-describe("token-wrapper-handler-tests", () => {
-  let tokenWrapperHandlerContract: any;
-  let tokenWrapperHandlerContractFactory: any;
+describe("anchor-handler-tests", () => {
+  let anchorHandlerContract: any;
+  let anchorHandlerContractFactory: any;
   let sender: any;
   let BobSigner: any;
   let CharlieSigner: any;
@@ -36,6 +36,7 @@ describe("token-wrapper-handler-tests", () => {
   let DaveSigner: any;
   let psp22Contract: any;
   let tokenWrapperContract: any;
+  let vAnchorContract: any;
   let childProcess: any;
   after(() => {
     killContractNode(childProcess);
@@ -49,8 +50,8 @@ describe("token-wrapper-handler-tests", () => {
 
   beforeEach(async () => {
     ({
-      tokenWrapperHandlerContract,
-      tokenWrapperHandlerContractFactory,
+      anchorHandlerContract,
+      anchorHandlerContractFactory,
       sender,
       BobSigner,
       CharlieSigner,
@@ -59,6 +60,7 @@ describe("token-wrapper-handler-tests", () => {
       DaveSigner,
       psp22Contract,
       tokenWrapperContract,
+      vAnchorContract,
     } = await setup());
   });
 
@@ -81,6 +83,16 @@ describe("token-wrapper-handler-tests", () => {
     const FerdieSigner = await getRandomSigner(signers[0], one.muln(10));
     const EveSigner = await getRandomSigner(signers[0], one.muln(10));
     const DaveSigner = await getRandomSigner(signers[0], one.muln(10));
+    const {
+      maxEdges,
+      chainId,
+      levels,
+      maxDepositAmount,
+      minWithdrwalAmount,
+      maxExtAmt,
+      maxFee,
+    } = await vAnchorContractInitParams();
+
     const {
       tokenName,
       tokenSymbol,
@@ -114,7 +126,6 @@ describe("token-wrapper-handler-tests", () => {
       1
     );
 
-    // Poseidon instantiation
     const tokenWrapperContractFactory = await getContractFactory(
       "governed_token_wrapper",
       sender.address
@@ -134,9 +145,51 @@ describe("token-wrapper-handler-tests", () => {
       totalSupply
     );
 
+    // Poseidon instantiation
+    const poseidonContractFactory = await getContractFactory(
+      "poseidon",
+      sender.address
+    );
+    const poseidonContract = await poseidonContractFactory.deploy("new");
+
+    const randomVersion = Math.floor(Math.random() * 10000);
+
+    const vAnchorContractFactory = await getContractFactory(
+      "vanchor",
+      sender.address
+    );
+
+    const vAnchorContract = await vAnchorContractFactory.deploy(
+      "new",
+      maxEdges,
+      chainId,
+      levels,
+      maxDepositAmount,
+      minWithdrwalAmount,
+      maxExtAmt,
+      maxFee,
+      tokenWrapperContract.address,
+      sender.address,
+      {
+        tokenName,
+        tokenSymbol,
+        decimal,
+        contractGovernor,
+        feeRecipient,
+        feePercentage,
+        isNativeAllowed,
+        wrappingLimit,
+        contractProposalNonce,
+        totalSupply,
+      },
+      randomVersion + 1,
+      poseidonContract.abi.info.source.wasmHash,
+      tokenWrapperContract.abi.info.source.wasmHash
+    );
+
     // token wrapper instantiation
-    const tokenWrapperHandlerContractFactory = await getContractFactory(
-      "token_wrapper_handler",
+    const anchorHandlerContractFactory = await getContractFactory(
+      "anchor_handler",
       sender.address
     );
 
@@ -144,31 +197,50 @@ describe("token-wrapper-handler-tests", () => {
       hexToU8a("0x00000000000000000000000000000000")
     );
 
-    const initialContractAddresses = [psp22Contract.address];
-    const randomVersion = Math.floor(Math.random() * 10000);
+    const tokenWrapperContractAddress = tokenWrapperContract.address;
+    const senderAddress = sender.address;
+    const poseidonContractHash = poseidonContract.abi.info.source.wasmHash;
+    //const verifierContractHash =   vAnchorVerifierContract.abi.info.source.wasmHash;
+    const tokenWrapperContractHash =
+      tokenWrapperContract.abi.info.source.wasmHash;
 
     //TODO will change Alice address to signature bridge address as soon as signature bridge is ready
-    const tokenWrapperHandlerContract =
-      await tokenWrapperHandlerContractFactory.deploy(
-        "new",
-        sender.address,
-        null,
-        null,
+    // @ts-ignore
+    // @ts-ignore
+    // @ts-ignore
+    const anchorHandlerContract = await anchorHandlerContractFactory.deploy(
+      "new",
+      sender.address,
+      null,
+      null,
+      vAnchorContract.abi.info.source.wasmHash,
+      {
+        maxEdges,
+        chainId,
+        levels,
+        maxDepositAmount,
+        minWithdrwalAmount,
+        maxExtAmt,
+        maxFee,
+        tokenWrapperContractAddress,
+        handler: sender.address,
         randomVersion,
-        tokenWrapperContract.abi.info.source.wasmHash,
-        {
-          tokenName,
-          tokenSymbol,
-          decimal,
-          contractGovernor,
-          feeRecipient,
-          feePercentage,
-          isNativeAllowed,
-          wrappingLimit,
-          contractProposalNonce,
-          totalSupply,
-        }
-      );
+        poseidonContractHash,
+        tokenWrapperContractHash,
+      },
+      {
+        tokenName,
+        tokenSymbol,
+        decimal,
+        contractGovernor,
+        feeRecipient,
+        feePercentage,
+        isNativeAllowed,
+        wrappingLimit,
+        contractProposalNonce,
+        totalSupply,
+      }
+    );
 
     return {
       sender,
@@ -183,10 +255,31 @@ describe("token-wrapper-handler-tests", () => {
       EveSigner,
       Dave,
       DaveSigner,
-      tokenWrapperHandlerContractFactory,
-      tokenWrapperHandlerContract,
+      anchorHandlerContractFactory,
+      anchorHandlerContract,
       psp22Contract,
       tokenWrapperContract,
+      vAnchorContract,
+    };
+  }
+
+  async function vAnchorContractInitParams() {
+    let maxEdges = 2;
+    let chainId = 1;
+    let levels = 30;
+    let maxDepositAmount = 1000000;
+    let minWithdrwalAmount = 100;
+    let maxExtAmt = 100;
+    let maxFee = 10;
+
+    return {
+      maxEdges,
+      chainId,
+      levels,
+      maxDepositAmount,
+      minWithdrwalAmount,
+      maxExtAmt,
+      maxFee,
     };
   }
 
@@ -227,15 +320,13 @@ describe("token-wrapper-handler-tests", () => {
 
   it("Migrate Bridge", async () => {
     let initialBridgeAddress =
-      await tokenWrapperHandlerContract.query.getBridgeAddress();
+      await anchorHandlerContract.query.getBridgeAddress();
 
-    await expect(
-      tokenWrapperHandlerContract.tx.migrateBridge(BobSigner.address)
-    ).to.be.fulfilled;
+    await expect(anchorHandlerContract.tx.migrateBridge(BobSigner.address)).to
+      .be.fulfilled;
 
     // validate that signature bridge address has been updated
-    let newBridgeAddress =
-      await tokenWrapperHandlerContract.query.getBridgeAddress();
+    let newBridgeAddress = await anchorHandlerContract.query.getBridgeAddress();
     expect(initialBridgeAddress.output).to.not.equal(newBridgeAddress.output);
   });
 
@@ -243,221 +334,190 @@ describe("token-wrapper-handler-tests", () => {
     let resourceId = Array.from(genResourceId(psp22Contract.address));
 
     await expect(
-      tokenWrapperHandlerContract.tx.setResource(
-        resourceId,
-        psp22Contract.address
-      )
+      anchorHandlerContract.tx.setResource(resourceId, psp22Contract.address)
     ).to.be.fulfilled;
 
     // validate that resource id exists
-    let resourceIdResult =
-      await tokenWrapperHandlerContract.query.getResourceId(
-        psp22Contract.address
-      );
+    let resourceIdResult = await anchorHandlerContract.query.getResourceId(
+      psp22Contract.address
+    );
     expect(`0x${toHexString(resourceId)}`).to.equal(
       `${JSON.parse(resourceIdResult.output).ok}`
     );
 
     // validate that contract address exists
     let contractAddressResult =
-      await tokenWrapperHandlerContract.query.getContractAddress(resourceId);
+      await anchorHandlerContract.query.getContractAddress(resourceId);
     expect(psp22Contract.address).to.equal(
       `${JSON.parse(contractAddressResult.output).ok}`
     );
 
     // validate that contract address is whitelisted
     let isContractWhitelistedResult =
-      await tokenWrapperHandlerContract.query.isContractAddressWhitelisted(
+      await anchorHandlerContract.query.isContractAddressWhitelisted(
         psp22Contract.address
       );
     expect(JSON.parse(isContractWhitelistedResult.output).ok).to.be.true;
   });
 
-  it("Execute Proposal for setting fee", async () => {
-    // sets random resource
-    let resourceId = Array.from(genResourceId(psp22Contract.address));
+  it("Execute Proposal for set handler", async () => {
+    let initialHandler = await vAnchorContract.query.handler();
+
     await expect(
-      tokenWrapperHandlerContract.tx.setResource(
-        resourceId,
-        psp22Contract.address
-      )
+      vAnchorContract.tx.setHandler(anchorHandlerContract.address, 1048)
+    ).to.be.fulfilled;
+
+    let newHandler = await vAnchorContract.query.handler();
+
+    // sets random resource
+    let resourceId = Array.from(genResourceId(vAnchorContract.address));
+    await expect(
+      anchorHandlerContract.tx.setResource(resourceId, vAnchorContract.address)
     ).to.be.fulfilled;
 
     // validate that resource id exists
-    let resourceIdResult =
-      await tokenWrapperHandlerContract.query.getResourceId(
-        psp22Contract.address
-      );
+    let resourceIdResult = await anchorHandlerContract.query.getResourceId(
+      vAnchorContract.address
+    );
     expect(`0x${toHexString(resourceId)}`).to.equal(
       `${JSON.parse(resourceIdResult.output).ok}`
     );
 
     let functionSig =
-      await tokenWrapperHandlerContract.query.getSetFeeFunctionSignature();
+      await anchorHandlerContract.query.getSetHandlerFunctionSignature();
 
     let parsedFunctionSig = JSON.parse(functionSig.output).ok;
 
-    let nonce = 1;
-
-    let amount = 100;
+    let nonce = [0, 0, 0, 0, 0, 0, 0, 0];
 
     let dataResult =
-      await tokenWrapperHandlerContract.query.constructDataForSetFee(
+      await anchorHandlerContract.query.constructDataForSetHandler(
         resourceId,
         parsedFunctionSig,
         nonce,
+        BobSigner.address
+      );
+
+    await expect(
+      anchorHandlerContract.tx.executeProposal(
+        resourceId,
+        JSON.parse(dataResult.output).ok
+      )
+    ).to.be.fulfilled;
+  });
+
+  it("Execute Proposal for update edge", async () => {
+    // sets random resource
+    let resourceId = Array.from(genResourceId(psp22Contract.address));
+    await expect(
+      anchorHandlerContract.tx.setResource(resourceId, psp22Contract.address)
+    ).to.be.fulfilled;
+
+    // validate that resource id exists
+    let resourceIdResult = await anchorHandlerContract.query.getResourceId(
+      psp22Contract.address
+    );
+    expect(`0x${toHexString(resourceId)}`).to.equal(
+      `${JSON.parse(resourceIdResult.output).ok}`
+    );
+
+    let functionSig =
+      await anchorHandlerContract.query.getUpdateEdgeFunctionSignature();
+
+    let parsedFunctionSig = JSON.parse(functionSig.output).ok;
+
+    let dataResult =
+      await anchorHandlerContract.query.constructDataForUpdateEdge(
+        resourceId,
+        parsedFunctionSig,
+        [0, 0, 0, 0, 0, 0, 0, 1],
+        [
+          0, 0, 0, 0, 0, 0, 4, 24, 0, 0, 0, 0, 0, 0, 4, 24, 0, 0, 0, 0, 0, 0, 4,
+          24, 0, 0, 0, 0, 0, 0, 4, 24,
+        ],
+        [0, 0, 0, 0],
+        [
+          0, 0, 0, 0, 0, 0, 4, 24, 0, 0, 0, 0, 0, 0, 4, 24, 0, 0, 0, 0, 0, 0, 4,
+          24, 0, 0, 0, 0, 0, 0, 4, 24,
+        ]
+      );
+
+    await expect(
+      anchorHandlerContract.tx.executeProposal(
+        resourceId,
+        JSON.parse(dataResult.output).ok
+      )
+    ).to.be.fulfilled;
+  });
+
+  it("Execute Proposal for configure max deposit limit", async () => {
+    // sets random resource
+    let resourceId = Array.from(genResourceId(psp22Contract.address));
+    await expect(
+      anchorHandlerContract.tx.setResource(resourceId, psp22Contract.address)
+    ).to.be.fulfilled;
+
+    // validate that resource id exists
+    let resourceIdResult = await anchorHandlerContract.query.getResourceId(
+      psp22Contract.address
+    );
+    expect(`0x${toHexString(resourceId)}`).to.equal(
+      `${JSON.parse(resourceIdResult.output).ok}`
+    );
+
+    let functionSig =
+      await anchorHandlerContract.query.getConfigureMaxDepositLimitFunctionSignature();
+
+    let parsedFunctionSig = JSON.parse(functionSig.output).ok;
+
+    let amount = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 232];
+
+    let dataResult =
+      await anchorHandlerContract.query.constructDataForLimitAmount(
+        resourceId,
+        parsedFunctionSig,
         amount
       );
 
     await expect(
-      tokenWrapperHandlerContract.tx.executeProposal(
+      anchorHandlerContract.tx.executeProposal(
         resourceId,
         JSON.parse(dataResult.output).ok
       )
     ).to.be.fulfilled;
   });
 
-  it("Execute Proposal for setting fee recipient", async () => {
+  it("Execute Proposal for configure min withdrawal limit", async () => {
     // sets random resource
     let resourceId = Array.from(genResourceId(psp22Contract.address));
     await expect(
-      tokenWrapperHandlerContract.tx.setResource(
-        resourceId,
-        psp22Contract.address
-      )
+      anchorHandlerContract.tx.setResource(resourceId, psp22Contract.address)
     ).to.be.fulfilled;
 
     // validate that resource id exists
-    let resourceIdResult =
-      await tokenWrapperHandlerContract.query.getResourceId(
-        psp22Contract.address
-      );
+    let resourceIdResult = await anchorHandlerContract.query.getResourceId(
+      psp22Contract.address
+    );
     expect(`0x${toHexString(resourceId)}`).to.equal(
       `${JSON.parse(resourceIdResult.output).ok}`
     );
 
     let functionSig =
-      await tokenWrapperHandlerContract.query.getSetFeeRecipientFunctionSignature();
+      await anchorHandlerContract.query.getConfigureMinWithdrawalLimitFunctionSignature();
 
     let parsedFunctionSig = JSON.parse(functionSig.output).ok;
 
-    let nonce = 1;
+    let amount = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 232];
 
-    let dataResult = await tokenWrapperHandlerContract.query.constructData(
-      resourceId,
-      parsedFunctionSig,
-      nonce,
-      BobSigner.address
-    );
-
-    await expect(
-      tokenWrapperHandlerContract.tx.executeProposal(
+    let dataResult =
+      await anchorHandlerContract.query.constructDataForLimitAmount(
         resourceId,
-        JSON.parse(dataResult.output).ok
-      )
-    ).to.be.fulfilled;
-  });
-
-  it("Execute Proposal for add token address", async () => {
-    // sets random resource
-    let resourceId = Array.from(genResourceId(psp22Contract.address));
-    await expect(
-      tokenWrapperHandlerContract.tx.setResource(
-        resourceId,
-        psp22Contract.address
-      )
-    ).to.be.fulfilled;
-
-    // validate that resource id exists
-    let resourceIdResult =
-      await tokenWrapperHandlerContract.query.getResourceId(
-        psp22Contract.address
+        parsedFunctionSig,
+        amount
       );
-    expect(`0x${toHexString(resourceId)}`).to.equal(
-      `${JSON.parse(resourceIdResult.output).ok}`
-    );
-
-    let functionSig =
-      await tokenWrapperHandlerContract.query.getAddTokenAddressFunctionSignature();
-
-    let parsedFunctionSig = JSON.parse(functionSig.output).ok;
-
-    let nonce = 1;
-
-    let dataResult = await tokenWrapperHandlerContract.query.constructData(
-      resourceId,
-      parsedFunctionSig,
-      nonce,
-      psp22Contract.address
-    );
 
     await expect(
-      tokenWrapperHandlerContract.tx.executeProposal(
-        resourceId,
-        JSON.parse(dataResult.output).ok
-      )
-    ).to.be.fulfilled;
-  });
-
-  it("Execute Proposal for remove token address", async () => {
-    // sets random resource
-    let resourceId = Array.from(genResourceId(psp22Contract.address));
-    await expect(
-      tokenWrapperHandlerContract.tx.setResource(
-        resourceId,
-        psp22Contract.address
-      )
-    ).to.be.fulfilled;
-
-    // validate that resource id exists
-    let resourceIdResult =
-      await tokenWrapperHandlerContract.query.getResourceId(
-        psp22Contract.address
-      );
-    expect(`0x${toHexString(resourceId)}`).to.equal(
-      `${JSON.parse(resourceIdResult.output).ok}`
-    );
-
-    // First add token address
-
-    let functionSig =
-      await tokenWrapperHandlerContract.query.getAddTokenAddressFunctionSignature();
-
-    let parsedFunctionSig = JSON.parse(functionSig.output).ok;
-
-    let nonce = 1;
-
-    let dataResult = await tokenWrapperHandlerContract.query.constructData(
-      resourceId,
-      parsedFunctionSig,
-      nonce,
-      psp22Contract.address
-    );
-
-    await expect(
-      tokenWrapperHandlerContract.tx.executeProposal(
-        resourceId,
-        JSON.parse(dataResult.output).ok
-      )
-    ).to.be.fulfilled;
-
-    // Then remove token address
-    functionSig =
-      await tokenWrapperHandlerContract.query.getRemoveTokenAddressFunctionSignature();
-
-    parsedFunctionSig = JSON.parse(functionSig.output).ok;
-
-    nonce = 2;
-
-    dataResult = await tokenWrapperHandlerContract.query.constructData(
-      resourceId,
-      parsedFunctionSig,
-      nonce,
-      psp22Contract.address
-    );
-
-    await expect(
-      tokenWrapperHandlerContract.tx.executeProposal(
+      anchorHandlerContract.tx.executeProposal(
         resourceId,
         JSON.parse(dataResult.output).ok
       )
