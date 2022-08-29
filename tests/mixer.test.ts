@@ -96,7 +96,7 @@ describe("mixer", () => {
     return { sender, Alice, BobSigner };
   }
 
-  it.only("Test deposit and withdraw functionality for native tokens", async () => {
+  it("Test deposit and withdraw functionality for native tokens", async () => {
     const { sender, BobSigner } = await setup();
 
     // Poseidon instantiation
