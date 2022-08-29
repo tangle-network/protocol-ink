@@ -133,8 +133,14 @@ impl LinkableMerkleTree {
     }
 
     pub fn is_valid_neighbor_roots(&self, roots: &[[u8; 32]]) -> bool {
+        let message = ink_prelude::format!("root length is {:?}", roots.len());
+        ink_env::debug_println!("{}", message);
+
+        let message = ink_prelude::format!("max edges is {:?}", self.max_edges as usize - 1);
+        ink_env::debug_println!("{}", message);
+
         assert!(
-            roots.len() == self.max_edges as usize,
+            roots.len() == self.max_edges as usize - 1,
             "Incorrect roots length"
         );
         for (i, edge) in self

@@ -35,8 +35,12 @@ impl MerkleTree {
 
     pub fn insert(&mut self, hasher: PoseidonRef, leaf: [u8; 32]) -> vanchor::Result<u32> {
         let next_index = self.next_index;
+
+        let message = ink_prelude::format!("pow is {:?}", 2u32.pow(self.levels as u32));
+        ink_env::debug_println!("{}", message);
+
         assert!(
-            !next_index == u32::from(2u32.pow(self.levels as u32)),
+            next_index != 2u32.pow(self.levels as u32),
             "Merkle tree is full"
         );
 
@@ -46,6 +50,9 @@ impl MerkleTree {
         let mut right: [u8; 32];
 
         for i in 0..self.levels {
+            let message = ink_prelude::format!("in loop {:?}", i);
+            ink_env::debug_println!("{}", message);
+
             if current_index % 2 == 0 {
                 left = current_level_hash;
                 right = zeroes(i);
@@ -60,9 +67,14 @@ impl MerkleTree {
         }
 
         let new_root_index = (self.current_root_index + 1) % ROOT_HISTORY_SIZE;
+
         self.current_root_index = new_root_index;
         self.roots.insert(new_root_index, &current_level_hash);
         self.next_index = next_index + 1;
+
+        ink_env::debug_println!("{}", message);
+
+        ink_env::debug_println!("finished insertion");
         Ok(next_index)
     }
 

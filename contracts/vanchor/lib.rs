@@ -1,9 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(min_specialization)]
 
+mod ext_data;
 mod linkable_merkle_tree;
 mod merkle_tree;
+mod test_util;
+
 use ink_env::call::FromAccountId;
+use ink_env::Environment;
+use ink_prelude::vec::Vec;
 use ink_storage::traits::SpreadAllocate;
 
 pub use self::vanchor::{VAnchor, VAnchorRef};
@@ -16,8 +21,53 @@ impl SpreadAllocate for VAnchorRef {
     }
 }
 
-#[openbrush::contract]
+#[ink::chain_extension]
+pub trait VerifyProof {
+    type ErrorCode = VerifyProofErr;
+
+    #[ink(extension = 1102, returns_result = false)]
+    fn verify_2_2_proof(bytes: (Vec<u8>, Vec<u8>)) -> bool;
+
+    #[ink(extension = 1103, returns_result = false)]
+    fn verify_2_16_proof(bytes: (Vec<u8>, Vec<u8>)) -> bool;
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+pub enum VerifyProofErr {
+    FailGetVerifyProof,
+}
+
+impl ink_env::chain_extension::FromStatusCode for VerifyProofErr {
+    fn from_status_code(status_code: u32) -> Result<(), Self> {
+        match status_code {
+            0 => Ok(()),
+            1 => Err(Self::FailGetVerifyProof),
+            _ => panic!("encountered unknown status code"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+pub enum CustomEnvironment {}
+
+impl Environment for CustomEnvironment {
+    const MAX_EVENT_TOPICS: usize = <ink_env::DefaultEnvironment as Environment>::MAX_EVENT_TOPICS;
+
+    type AccountId = <ink_env::DefaultEnvironment as Environment>::AccountId;
+    type Balance = <ink_env::DefaultEnvironment as Environment>::Balance;
+    type Hash = <ink_env::DefaultEnvironment as Environment>::Hash;
+    type BlockNumber = <ink_env::DefaultEnvironment as Environment>::BlockNumber;
+    type Timestamp = <ink_env::DefaultEnvironment as Environment>::Timestamp;
+
+    type ChainExtension = VerifyProof;
+}
+
+#[ink::contract(env = crate::CustomEnvironment)]
 pub mod vanchor {
+    use super::VerifyProofErr;
+    use crate::ext_data::ExtData as ExternData;
     use crate::linkable_merkle_tree::{Edge, LinkableMerkleTree};
     use crate::merkle_tree::MerkleTree;
     use governed_token_wrapper::governed_token_wrapper::GovernedTokenWrapperRef;
@@ -31,13 +81,20 @@ pub mod vanchor {
     use poseidon::poseidon::PoseidonRef;
     use protocol_ink_lib::field_ops::{ArkworksIntoFieldBn254, IntoPrimeField};
     use protocol_ink_lib::keccak::Keccak256;
-    use protocol_ink_lib::utils::element_encoder;
+    use protocol_ink_lib::utils::{element_encoder, truncate_and_pad};
     use protocol_ink_lib::vanchor_verifier::VAnchorVerifier;
     use protocol_ink_lib::zeroes::zeroes;
 
+    use ink_env::hash::{HashOutput, Keccak256 as inkKeccak256};
+
+    use ark_ff::BigInteger;
+    use ark_ff::PrimeField;
+    use arkworks_setups::Curve;
+    use ethabi::Token;
+    use webb_proposals::TypedChainId;
+
     /// The vanchor result type.
     pub type Result<T> = core::result::Result<T, Error>;
-    pub const INK_CHAIN_TYPE: [u8; 2] = [4, 0];
     pub const ERROR_MSG: &'static str =
         "requested transfer failed. this can be the case if the contract does not\
     have sufficient free funds or if the transfer would have brought the\
@@ -50,7 +107,7 @@ pub mod vanchor {
         psp22: psp22::Data,
 
         /// chain id
-        pub chain_id: u64,
+        pub chain_id: u32,
         /// ERC20 token address
         pub creator: AccountId,
         /// The merkle tree
@@ -102,10 +159,10 @@ pub mod vanchor {
     pub struct ExtData {
         pub recipient: AccountId,
         pub relayer: AccountId,
-        pub ext_amount: String, // Still `String` since represents `i128` value
+        pub ext_amount: i128, // Still `String` since represents `i128` value
         pub fee: u128,
-        pub encrypted_output1: [u8; 32],
-        pub encrypted_output2: [u8; 32],
+        pub encrypted_output1: Vec<u8>,
+        pub encrypted_output2: Vec<u8>,
     }
 
     #[derive(Default, Debug, scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout)]
@@ -192,7 +249,7 @@ pub mod vanchor {
         #[ink(constructor)]
         pub fn new(
             max_edges: u32,
-            chain_id: u64,
+            chain_id: u32,
             levels: u32,
             max_deposit_amt: Balance,
             min_withdraw_amt: Balance,
@@ -384,21 +441,24 @@ pub mod vanchor {
                 return Err(Error::Unauthorized);
             }
 
-            self.validate_proof(proof_data.clone(), ext_data.clone());
+            self.validate_proof(proof_data.clone(), ext_data.clone())?;
 
             let ext_data_fee: u128 = ext_data.fee.clone();
-            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let ext_amt: i128 = ext_data.ext_amount.clone();
             let abs_ext_amt = ext_amt.unsigned_abs();
 
             let is_withdraw = ext_amt.is_negative();
 
             if is_withdraw {
+                ink_env::debug_println!("invalid execution entry");
                 return Err(Error::InvalidExecutionEntry);
             } else {
                 if abs_ext_amt > self.max_deposit_amt {
+                    ink_env::debug_println!("invalid deposit amount");
                     return Err(Error::InvalidDepositAmount);
                 };
                 if abs_ext_amt != recv_token_amt {
+                    ink_env::debug_println!("insufficient funds");
                     return Err(Error::InsufficientFunds);
                 };
             }
@@ -416,6 +476,7 @@ pub mod vanchor {
                     )
                     .is_err()
                 {
+                    ink_env::debug_println!("transfer error");
                     return Err(Error::TransferError);
                 }
             }
@@ -431,7 +492,7 @@ pub mod vanchor {
             ext_data: ExtData,
         ) -> Result<()> {
             let ext_data_fee: u128 = ext_data.fee.clone();
-            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let ext_amt: i128 = ext_data.ext_amount.clone();
             let abs_ext_amt = ext_amt.unsigned_abs();
 
             let amount_to_wrap = self
@@ -446,7 +507,7 @@ pub mod vanchor {
                 return Err(Error::InsufficientFunds);
             };
 
-            self.validate_proof(proof_data.clone(), ext_data.clone());
+            self.validate_proof(proof_data.clone(), ext_data.clone())?;
 
             let is_withdraw = ext_amt.is_negative();
             if is_withdraw {
@@ -498,7 +559,7 @@ pub mod vanchor {
             recv_token_amt: Balance,
         ) -> Result<()> {
             let ext_data_fee: u128 = ext_data.fee.clone();
-            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let ext_amt: i128 = ext_data.ext_amount.clone();
             let abs_ext_amt = ext_amt.unsigned_abs();
 
             // Only non-"TokenWrapper" Cw20 token contract can execute this message.
@@ -515,13 +576,15 @@ pub mod vanchor {
                 return Err(Error::InsufficientFunds);
             };
 
-            self.validate_proof(proof_data.clone(), ext_data.clone());
+            self.validate_proof(proof_data.clone(), ext_data.clone())?;
 
             let is_withdraw = ext_amt.is_negative();
             if is_withdraw {
+                ink_env::debug_println!("invalid execution entry");
                 return Err(Error::InvalidExecutionEntry);
             } else {
                 if abs_ext_amt > self.max_deposit_amt {
+                    ink_env::debug_println!("invalid deposit amount");
                     return Err(Error::InvalidDepositAmount);
                 };
 
@@ -562,10 +625,10 @@ pub mod vanchor {
             proof_data: ProofData,
             ext_data: ExtData,
         ) -> Result<()> {
-            self.validate_proof(proof_data.clone(), ext_data.clone());
+            self.validate_proof(proof_data.clone(), ext_data.clone())?;
 
             let ext_data_fee: u128 = ext_data.fee.clone();
-            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let ext_amt: i128 = ext_data.ext_amount.clone();
             let abs_ext_amt = ext_amt.unsigned_abs();
 
             if ext_amt.is_positive() {
@@ -614,10 +677,10 @@ pub mod vanchor {
             proof_data: ProofData,
             ext_data: ExtData,
         ) -> Result<()> {
-            self.validate_proof(proof_data.clone(), ext_data.clone());
+            self.validate_proof(proof_data.clone(), ext_data.clone())?;
 
             let ext_data_fee: u128 = ext_data.fee.clone();
-            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let ext_amt: i128 = ext_data.ext_amount.clone();
             let abs_ext_amt = ext_amt.unsigned_abs();
 
             if ext_amt.is_positive() {
@@ -695,9 +758,75 @@ pub mod vanchor {
                 .map_err(|_| Error::UnWrappingError)
         }
 
+        #[ink(message)]
+        pub fn custom_roots_for_2(&mut self, levels: u32) -> [Vec<u8>; 2] {
+            let custom_roots = Some([zeroes(levels), zeroes(levels)].map(|x| x.to_vec()));
+
+            custom_roots.unwrap()
+        }
+
+        #[ink(message)]
+        pub fn verify_proof_on_chain(
+            &mut self,
+            public_inputs: Vec<Vec<u8>>,
+            proof_bytes: Vec<u8>,
+        ) -> bool {
+            let message = ink_prelude::format!("public_inputs is {:?}", public_inputs);
+            ink_env::debug_println!("{}", message);
+
+            let mut inputs: Vec<u8> = Vec::new();
+            for val in &public_inputs {
+                inputs.append(&mut val.as_slice().to_vec());
+            }
+
+            let message = ink_prelude::format!("inputs is {:?}", inputs);
+            ink_env::debug_println!("{}", message);
+
+            let tuple: (Vec<u8>, Vec<u8>) = (inputs, proof_bytes);
+            // Get the on-chain proof verification result
+            let proof_result = self
+                .env()
+                .extension()
+                .verify_2_2_proof(tuple)
+                .unwrap_or(false);
+
+            proof_result
+        }
+
+        #[ink(message)]
+        pub fn verify_proof_on_chain_2(
+            &mut self,
+            public_inputs: Vec<u8>,
+            proof_bytes: Vec<u8>,
+        ) -> bool {
+            let tuple: (Vec<u8>, Vec<u8>) = (public_inputs, proof_bytes);
+            // Get the on-chain proof verification result
+            let proof_result = self
+                .env()
+                .extension()
+                .verify_2_2_proof(tuple)
+                .unwrap_or(false);
+
+            proof_result
+        }
+
+        #[ink(message)]
+        pub fn print_only(&mut self, sender: Vec<u8>, ext_amount: Vec<u8>, fee: Vec<u8>) -> bool {
+            let message = ink_prelude::format!("print only sender {:?}", sender);
+            ink_env::debug_println!("{}", message);
+
+            let message = ink_prelude::format!("print only ext_amount {:?}", ext_amount);
+            ink_env::debug_println!("{}", message);
+
+            let message = ink_prelude::format!("print only fee {:?}", fee);
+            ink_env::debug_println!("{}", message);
+
+            true
+        }
+
         fn validate_proof(&mut self, proof_data: ProofData, ext_data: ExtData) -> Result<()> {
             let ext_data_fee: u128 = ext_data.fee;
-            let ext_amt: i128 = ext_data.ext_amount.parse().expect("Invalid ext_amount");
+            let ext_amt: i128 = ext_data.ext_amount.clone();
 
             // Validation 1. Double check the number of roots.
             if self.linkable_tree.max_edges != proof_data.roots.len() as u32 {
@@ -712,42 +841,68 @@ pub mod vanchor {
                 .linkable_tree
                 .is_valid_neighbor_roots(&proof_data.roots[1..])
             {
+                ink_env::debug_println!("invalid merkle roots");
                 return Err(Error::InvalidMerkleRoots);
+            } else {
+                ink_env::debug_println!("valid merkle roots");
             }
 
             for nullifier in &proof_data.input_nullifiers {
                 if self.is_known_nullifier(*nullifier) {
+                    ink_env::debug_println!("already revealed nullifier");
                     return Err(Error::AlreadyRevealedNullfier);
                 }
             }
 
             // Compute hash of abi encoded ext_data, reduced into field from config
             // Ensure that the passed external data hash matches the computed one
-            let mut ext_data_args = Vec::new();
+
             let recipient_bytes = element_encoder(ext_data.recipient.as_ref());
             let relayer_bytes = element_encoder(ext_data.relayer.as_ref());
-            let fee_bytes = element_encoder(&ext_data_fee.to_le_bytes());
-            let ext_amt_bytes = element_encoder(&ext_amt.to_le_bytes());
-            ext_data_args.extend_from_slice(&recipient_bytes);
-            ext_data_args.extend_from_slice(&relayer_bytes);
-            ext_data_args.extend_from_slice(&ext_amt_bytes);
-            ext_data_args.extend_from_slice(&fee_bytes);
-            ext_data_args.extend_from_slice(&ext_data.encrypted_output1);
-            ext_data_args.extend_from_slice(&ext_data.encrypted_output2);
 
-            let computed_ext_data_hash =
-                Keccak256::hash(&ext_data_args).map_err(|_| Error::HashError)?;
-            if computed_ext_data_hash != proof_data.ext_data_hash {
+            let recipient = Token::Bytes(recipient_bytes.to_vec());
+            let message =
+                ink_prelude::format!("recipient token bytes is {:?}", recipient.into_bytes());
+            ink_env::debug_println!("{}", message);
+
+            let extern_data: ExternData = ExternData {
+                recipient: recipient_bytes.to_vec(),
+                relayer: relayer_bytes.to_vec(),
+                ext_amount: ext_data.ext_amount,
+                fee: ext_data.fee,
+                encrypted_output1: ext_data.encrypted_output1,
+                encrypted_output2: ext_data.encrypted_output2,
+            };
+
+            let extern_data_hash = extern_data.get_encode();
+
+            let message = ink_prelude::format!("extern_data_hash is {:?}", extern_data_hash);
+            ink_env::debug_println!("{}", message);
+
+            let message =
+                ink_prelude::format!("proof_data.ext_data_hash is {:?}", proof_data.ext_data_hash);
+            ink_env::debug_println!("{}", message);
+
+            if extern_data_hash != proof_data.ext_data_hash {
+                ink_env::debug_println!("invalid ext data");
                 return Err(Error::InvalidExtData);
             }
 
             let abs_ext_amt = ext_amt.unsigned_abs();
             // Making sure that public amount and fee are correct
             if ext_data_fee > self.max_fee {
+                ink_env::debug_println!("invalid fee amount");
                 return Err(Error::InvalidFeeAmount);
             }
 
             if abs_ext_amt > self.max_ext_amt {
+                let message = ink_prelude::format!("abs_ext_amt is {:?}", abs_ext_amt);
+                ink_env::debug_println!("{}", message);
+
+                let message = ink_prelude::format!("max_ext_amt is {:?}", self.max_ext_amt);
+                ink_env::debug_println!("{}", message);
+
+                ink_env::debug_println!("invalid ext amount");
                 return Err(Error::InvalidExtAmount);
             }
 
@@ -758,15 +913,31 @@ pub mod vanchor {
             let calc_public_amt_bytes =
                 element_encoder(&ArkworksIntoFieldBn254::into_field(calc_public_amt));
             if calc_public_amt_bytes != proof_data.public_amount {
+                ink_env::debug_println!("invalid public amount");
                 return Err(Error::InvalidPublicAmount);
             }
 
-            // Construct public inputs
-            let chain_id_type_bytes = element_encoder(
-                &self
-                    .compute_chain_id_type(self.chain_id, &INK_CHAIN_TYPE)
-                    .to_le_bytes(),
+            let computed_chain_id_type = TypedChainId::Ink(self.chain_id).chain_id();
+
+            let message = ink_prelude::format!(
+                "computed chain id type webb-rs is {:?}",
+                computed_chain_id_type
             );
+            ink_env::debug_println!("{}", message);
+
+            let computed_chain_id_type_bytes = computed_chain_id_type.to_le_bytes();
+
+            let message = ink_prelude::format!(
+                "computed chain id type bytes is {:?}",
+                computed_chain_id_type_bytes
+            );
+            ink_env::debug_println!("{}", message);
+
+            // Construct public inputs
+            let chain_id_type_bytes = element_encoder(&computed_chain_id_type_bytes);
+
+            let message = ink_prelude::format!(" chain id type bytes is {:?}", chain_id_type_bytes);
+            ink_env::debug_println!("{}", message);
 
             let mut bytes = Vec::new();
             bytes.extend_from_slice(&proof_data.public_amount);
@@ -777,31 +948,50 @@ pub mod vanchor {
             for comm in &proof_data.output_commitments {
                 bytes.extend_from_slice(comm);
             }
+
+            let message = ink_prelude::format!("chain id bytes is {:?}", chain_id_type_bytes);
+            ink_env::debug_println!("{}", message);
+
             bytes.extend_from_slice(&element_encoder(&chain_id_type_bytes));
             for root in &proof_data.roots {
                 bytes.extend_from_slice(root);
             }
 
-            let result = match (
+            let result: bool = match (
                 proof_data.input_nullifiers.len(),
                 proof_data.output_commitments.len(),
             ) {
                 (2, 2) => {
-                    let vanchor_verifier = VAnchorVerifier {
-                        vk_bytes: self.verifier_2_2.clone(),
-                    };
-                    vanchor_verifier.verify(bytes, proof_data.proof)
+                    let tuple: (Vec<u8>, Vec<u8>) = (bytes, proof_data.proof);
+                    // Get the on-chain proof verification result
+                    let proof_result = self
+                        .env()
+                        .extension()
+                        .verify_2_2_proof(tuple)
+                        .unwrap_or(false);
+                    let message = ink_prelude::format!(" proof result is {:?}", proof_result);
+                    ink_env::debug_println!("{}", message);
+                    proof_result
                 }
                 (16, 2) => {
-                    let vanchor_verifier = VAnchorVerifier {
-                        vk_bytes: self.verifier_16_2.clone(),
-                    };
-                    vanchor_verifier.verify(bytes, proof_data.proof)
+                    let tuple: (Vec<u8>, Vec<u8>) = (bytes, proof_data.proof);
+                    // Get the on-chain proof verification result
+                    let proof_result = self
+                        .env()
+                        .extension()
+                        .verify_2_16_proof(tuple)
+                        .unwrap_or(false);
+                    proof_result
                 }
-                _ => Ok(false),
+                _ => false,
             };
 
-            if !result.unwrap() {
+
+            let message = ink_prelude::format!(" proof result is {:?}", result);
+            ink_env::debug_println!("{}", message);
+
+            if !result {
+                ink_env::debug_println!("invalid transaction proof amount");
                 return Err(Error::InvalidTxProof);
             }
 
@@ -823,19 +1013,6 @@ pub mod vanchor {
 
         fn is_known_nullifier(&self, nullifier: [u8; 32]) -> bool {
             self.used_nullifiers.get(&nullifier).is_some()
-        }
-
-        // Computes the combination bytes of "chain_type" and "chain_id".
-        // Combination rule: 8 bytes array(00 * 2 bytes + [chain_type] 2 bytes + [chain_id] 4 bytes)
-        // Example:
-        //  chain_type - 0x0401, chain_id - 0x00000001 (big endian)
-        //  Result - [00, 00, 04, 01, 00, 00, 00, 01]
-        fn compute_chain_id_type(&self, chain_id: u64, chain_type: &[u8]) -> u64 {
-            let chain_id_value: u32 = chain_id.try_into().unwrap_or_default();
-            let mut buf = [0u8; 8];
-            buf[2..4].copy_from_slice(&chain_type);
-            buf[4..8].copy_from_slice(&chain_id_value.to_le_bytes());
-            u64::from_be_bytes(buf)
         }
     }
 }

@@ -1,6 +1,7 @@
 import { ChildProcess, spawn } from "child_process";
 import keccak256 from "keccak256";
-import { BigNumber, BigNumberish } from "ethers";
+import { BigNumber, BigNumberish, ethers } from 'ethers';
+import { u8aToHex } from '@polkadot/util';
 
 const substrateContractNodePath = "./substrate-contracts-node";
 export async function startContractNode() {
@@ -100,4 +101,20 @@ export function toFixedHex(number: BigNumberish, length: number = 32): string {
 
 export function toEncodedBinary(obj: any): string {
   return Buffer.from(JSON.stringify(obj)).toString("base64");
+}
+
+export function encodeExtData(decodedAddress: any, extAmount: any, fee:any, comEnc1:any, comEnc2:any) {
+  const abi = new ethers.utils.AbiCoder();
+const encodedData = abi.encode(
+    ['tuple(address recipient,int256 extAmount,address relayer,uint256 fee,bytes encryptedOutput1,bytes encryptedOutput2)'],
+    [{
+        recipient: decodedAddress,
+        extAmount:extAmount,
+        relayer: decodedAddress,
+        fee: fee,
+        encryptedOutput1: u8aToHex(comEnc1),
+        encryptedOutput2: u8aToHex(comEnc2)
+    }]
+);
+console.log(`encoded data ${encodedData}`);
 }

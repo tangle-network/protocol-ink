@@ -53,7 +53,7 @@ mod anchor_handler {
     #[cfg_attr(feature = "std", derive(StorageLayout, scale_info::TypeInfo))]
     pub struct VAnchorData {
         pub max_edges: u32,
-        pub chain_id: u64,
+        pub chain_id: u32,
         pub levels: u32,
         pub max_deposit_amt: Balance,
         pub min_withdraw_amt: Balance,
