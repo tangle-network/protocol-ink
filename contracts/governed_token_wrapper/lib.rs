@@ -25,7 +25,9 @@ pub mod governed_token_wrapper {
     use ink_prelude::vec::Vec;
     use ink_storage::traits::{PackedLayout, SpreadLayout, StorageLayout};
     use ink_storage::{traits::SpreadAllocate, Mapping};
-    use protocol_ink_lib::utils::{is_account_id_zero, ZERO_ADDRESS};
+    use protocol_ink_lib::utils::{
+        is_account_id_zero, WRAPPING_FEE_CALC_DENOMINATOR, ZERO_ADDRESS,
+    };
 
     /// The vanchor result type.
     pub type Result<T> = core::result::Result<T, Error>;
@@ -56,7 +58,7 @@ pub mod governed_token_wrapper {
         /// The contract wrapping limit
         wrapping_limit: Balance,
         /// The nonce for adding/removing address
-        proposal_nonce: u64,
+        proposal_nonce: u32,
         /// Map of token addresses
         tokens: Mapping<AccountId, bool>,
         /// Map of historical token addresses
@@ -162,7 +164,7 @@ pub mod governed_token_wrapper {
             fee_percentage: Balance,
             is_native_allowed: bool,
             wrapping_limit: Balance,
-            proposal_nonce: u64,
+            proposal_nonce: u32,
             total_supply: Balance,
         ) -> Self {
             ink_lang::codegen::initialize_contract(|instance: &mut Self| {
@@ -382,7 +384,7 @@ pub mod governed_token_wrapper {
         /// * `token_address` - The address of the token to be added
         /// * `nonce` -  The nonce tracking updates to this contract
         #[ink(message)]
-        pub fn add_token_address(&mut self, token_address: AccountId, nonce: u64) -> Result<()> {
+        pub fn add_token_address(&mut self, token_address: AccountId, nonce: u32) -> Result<()> {
             // only contract governor can execute this function
             self.is_governor(self.env().caller())?;
 
@@ -414,7 +416,7 @@ pub mod governed_token_wrapper {
         /// * `token_address`:  The address of the token to be added
         /// * `nonce`: The nonce tracking updates to this contract
         #[ink(message)]
-        pub fn remove_token_address(&mut self, token_address: AccountId, nonce: u64) -> Result<()> {
+        pub fn remove_token_address(&mut self, token_address: AccountId, nonce: u32) -> Result<()> {
             self.is_governor(self.env().caller())?;
 
             // check if token address already exists
@@ -484,7 +486,7 @@ pub mod governed_token_wrapper {
         /// * `fee` - The wrapping fee percentage
         /// * `nonce` -  The nonce tracking updates to this contract
         #[ink(message)]
-        pub fn set_fee(&mut self, fee: Balance, nonce: u64) -> Result<()> {
+        pub fn set_fee(&mut self, fee: Balance, nonce: u32) -> Result<()> {
             // only contract governor can execute this function
             self.is_governor(self.env().caller())?;
 
@@ -507,7 +509,7 @@ pub mod governed_token_wrapper {
         /// * `fee_recipient` - The address to receive wrapping fee
         /// * `nonce` -  The nonce tracking updates to this contract
         #[ink(message)]
-        pub fn set_fee_recipient(&mut self, fee_recipient: AccountId, nonce: u64) -> Result<()> {
+        pub fn set_fee_recipient(&mut self, fee_recipient: AccountId, nonce: u32) -> Result<()> {
             // only contract governor can execute this function
             self.is_governor(self.env().caller())?;
 
@@ -729,7 +731,7 @@ pub mod governed_token_wrapper {
         pub fn get_fee_from_amount(&mut self, amount_to_wrap: Balance) -> Balance {
             amount_to_wrap
                 .saturating_mul(self.fee_percentage)
-                .saturating_div(100)
+                .saturating_div(WRAPPING_FEE_CALC_DENOMINATOR.into())
         }
 
         /// Calculates the amount to be wrapped
@@ -737,9 +739,10 @@ pub mod governed_token_wrapper {
         /// * `amount_to_wrap` - The amount to wrap
         #[ink(message)]
         pub fn get_amount_to_wrap(&mut self, deposit: Balance) -> Result<Balance> {
+            let wrapping_fee_denom: Balance = WRAPPING_FEE_CALC_DENOMINATOR.into();
             let amount_to_wrap = deposit
-                .saturating_mul(100)
-                .saturating_div(100 - self.fee_percentage);
+                .saturating_mul(WRAPPING_FEE_CALC_DENOMINATOR.into())
+                .saturating_div(wrapping_fee_denom - self.fee_percentage);
 
             Ok(amount_to_wrap)
         }
@@ -793,7 +796,7 @@ pub mod governed_token_wrapper {
 
         /// Returns the `proposal_nonce` value.
         #[ink(message)]
-        pub fn nonce(&self) -> u64 {
+        pub fn nonce(&self) -> u32 {
             self.proposal_nonce
         }
 

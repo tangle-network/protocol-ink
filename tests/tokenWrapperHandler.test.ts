@@ -297,9 +297,9 @@ describe("token-wrapper-handler-tests", () => {
 
     let parsedFunctionSig = JSON.parse(functionSig.output).ok;
 
-    let nonce = [0, 0, 0, 0, 0, 0, 0, 1];
+    let nonce = 1;
 
-    let amount = [100];
+    let amount = 100;
 
     let dataResult =
       await tokenWrapperHandlerContract.query.constructDataForSetFee(
@@ -341,7 +341,7 @@ describe("token-wrapper-handler-tests", () => {
 
     let parsedFunctionSig = JSON.parse(functionSig.output).ok;
 
-    let nonce = [0, 0, 0, 0, 0, 0, 0, 1];
+    let nonce = 1;
 
     let dataResult = await tokenWrapperHandlerContract.query.constructData(
       resourceId,
@@ -382,7 +382,7 @@ describe("token-wrapper-handler-tests", () => {
 
     let parsedFunctionSig = JSON.parse(functionSig.output).ok;
 
-    let nonce = [0, 0, 0, 0, 0, 0, 0, 1];
+    let nonce = 1;
 
     let dataResult = await tokenWrapperHandlerContract.query.constructData(
       resourceId,
@@ -425,7 +425,7 @@ describe("token-wrapper-handler-tests", () => {
 
     let parsedFunctionSig = JSON.parse(functionSig.output).ok;
 
-    let nonce = [0, 0, 0, 0, 0, 0, 0, 1];
+    let nonce = 1;
 
     let dataResult = await tokenWrapperHandlerContract.query.constructData(
       resourceId,
@@ -447,7 +447,7 @@ describe("token-wrapper-handler-tests", () => {
 
     parsedFunctionSig = JSON.parse(functionSig.output).ok;
 
-    nonce = [0, 0, 0, 0, 0, 0, 0, 2];
+    nonce = 2;
 
     dataResult = await tokenWrapperHandlerContract.query.constructData(
       resourceId,
