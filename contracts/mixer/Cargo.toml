@@ -33,7 +33,7 @@ scale-info = { version = "2", default-features = false, features = [
 
 protocol-ink-lib = {path = "../../protocol-ink-lib"}
 
-# brush = { git = "https://github.com/Supercolony-net/openbrush-contracts", default-features = false, features = ["psp22"] }
+openbrush = { tag = "v2.2.0", git = "https://github.com/Supercolony-net/openbrush-contracts", default-features = false, features = ["psp22"] }
 
 [lib]
 name = "mixer"
@@ -54,8 +54,7 @@ std = [
     "ink_prelude/std",
     "scale/std",
     "scale-info/std",
-
-    # "brush/std",
+    "openbrush/std",
     "poseidon/std",
     "verifier/std",
 ]

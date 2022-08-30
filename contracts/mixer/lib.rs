@@ -12,10 +12,14 @@ pub mod mixer {
     use ink_storage::{traits::SpreadAllocate, Mapping};
     use poseidon::poseidon::PoseidonRef;
     use protocol_ink_lib::keccak::Keccak256;
-    use protocol_ink_lib::utils::truncate_and_pad;
+    use protocol_ink_lib::utils::{is_account_id_zero, truncate_and_pad};
     use protocol_ink_lib::zeroes::zeroes;
     use scale::Encode;
     use verifier::MixerVerifierRef;
+
+    use openbrush::contracts::psp22::*;
+    use openbrush::contracts::traits::psp22::PSP22;
+    use openbrush::traits::Storage;
 
     pub const ROOT_HISTORY_SIZE: u32 = 100;
     pub const ERROR_MSG: &'static str =
@@ -24,14 +28,19 @@ pub mod mixer {
     contract's balance below minimum balance.";
 
     #[ink(storage)]
-    #[derive(SpreadAllocate)]
+    #[derive(SpreadAllocate, Storage)]
     pub struct Mixer {
         deposit_size: Balance,
         merkle_tree: merkle_tree::MerkleTree,
         used_nullifiers: Mapping<[u8; 32], bool>,
         poseidon: PoseidonRef,
         verifier: MixerVerifierRef,
+        #[storage_field]
+        psp22: psp22::Data,
+        psp22_token_address: Option<AccountId>,
     }
+
+    impl PSP22 for Mixer {}
 
     #[ink(event)]
     pub struct Deposit {
@@ -68,6 +77,10 @@ pub mod mixer {
         NullifierKnown,
         /// Invalid Withdraw Proof
         InvalidWithdrawProof,
+        /// TransferError
+        TransferError,
+        /// PSP22 allowance error
+        PSP22AllowanceError,
     }
 
     /// The mixer result type.
@@ -91,6 +104,7 @@ pub mod mixer {
             levels: u32,
             deposit_size: Balance,
             version: u32,
+            psp22_contract_address: AccountId,
             poseidon_contract_hash: Hash,
             verifier_contract_hash: Hash,
         ) -> Self {
@@ -123,6 +137,7 @@ pub mod mixer {
                 contract.merkle_tree.levels = levels;
                 contract.merkle_tree.current_root_index = 0;
                 contract.merkle_tree.next_index = 0;
+                contract.psp22_token_address = Some(psp22_contract_address);
 
                 for i in 0..levels {
                     contract.merkle_tree.filled_subtrees.insert(i, &zeroes(i));
@@ -145,7 +160,7 @@ pub mod mixer {
         }
 
         #[ink(message, payable)]
-        pub fn deposit(&mut self, commitment: [u8; 32]) -> Result<u32> {
+        pub fn deposit_native(&mut self, commitment: [u8; 32]) -> Result<u32> {
             assert!(
                 self.env().transferred_value() == self.deposit_size,
                 "Deposit size is not correct"
@@ -157,6 +172,32 @@ pub mod mixer {
                 from: self.env().caller(),
                 commitment,
                 value: self.env().transferred_value(),
+            });
+
+            index
+        }
+
+        #[ink(message)]
+        pub fn deposit_psp22(&mut self, commitment: [u8; 32], amount: Balance) -> Result<u32> {
+            if self.psp22_token_address.is_none() {
+                panic!("psp22 token address is not set");
+            }
+
+            assert!(amount == self.deposit_size, "Deposit size is not correct");
+
+            let index = self.merkle_tree.insert(self.poseidon.clone(), commitment);
+
+            if self
+                .transfer(self.psp22_token_address.unwrap(), amount, Vec::<u8>::new())
+                .is_err()
+            {
+                return Err(Error::TransferError);
+            }
+
+            self.env().emit_event(Deposit {
+                from: self.env().caller(),
+                commitment,
+                value: amount,
             });
 
             index
@@ -214,42 +255,65 @@ pub mod mixer {
                 .insert(withdraw_params.nullifier_hash, &true);
 
             let actual_amount = self.deposit_size - withdraw_params.fee;
-            // Send the funds
-            // TODO: Support "PSP22"-like tokens and Native token
-            // TODO: SPEC this more with Drew and create task/issue
-            if self
-                .env()
-                .transfer(withdraw_params.recipient, actual_amount)
-                .is_err()
-            {
-                panic!("{}", ERROR_MSG);
-            }
 
-            if self
-                .env()
-                .transfer(withdraw_params.relayer, withdraw_params.fee)
-                .is_err()
-            {
-                panic!("{}", ERROR_MSG);
-            }
-
-            if withdraw_params.refund > 0 {
+            // Handle transfers for native and PSP22 tokens
+            if !is_account_id_zero(self.psp22_token_address.unwrap()) {
                 if self
-                    .env()
-                    .transfer(withdraw_params.recipient, withdraw_params.refund)
+                    .transfer_from(
+                        self.psp22_token_address.unwrap(),
+                        withdraw_params.recipient,
+                        actual_amount,
+                        Vec::<u8>::new(),
+                    )
                     .is_err()
                 {
-                    ink_env::debug_println!("refund processing failed");
                     panic!("{}", ERROR_MSG);
                 }
-            }
+                if self
+                    .transfer_from(
+                        self.psp22_token_address.unwrap(),
+                        withdraw_params.relayer,
+                        withdraw_params.fee,
+                        Vec::<u8>::new(),
+                    )
+                    .is_err()
+                {
+                    panic!("{}", ERROR_MSG);
+                }
+            } else {
+                if self
+                    .env()
+                    .transfer(withdraw_params.recipient, actual_amount)
+                    .is_err()
+                {
+                    panic!("{}", ERROR_MSG);
+                }
 
-            self.env().emit_event(Withdraw {
-                recipient: withdraw_params.recipient,
-                relayer: withdraw_params.relayer,
-                fee: withdraw_params.fee,
-                refund: withdraw_params.refund,
-            });
+                if self
+                    .env()
+                    .transfer(withdraw_params.relayer, withdraw_params.fee)
+                    .is_err()
+                {
+                    panic!("{}", ERROR_MSG);
+                }
+
+                if withdraw_params.refund > 0 {
+                    if self
+                        .env()
+                        .transfer(withdraw_params.recipient, withdraw_params.refund)
+                        .is_err()
+                    {
+                        panic!("{}", ERROR_MSG);
+                    }
+                }
+
+                self.env().emit_event(Withdraw {
+                    recipient: withdraw_params.recipient,
+                    relayer: withdraw_params.relayer,
+                    fee: withdraw_params.fee,
+                    refund: withdraw_params.refund,
+                });
+            }
 
             Ok(())
         }
@@ -276,10 +340,64 @@ pub mod mixer {
             self.used_nullifiers.get(&nullifier).unwrap_or(false)
         }
 
-        /// Returns native contract balance
+        /// Returns psp22 contract balance
         #[ink(message)]
         pub fn native_contract_balance(&self) -> Balance {
             self.env().balance()
+        }
+
+        /// Returns psp22 contract balance
+        #[ink(message)]
+        pub fn psp22_contract_balance(&self) -> Balance {
+            self.balance_of(self.psp22_token_address.unwrap())
+        }
+
+        /// sets the psp22 allowance for the spender(spend on behalf of owner)
+        ///
+        /// * `owner` - owner's address
+        /// * `spender` - spender's address
+        /// * `amount` - amount to spend
+        #[ink(message)]
+        pub fn set_psp22_allowance_for_owner(
+            &mut self,
+            owner: AccountId,
+            spender: AccountId,
+            amount: Balance,
+        ) -> Result<()> {
+            // psp22 call to increase allowance
+            self.psp22.allowances.insert(&(&owner, &spender), &amount);
+            Ok(())
+        }
+
+        /// Gets the psp22 allowance for the spender(spend on behalf of owner)
+        ///
+        /// * `owner` - owner's address
+        /// * `spender` - spender's address
+        #[ink(message)]
+        pub fn get_psp22_allowance(&self, owner: AccountId, spender: AccountId) -> Balance {
+            self.allowance(owner, spender)
+        }
+
+        /// Insert's psp22 token for an address
+        ///
+        /// * `account_id` - address to transfer to
+        /// * `amount` - amount to transfer
+        #[ink(message)]
+        pub fn insert_psp22_balance(
+            &mut self,
+            account_id: AccountId,
+            amount: Balance,
+        ) -> Result<()> {
+            self.psp22.balances.insert(&account_id, &amount);
+            Ok(())
+        }
+
+        /// Returns psp22 balance for an address
+        ///
+        /// * `address` - The address to check
+        #[ink(message)]
+        pub fn psp22_balance(&self, address: AccountId) -> Balance {
+            self.balance_of(address)
         }
     }
 }
